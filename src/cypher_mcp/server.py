@@ -1,0 +1,435 @@
+"""cypher-mcp — Monetized Graph Answers MCP Server.
+
+A conventional Tollbooth-DPYC Operator (sibling of tollbooth-sample /
+schwab-mcp). Standard DPYC tools — balance, purchase, Secure Courier,
+proof, pricing, Oracle, constraints — come from ``register_standard_tools``
+in the tollbooth-dpyc wheel. Only the domain plane is defined here:
+
+  * ``execute_query_by_key`` — the one priced patron tool: run an
+    operator-authored, parameterized, named Cypher query from the catalog.
+  * ``create_query`` / ``update_query`` / ``get_query`` / ``list_queries``
+    / ``delete_query`` — operator-only (restricted), unpriced authoring of
+    the query catalog.
+
+Crude phase: one flat price for any key (conventional per-tool pricing).
+Per-key/per-product pricing is the deferred L3 parametric-pricing work.
+
+Run locally:
+    python -m cypher_mcp.server
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Annotated, Any
+
+from pydantic import Field
+
+from fastmcp import FastMCP
+
+from tollbooth.tool_identity import ToolIdentity, STANDARD_IDENTITIES
+from tollbooth.runtime import OperatorRuntime, register_standard_tools
+from tollbooth.credential_templates import CredentialTemplate, FieldSpec
+from tollbooth.credential_validators import validate_btcpay_creds
+
+from cypher_mcp import __version__, catalog, graph
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# FastMCP app
+# ---------------------------------------------------------------------------
+
+mcp = FastMCP(
+    "cypher-mcp",
+    instructions=(
+        "Cypher MCP — monetized graph answers over Bitcoin Lightning "
+        "micropayments. This operator sells operator-authored, parameterized, "
+        "named Cypher query templates ('priced answers'), never raw database "
+        "access.\n\n"
+        "## For patrons\n"
+        "Call `cypher_execute_query_by_key(key, params)` to run a published "
+        "query. Use `cypher_check_price` to preview cost and "
+        "`cypher_check_balance` to see your balance. You supply only the "
+        "parameters; the operator owns the query.\n\n"
+        "## For the operator (onboarding)\n"
+        "Call `cypher_get_operator_onboarding_status` to check readiness.\n"
+        "1. Register with an Authority (provides a Neon database automatically).\n"
+        "2. Deliver operator secrets via Secure Courier "
+        "(`cypher_request_credential_channel`, service='cypher-operator'):\n"
+        "   - neo4j_uri, neo4j_user, neo4j_password (the graph store)\n"
+        "   - btcpay_host, btcpay_api_key, btcpay_store_id (Lightning)\n"
+        "3. Author your catalog with `cypher_create_query`, then patrons can "
+        "execute by key."
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# Tool registry (domain tools only — standard identities live in the wheel)
+# ---------------------------------------------------------------------------
+
+# Frozen UUIDs — declared once at tool birth, never changed. Generated via
+# capability_uuid("<capability>") against the wheel's DPYC namespace, then
+# pinned here so renaming a function never orphans pricing-model rows.
+EXECUTE_QUERY_BY_KEY_UUID = "37df55cd-2384-55fa-8411-855165bda9db"
+CREATE_QUERY_UUID         = "13b43218-02f0-50cc-90c0-4c4b4e56654c"
+UPDATE_QUERY_UUID         = "c9d1360f-0626-50b3-940a-d378931a0453"
+GET_QUERY_UUID            = "096a25b2-2b03-579d-8af2-c72dad9b4b20"
+LIST_QUERIES_UUID         = "7ba73b4f-5993-5ef5-8aad-ca3a4c99d5e2"
+DELETE_QUERY_UUID         = "0151ecef-9528-5705-8f94-af9a5975014b"
+
+_DOMAIN_TOOLS = [
+    # The one priced patron tool. Flat starter price; operator reprices in Neon.
+    ToolIdentity(
+        tool_id=EXECUTE_QUERY_BY_KEY_UUID,
+        capability="execute_query_by_key",
+        category="read",
+        intent="Execute a published, parameterized Cypher query by key.",
+        pricing_hint_type="flat",
+        pricing_hint_value=5,
+    ),
+    # Operator-only authoring plane — restricted (operator-proof) + unpriced.
+    ToolIdentity(
+        tool_id=CREATE_QUERY_UUID, capability="create_query", category="restricted",
+        intent="Operator-only: add a named Cypher query template to the catalog.",
+    ),
+    ToolIdentity(
+        tool_id=UPDATE_QUERY_UUID, capability="update_query", category="restricted",
+        intent="Operator-only: update an existing named Cypher query template.",
+    ),
+    ToolIdentity(
+        tool_id=GET_QUERY_UUID, capability="get_query", category="restricted",
+        intent="Operator-only: fetch one catalog entry (template + schema).",
+    ),
+    ToolIdentity(
+        tool_id=LIST_QUERIES_UUID, capability="list_queries", category="restricted",
+        intent="Operator-only: list the catalog's published query keys.",
+    ),
+    ToolIdentity(
+        tool_id=DELETE_QUERY_UUID, capability="delete_query", category="restricted",
+        intent="Operator-only: delete a catalog entry.",
+    ),
+]
+
+TOOL_REGISTRY: dict[str, ToolIdentity] = {ti.tool_id: ti for ti in _DOMAIN_TOOLS}
+
+
+# ---------------------------------------------------------------------------
+# Credential validation — BTCPay trio (reused) + Neo4j Bolt trio
+# ---------------------------------------------------------------------------
+
+
+def validate_operator_creds(creds: dict[str, str]) -> list[str]:
+    """Validate the combined operator credential set (BTCPay + Neo4j)."""
+    errors = list(validate_btcpay_creds(creds))
+    for field in ("neo4j_uri", "neo4j_user", "neo4j_password"):
+        if not (creds.get(field) or "").strip():
+            errors.append(f"{field} is missing or empty.")
+    uri = (creds.get("neo4j_uri") or "").strip()
+    if uri and not uri.startswith(("neo4j", "bolt")):
+        errors.append(
+            "neo4j_uri must start with neo4j:// , neo4j+s:// , bolt:// , "
+            "or bolt+s:// ."
+        )
+    return errors
+
+
+# ---------------------------------------------------------------------------
+# OperatorRuntime
+# ---------------------------------------------------------------------------
+
+runtime = OperatorRuntime(
+    tool_registry={**STANDARD_IDENTITIES, **TOOL_REGISTRY},
+    operator_credential_template=CredentialTemplate(
+        service="cypher-operator",
+        version=1,
+        description="Neo4j Bolt store + BTCPay Lightning credentials",
+        fields={
+            "neo4j_uri": FieldSpec(
+                required=True, sensitive=True,
+                description="Bolt URI of your Neo4j store "
+                            "(e.g. neo4j+s://xxxx.databases.neo4j.io).",
+            ),
+            "neo4j_user": FieldSpec(
+                required=True, sensitive=True,
+                description="Neo4j username (e.g. 'neo4j').",
+            ),
+            "neo4j_password": FieldSpec(
+                required=True, sensitive=True,
+                description="Neo4j password.",
+            ),
+            "btcpay_host": FieldSpec(
+                required=True, sensitive=True,
+                description="URL of your BTCPay Server instance "
+                            "(e.g. https://btcpay.example.com).",
+            ),
+            "btcpay_api_key": FieldSpec(
+                required=True, sensitive=True,
+                description="Your BTCPay Server API key.",
+            ),
+            "btcpay_store_id": FieldSpec(
+                required=True, sensitive=True,
+                description="Your BTCPay Store ID.",
+            ),
+        },
+    ),
+    operator_credential_greeting=(
+        "Hi — I'm Cypher MCP, a graph-answers service. You (or your AI "
+        "agent) requested a credential channel to deliver Neo4j and BTCPay "
+        "secrets."
+    ),
+    service_name="cypher-mcp",
+    credential_validator=validate_operator_creds,
+)
+
+# ---------------------------------------------------------------------------
+# Register all standard DPYC tools from the wheel
+# ---------------------------------------------------------------------------
+
+tool = register_standard_tools(
+    mcp,
+    "cypher",
+    runtime,
+    service_name="cypher-mcp",
+    service_version=__version__,
+)
+
+
+# ---------------------------------------------------------------------------
+# Catalog bootstrap (idempotent, once per process)
+# ---------------------------------------------------------------------------
+
+_catalog_ready = False
+
+
+async def _ensure_catalog() -> Any:
+    """Return the NeonVault, ensuring the query_catalog table exists once."""
+    global _catalog_ready
+    vault = await runtime.vault()
+    if not _catalog_ready:
+        await catalog.ensure_schema(vault)
+        _catalog_ready = True
+    return vault
+
+
+# ---------------------------------------------------------------------------
+# Consumption plane — the one priced patron tool
+# ---------------------------------------------------------------------------
+
+
+@tool
+@runtime.paid_tool(EXECUTE_QUERY_BY_KEY_UUID)
+async def execute_query_by_key(
+    key: str,
+    params: dict[str, Any] | None = None,
+    npub: Annotated[str, Field(description="Required. Your Nostr public key (npub1...) for credit billing.")] = "",
+    proof: str = "",
+) -> dict[str, Any]:
+    """Execute a published, parameterized Cypher query by its key.
+
+    You supply the key of an operator-published query plus its parameters.
+    The operator owns the query text; you never see or write raw Cypher.
+
+    Billing note: you are charged only for a delivered answer. If the key
+    is unknown, the parameters are invalid, or the query fails, the call
+    raises and your debit is rolled back (no charge for value not delivered).
+
+    Args:
+        key: The published query key (e.g. 'holdings_by_sector').
+        params: Parameters for the query — bound as Cypher $params, never
+            interpolated. Must match the query's declared schema.
+    """
+    vault = await _ensure_catalog()
+    row = await catalog.get(vault, runtime.operator_npub(), key)
+    if row is None:
+        # Refund-on-raise: patron is not charged for an unknown key.
+        raise ValueError(
+            f"No published query named '{key}'. Ask the operator which keys "
+            "are available."
+        )
+
+    errors = catalog.validate_params(row["param_schema"], params)
+    if errors:
+        raise ValueError("Invalid parameters: " + "; ".join(errors))
+
+    creds = await runtime.load_credentials(
+        ["neo4j_uri", "neo4j_user", "neo4j_password"],
+        service="cypher-operator",
+    )
+    if not all(creds.get(f) for f in ("neo4j_uri", "neo4j_user", "neo4j_password")):
+        # Lifecycle situation: operator has not delivered graph credentials.
+        # Raise so the patron is refunded — they shouldn't pay before the
+        # operator is ready.
+        raise ValueError(
+            "This operator has not delivered Neo4j credentials yet. "
+            "Graph queries are unavailable until onboarding completes."
+        )
+
+    return await graph.run_named(
+        uri=creds["neo4j_uri"],
+        user=creds["neo4j_user"],
+        password=creds["neo4j_password"],
+        cypher=row["cypher_template"],
+        params=params or {},
+        access_mode=row.get("access_mode", "read"),
+        row_limit=row.get("row_limit", 1000),
+        timeout_ms=row.get("timeout_ms", 5000),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Authoring plane — operator-only (restricted), unpriced catalog CRUD
+# ---------------------------------------------------------------------------
+
+
+@tool
+@runtime.paid_tool(CREATE_QUERY_UUID)
+async def create_query(
+    key: str,
+    cypher_template: str,
+    param_schema: dict[str, Any] | None = None,
+    description: str = "",
+    access_mode: str = "read",
+    row_limit: int = 1000,
+    timeout_ms: int = 5000,
+    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
+    proof: str = "",
+) -> dict[str, Any]:
+    """Operator-only: publish a new named Cypher query template.
+
+    The template must reference each declared parameter as $name (binding,
+    not interpolation). param_schema maps param name -> {"type": ...,
+    "required": true|false}; types: string, int, float, bool, list.
+
+    Args:
+        key: Stable, human-meaningful key (e.g. 'holdings_by_sector').
+        cypher_template: Parameterized Cypher using $param placeholders.
+        param_schema: Declared parameters and their types.
+        description: Human-readable description of what the query returns.
+        access_mode: 'read' (default) or 'write'.
+        row_limit: Max rows returned (default 1000).
+        timeout_ms: Best-effort query timeout (default 5000).
+    """
+    param_schema = param_schema or {}
+    if errs := catalog.validate_param_schema(param_schema):
+        return {"success": False, "error": "; ".join(errs)}
+    if err := catalog.assert_parameterized(cypher_template, param_schema):
+        return {"success": False, "error": err}
+
+    vault = await _ensure_catalog()
+    operator = runtime.operator_npub()
+    if await catalog.get(vault, operator, key) is not None:
+        return {
+            "success": False,
+            "error": f"Query '{key}' already exists. Use update_query to change it.",
+        }
+    await catalog.upsert(
+        vault, operator, key, cypher_template, param_schema,
+        description=description, access_mode=access_mode,
+        row_limit=row_limit, timeout_ms=timeout_ms,
+    )
+    return {"success": True, "key": key, "message": f"Published query '{key}'."}
+
+
+@tool
+@runtime.paid_tool(UPDATE_QUERY_UUID)
+async def update_query(
+    key: str,
+    cypher_template: str,
+    param_schema: dict[str, Any] | None = None,
+    description: str = "",
+    access_mode: str = "read",
+    row_limit: int = 1000,
+    timeout_ms: int = 5000,
+    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
+    proof: str = "",
+) -> dict[str, Any]:
+    """Operator-only: update an existing named Cypher query template.
+
+    Same shape as create_query, but the key must already exist.
+    """
+    param_schema = param_schema or {}
+    if errs := catalog.validate_param_schema(param_schema):
+        return {"success": False, "error": "; ".join(errs)}
+    if err := catalog.assert_parameterized(cypher_template, param_schema):
+        return {"success": False, "error": err}
+
+    vault = await _ensure_catalog()
+    operator = runtime.operator_npub()
+    if await catalog.get(vault, operator, key) is None:
+        return {
+            "success": False,
+            "error": f"Query '{key}' does not exist. Use create_query to add it.",
+        }
+    await catalog.upsert(
+        vault, operator, key, cypher_template, param_schema,
+        description=description, access_mode=access_mode,
+        row_limit=row_limit, timeout_ms=timeout_ms,
+    )
+    return {"success": True, "key": key, "message": f"Updated query '{key}'."}
+
+
+@tool
+@runtime.paid_tool(GET_QUERY_UUID)
+async def get_query(
+    key: str,
+    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
+    proof: str = "",
+) -> dict[str, Any]:
+    """Operator-only: fetch one catalog entry (template + schema + metadata)."""
+    vault = await _ensure_catalog()
+    row = await catalog.get(vault, runtime.operator_npub(), key)
+    if row is None:
+        return {"success": False, "error": f"Query '{key}' not found."}
+    return {"success": True, "query": row}
+
+
+@tool
+@runtime.paid_tool(LIST_QUERIES_UUID)
+async def list_queries(
+    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
+    proof: str = "",
+) -> dict[str, Any]:
+    """Operator-only: list this operator's published query keys."""
+    vault = await _ensure_catalog()
+    queries = await catalog.list_keys(vault, runtime.operator_npub())
+    return {"success": True, "count": len(queries), "queries": queries}
+
+
+@tool
+@runtime.paid_tool(DELETE_QUERY_UUID)
+async def delete_query(
+    key: str,
+    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
+    proof: str = "",
+) -> dict[str, Any]:
+    """Operator-only: delete a catalog entry by key."""
+    vault = await _ensure_catalog()
+    removed = await catalog.delete(vault, runtime.operator_npub(), key)
+    if not removed:
+        return {"success": False, "error": f"Query '{key}' not found."}
+    return {"success": True, "key": key, "message": f"Deleted query '{key}'."}
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    """Main entry point for the server."""
+    from tollbooth import validate_operator_tools
+
+    missing = validate_operator_tools(mcp, "cypher")
+    if missing:
+        import sys
+
+        print(
+            f"⚠ Missing base-catalog tools: {', '.join(missing)}",
+            file=sys.stderr,
+        )
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Unit test / coverage reports
+.coverage
+.coverage.*
+coverage.xml
+.pytest_cache/
+.ruff_cache/
+
+# Environments / secrets
+.env
+.envrc
+.venv
+env/
+venv/
+
+# mypy
+.mypy_cache/
+
+# OS / editor
+.DS_Store
+
+# NOTE: uv.lock is intentionally tracked — Horizon builds from the lockfile.

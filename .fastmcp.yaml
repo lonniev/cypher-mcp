@@ -1,0 +1,5 @@
+name: cypher-mcp
+install: pip install -e .
+command: python -m cypher_mcp.server
+runtime:
+  python: "3.12"
