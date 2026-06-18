@@ -32,11 +32,13 @@ Three conceptual layers:
 | **L2 — catalog** | Neon `query_catalog` | `key → vetted Cypher template + param schema` (*what's possible*) |
 | **L3 — pricing** | Tollbooth pricing model | *what's sold, named, priced* |
 
-> **Status: live, crude pricing.** L1 + L2 are shipped and serving real,
+> **Status: live, with named tools.** L1 + L2 are shipped and serving real,
 > billed answers — an operator adopted by an Authority, AuraDB-backed, with
-> refund-on-raise verified end to end. Pricing is currently one flat fare per
-> key; the L3 parametric tool-synthesis (per-key/per-product pricing, a
-> published-tool menu) is deferred — see [CHANGELOG.md](CHANGELOG.md).
+> refund-on-raise verified end to end. **Named tools are now live (L3 tool
+> synthesis):** an operator can `publish_tool(key)` to project a query as a
+> first-class, typed tool (e.g. `cypher_find_airline_flights(from_city,
+> to_city)`), priced individually in Pricing Studio. Per-key parametric *pricing
+> formulas* remain a later step — see [CHANGELOG.md](CHANGELOG.md).
 
 ## Tools
 
@@ -56,6 +58,8 @@ Oracle delegation, account statements, constraint-based dynamic pricing, etc.
 
 - `cypher_create_query` / `cypher_update_query` / `cypher_get_query` /
   `cypher_list_queries` / `cypher_delete_query`
+- `cypher_publish_tool(key)` / `cypher_unpublish_tool(key)` — project a query as
+  a first-class, typed named tool (or retire it). See *Named tools* below.
 
 Raw Cypher never reaches patrons — only named, parameterized templates.
 
@@ -70,6 +74,24 @@ save it back with `cypher_update_query`. The template is just a string flowing
 over MCP — no files, no desktop, no exported bundles. The link carries the
 DBMS URI but never the password, and `get_query` is operator-only, so neither
 ever reaches a patron.
+
+### Named tools — publish a query as its own tool
+
+`cypher_publish_tool(key)` projects a catalog query as a first-class MCP tool
+named `cypher_<key>` whose flat, typed parameters come from the query's schema —
+e.g. `cypher_find_airline_flights(from_city, to_city)`. An agent then calls it by
+name with typed params instead of `execute_query_by_key(key, params)`. Internally
+every named tool funnels through the **same shared executor** (look the stored
+Cypher up by key → parameter-bind → run), so there is one code path and the same
+refund-on-raise guarantee. A published tool registers **unpriced** — it appears in
+Pricing Studio like any new tool; set its price there (calls return "not priced yet
+(TBD)" until you do). `cypher_unpublish_tool(key)` retires the tool (the query
+itself stays, still runnable by key). Published tools survive restarts
+(re-materialized from the catalog); reconnect to observe tool-list changes.
+
+The synthesis machinery is a generic `tollbooth-dpyc` primitive
+(`register_dynamic_tool`) — named Cypher queries are one realization; the same
+primitive can back a synthesized tool with a REST call, SQL, or a stored prompt.
 
 ## Onboarding (operator)
 

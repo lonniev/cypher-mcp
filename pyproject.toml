@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cypher-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "Monetized graph answers (named Cypher queries) — Tollbooth DPYC operator"
 readme = "README.md"
 license = "Apache-2.0"
@@ -18,7 +18,7 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
     "neo4j>=5.0",
-    "tollbooth-dpyc[nostr]==0.45.4",
+    "tollbooth-dpyc[nostr]==0.46.1",
 ]
 
 [project.optional-dependencies]

@@ -91,16 +91,47 @@ async def test_delete_uses_rowcount_camelcase():
     assert await catalog.delete(FakeVault(row_count=0), "npub1op", "k") is False
 
 
-# ── param-schema validation ───────────────────────────────────────────────
+# ── named-tool publication (as_tool / tool_intent) ────────────────────────
 
 
-def test_validate_param_schema_rejects_unknown_type():
-    errs = catalog.validate_param_schema({"x": {"type": "datetime"}})
-    assert errs and "unknown type" in errs[0]
+async def test_ensure_schema_migrates_named_tool_columns():
+    vault = FakeVault()
+    await catalog.ensure_schema(vault)
+    sqls = [s for s, _ in vault.calls]
+    assert any("CREATE TABLE IF NOT EXISTS" in s and "as_tool BOOLEAN" in s for s in sqls)
+    assert any("ADD COLUMN IF NOT EXISTS as_tool" in s for s in sqls)
+    assert any("ADD COLUMN IF NOT EXISTS tool_intent" in s for s in sqls)
 
 
-def test_validate_param_schema_accepts_known_types():
-    assert catalog.validate_param_schema({"x": {"type": "int"}, "y": {"type": "list"}}) == []
+async def test_get_selects_named_tool_columns():
+    row = {
+        "key": "q", "cypher_template": "RETURN 1", "param_schema": {},
+        "access_mode": "read", "row_limit": 1000, "timeout_ms": 5000,
+        "as_tool": True, "tool_intent": "hi",
+    }
+    vault = FakeVault(rows=[row])
+    got = await catalog.get(vault, "npub1op", "q")
+    sql, _ = vault.calls[-1]
+    assert "as_tool" in sql and "tool_intent" in sql
+    assert got is not None and got["as_tool"] is True
+
+
+async def test_set_as_tool_updates_and_reports_rowcount():
+    vault = FakeVault(row_count=1)
+    ok = await catalog.set_as_tool(vault, "npub1op", "q", True, "intent")
+    sql, params = vault.calls[-1]
+    assert "UPDATE" in sql and "as_tool = $3" in sql and "tool_intent = $4" in sql
+    assert params == ["npub1op", "q", True, "intent"]
+    assert ok is True
+    assert await catalog.set_as_tool(FakeVault(row_count=0), "npub1op", "missing", True) is False
+
+
+async def test_list_published_filters_as_tool():
+    vault = FakeVault(rows=[{"key": "q", "param_schema": {}, "tool_intent": "hi"}])
+    rows = await catalog.list_published(vault, "npub1op")
+    sql, _ = vault.calls[-1]
+    assert "as_tool = true" in sql
+    assert rows[0]["key"] == "q"
 
 
 # ── anti-injection author guard ───────────────────────────────────────────
@@ -114,28 +145,3 @@ def test_assert_parameterized_flags_missing_binding():
 def test_assert_parameterized_passes_when_bound():
     assert catalog.assert_parameterized("MATCH (s {name:$sector}) RETURN s",
                                         {"sector": {"type": "string"}}) is None
-
-
-# ── execution-time param validation ───────────────────────────────────────
-
-
-def test_validate_params_happy_path():
-    schema = {"sector": {"type": "string"}, "limit": {"type": "int", "required": False}}
-    assert catalog.validate_params(schema, {"sector": "tech", "limit": 10}) == []
-
-
-def test_validate_params_missing_required():
-    errs = catalog.validate_params({"sector": {"type": "string"}}, {})
-    assert errs == ["missing required param 'sector'"]
-
-
-def test_validate_params_type_mismatch_and_bool_is_not_int():
-    schema = {"n": {"type": "int"}}
-    assert catalog.validate_params(schema, {"n": "x"}) == ["param 'n' must be of type int"]
-    # bool must NOT satisfy int (Python's bool-is-int trap)
-    assert catalog.validate_params(schema, {"n": True}) == ["param 'n' must be of type int"]
-
-
-def test_validate_params_rejects_unexpected():
-    errs = catalog.validate_params({"a": {"type": "string"}}, {"a": "x", "evil": 1})
-    assert errs == ["unexpected param 'evil'"]

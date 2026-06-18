@@ -3,6 +3,39 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] — 2026-06-18
+
+### Added — named tools at runtime (L3 tool synthesis)
+
+- **`publish_tool(key)` / `unpublish_tool(key)`** (operator-only) project a catalog
+  query as a first-class, typed MCP tool named `cypher_<key>` — e.g.
+  `cypher_find_airline_flights(from_city, to_city)`. Patrons call it by name with
+  typed params; internally it funnels through the one shared executor
+  (`_run_named_query`) that resolves the stored Cypher by key and parameter-binds
+  it (`$params`, never interpolated). Published tools survive cold starts
+  (re-materialized from the catalog) and are visible to Pricing Studio.
+- **Register-only; price in the App.** A published tool registers **unpriced** — it
+  appears in Pricing Studio like any new tool; set its price there. Until then calls
+  return "not priced yet (TBD)". No price flows through the MCP.
+
+### Changed
+
+- Built on `tollbooth-dpyc==0.46.1`'s new `register_dynamic_tool` synthesis
+  primitive (the generic machinery lives in the wheel; cypher supplies the
+  named-Cypher runner). The `query_catalog` gains `as_tool` / `tool_intent` columns
+  (migrated in place); the param-schema validators now come from the wheel.
+- `list_queries` reports each query's `as_tool` (published) state.
+
+## [0.2.0] — 2026-06-15
+
+### Added
+
+- **`get_query` returns an `edit_url`** — a deep link into the hosted Neo4j Browser
+  (`browser.neo4j.io`) that opens the template in EDIT mode against the operator's
+  AuraDB, so an analyst refines it in Neo4j's own UI and saves it back with
+  `update_query`. The link carries the DBMS URI but never the password; `get_query`
+  is operator-only, so neither ever reaches a patron.
+
 ## [0.1.0] — 2026-06-15
 
 Initial scaffold — crude Cypher integration on conventional per-tool pricing.

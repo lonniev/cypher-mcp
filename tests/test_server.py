@@ -5,19 +5,22 @@ from __future__ import annotations
 from cypher_mcp import server
 
 
-def test_domain_registry_has_six_tools():
+_RESTRICTED_CAPS = (
+    "create_query", "update_query", "get_query", "list_queries", "delete_query",
+    "publish_tool", "unpublish_tool",
+)
+
+
+def test_domain_registry_tool_surface():
     caps = {ti.capability for ti in server.TOOL_REGISTRY.values()}
-    assert caps == {
-        "execute_query_by_key", "create_query", "update_query",
-        "get_query", "list_queries", "delete_query",
-    }
+    assert caps == {"execute_query_by_key", *_RESTRICTED_CAPS}
 
 
 def test_executor_is_priced_others_restricted():
     by_cap = {ti.capability: ti for ti in server.TOOL_REGISTRY.values()}
     ex = by_cap["execute_query_by_key"]
     assert ex.category == "read" and ex.pricing_hint_value == 5
-    for cap in ("create_query", "update_query", "get_query", "list_queries", "delete_query"):
+    for cap in _RESTRICTED_CAPS:
         assert by_cap[cap].category == "restricted"
 
 
@@ -25,7 +28,7 @@ async def test_registered_tool_names_present():
     tools = await server.mcp._list_tools()
     names = {t.name for t in tools}
     assert "cypher_execute_query_by_key" in names
-    for cap in ("create_query", "update_query", "get_query", "list_queries", "delete_query"):
+    for cap in _RESTRICTED_CAPS:
         assert f"cypher_{cap}" in names
     # standard wheel tools are present too
     assert "cypher_check_balance" in names and "cypher_check_price" in names

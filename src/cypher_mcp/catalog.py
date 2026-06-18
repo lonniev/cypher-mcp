@@ -23,19 +23,9 @@ from typing import Any
 
 TABLE = "query_catalog"
 
-# Accepted param types in the crude phase. A richer schema language
-# (jsonschema / dynamic pydantic models) is the L3-phase upgrade.
-_TYPE_CHECKS: dict[str, Any] = {
-    "string": lambda v: isinstance(v, str),
-    "int": lambda v: isinstance(v, int) and not isinstance(v, bool),
-    "float": lambda v: isinstance(v, (int, float)) and not isinstance(v, bool),
-    "bool": lambda v: isinstance(v, bool),
-    "list": lambda v: isinstance(v, list),
-}
-
 
 async def ensure_schema(vault: Any) -> None:
-    """Create the per-operator query_catalog table if absent."""
+    """Create the per-operator query_catalog table if absent (+ migrate)."""
     await vault._execute(
         f"CREATE TABLE IF NOT EXISTS {vault._t(TABLE)} ("
         "  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"
@@ -47,10 +37,21 @@ async def ensure_schema(vault: Any) -> None:
         "  access_mode TEXT NOT NULL DEFAULT 'read',"
         "  row_limit INT NOT NULL DEFAULT 1000,"
         "  timeout_ms INT NOT NULL DEFAULT 5000,"
+        "  as_tool BOOLEAN NOT NULL DEFAULT false,"
+        "  tool_intent TEXT NOT NULL DEFAULT '',"
         "  created_at TIMESTAMPTZ DEFAULT now(),"
         "  updated_at TIMESTAMPTZ DEFAULT now(),"
         "  UNIQUE (operator, key)"
         ")"
+    )
+    # Migrate pre-existing tables (catalogs created before named tools).
+    await vault._execute(
+        f"ALTER TABLE {vault._t(TABLE)} "
+        "ADD COLUMN IF NOT EXISTS as_tool BOOLEAN NOT NULL DEFAULT false"
+    )
+    await vault._execute(
+        f"ALTER TABLE {vault._t(TABLE)} "
+        "ADD COLUMN IF NOT EXISTS tool_intent TEXT NOT NULL DEFAULT ''"
     )
 
 
@@ -72,7 +73,7 @@ async def get(vault: Any, operator: str, key: str) -> dict[str, Any] | None:
     """Return the catalog row for (operator, key), or None."""
     result = await vault._execute(
         f"SELECT key, cypher_template, param_schema, description, "
-        f"access_mode, row_limit, timeout_ms "
+        f"access_mode, row_limit, timeout_ms, as_tool, tool_intent "
         f"FROM {vault._t(TABLE)} WHERE operator = $1 AND key = $2",
         [operator, key],
     )
@@ -81,13 +82,41 @@ async def get(vault: Any, operator: str, key: str) -> dict[str, Any] | None:
 
 
 async def list_keys(vault: Any, operator: str) -> list[dict[str, Any]]:
-    """Return key + description + param_schema for every published query."""
+    """Return key + description + param_schema + as_tool for every query."""
     result = await vault._execute(
-        f"SELECT key, description, param_schema, access_mode "
+        f"SELECT key, description, param_schema, access_mode, as_tool "
         f"FROM {vault._t(TABLE)} WHERE operator = $1 ORDER BY key",
         [operator],
     )
     return [_row_to_dict(r) for r in (result.get("rows") or [])]
+
+
+async def list_published(vault: Any, operator: str) -> list[dict[str, Any]]:
+    """Return the full row for every query published as a named tool.
+
+    Used at cold start to re-materialize synthesized tools — the process is
+    stateless on Horizon, so published tools are rebuilt from the catalog.
+    """
+    result = await vault._execute(
+        f"SELECT key, cypher_template, param_schema, description, tool_intent, "
+        f"access_mode, row_limit, timeout_ms "
+        f"FROM {vault._t(TABLE)} WHERE operator = $1 AND as_tool = true ORDER BY key",
+        [operator],
+    )
+    return [_row_to_dict(r) for r in (result.get("rows") or [])]
+
+
+async def set_as_tool(
+    vault: Any, operator: str, key: str, on: bool, intent: str = ""
+) -> bool:
+    """Flip a catalog entry's publication state. Returns True if a row matched."""
+    result = await vault._execute(
+        f"UPDATE {vault._t(TABLE)} SET as_tool = $3, tool_intent = $4, "
+        f"updated_at = now() WHERE operator = $1 AND key = $2",
+        [operator, key, on, intent],
+    )
+    # Neon HTTP API returns affected rows under camelCase "rowCount".
+    return (result.get("rowCount", 0) or 0) > 0
 
 
 async def upsert(
@@ -139,24 +168,6 @@ async def delete(vault: Any, operator: str, key: str) -> bool:
     return (result.get("rowCount", 0) or 0) > 0
 
 
-def validate_param_schema(param_schema: dict[str, Any]) -> list[str]:
-    """Validate the author-supplied param schema shape. Returns errors."""
-    errors: list[str] = []
-    if not isinstance(param_schema, dict):
-        return ["param_schema must be an object mapping param name -> spec"]
-    for name, spec in param_schema.items():
-        if not isinstance(spec, dict):
-            errors.append(f"param '{name}' spec must be an object")
-            continue
-        t = spec.get("type", "string")
-        if t not in _TYPE_CHECKS:
-            errors.append(
-                f"param '{name}' has unknown type '{t}' "
-                f"(allowed: {', '.join(sorted(_TYPE_CHECKS))})"
-            )
-    return errors
-
-
 def assert_parameterized(
     cypher_template: str, param_schema: dict[str, Any]
 ) -> str | None:
@@ -179,33 +190,3 @@ def assert_parameterized(
             f"missing: {', '.join(sorted(missing))}"
         )
     return None
-
-
-def validate_params(
-    param_schema: dict[str, Any], params: dict[str, Any] | None
-) -> list[str]:
-    """Validate incoming params against the stored schema. Returns errors.
-
-    Fails cheap, before any Bolt connection. Rejects missing required
-    params, type mismatches, and unexpected params (tight surface).
-    """
-    errors: list[str] = []
-    params = params or {}
-    schema = param_schema or {}
-
-    for name, spec in schema.items():
-        required = spec.get("required", True)
-        if name not in params:
-            if required:
-                errors.append(f"missing required param '{name}'")
-            continue
-        t = spec.get("type", "string")
-        check = _TYPE_CHECKS.get(t)
-        if check and not check(params[name]):
-            errors.append(f"param '{name}' must be of type {t}")
-
-    for name in params:
-        if name not in schema:
-            errors.append(f"unexpected param '{name}'")
-
-    return errors

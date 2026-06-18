@@ -32,6 +32,7 @@ from tollbooth.tool_identity import ToolIdentity, STANDARD_IDENTITIES
 from tollbooth.runtime import OperatorRuntime, register_standard_tools
 from tollbooth.credential_templates import CredentialTemplate, FieldSpec
 from tollbooth.credential_validators import validate_btcpay_creds
+from tollbooth.dynamic_tools import validate_param_schema, validate_params
 
 from cypher_mcp import __version__, catalog, graph
 
@@ -61,7 +62,11 @@ mcp = FastMCP(
         "   - neo4j_uri, neo4j_user, neo4j_password (the graph store)\n"
         "   - btcpay_host, btcpay_api_key, btcpay_store_id (Lightning)\n"
         "3. Author your catalog with `cypher_create_query`, then patrons can "
-        "execute by key."
+        "execute by key.\n"
+        "4. Optionally `cypher_publish_tool(key)` to expose a query as a "
+        "named, typed tool (e.g. `cypher_find_airline_flights(from_city, "
+        "to_city)`). Published tools start unpriced — set their price in "
+        "Pricing Studio like any new tool."
     ),
 )
 
@@ -78,6 +83,8 @@ UPDATE_QUERY_UUID         = "c9d1360f-0626-50b3-940a-d378931a0453"
 GET_QUERY_UUID            = "096a25b2-2b03-579d-8af2-c72dad9b4b20"
 LIST_QUERIES_UUID         = "7ba73b4f-5993-5ef5-8aad-ca3a4c99d5e2"
 DELETE_QUERY_UUID         = "0151ecef-9528-5705-8f94-af9a5975014b"
+PUBLISH_TOOL_UUID         = "53625966-b026-5b5d-90db-056a24a9a6bf"
+UNPUBLISH_TOOL_UUID       = "248d328a-f7e0-50a1-b3d9-369d3e4372c0"
 
 _DOMAIN_TOOLS = [
     # The one priced patron tool. Flat starter price; operator reprices in Neon.
@@ -109,6 +116,15 @@ _DOMAIN_TOOLS = [
     ToolIdentity(
         tool_id=DELETE_QUERY_UUID, capability="delete_query", category="restricted",
         intent="Operator-only: delete a catalog entry.",
+    ),
+    # Tool-synthesis plane — publish/retire a query as a named, typed tool.
+    ToolIdentity(
+        tool_id=PUBLISH_TOOL_UUID, capability="publish_tool", category="restricted",
+        intent="Operator-only: expose a catalog query as a named, individually-priced MCP tool.",
+    ),
+    ToolIdentity(
+        tool_id=UNPUBLISH_TOOL_UUID, capability="unpublish_tool", category="restricted",
+        intent="Operator-only: remove a previously published named tool.",
     ),
 ]
 
@@ -201,16 +217,49 @@ tool = register_standard_tools(
 # ---------------------------------------------------------------------------
 
 _catalog_ready = False
+_tools_materialized = False
 
 
 async def _ensure_catalog() -> Any:
-    """Return the NeonVault, ensuring the query_catalog table exists once."""
-    global _catalog_ready
+    """Return the NeonVault, ensuring the query_catalog table exists once
+    and that published named tools are materialized once per process."""
+    global _catalog_ready, _tools_materialized
     vault = await runtime.vault()
     if not _catalog_ready:
         await catalog.ensure_schema(vault)
         _catalog_ready = True
+    if not _tools_materialized:
+        await _materialize_published(vault)
+        _tools_materialized = True
     return vault
+
+
+async def _materialize_published(vault: Any) -> None:
+    """Re-register every catalog entry published as a named tool.
+
+    The process is stateless on Horizon, so published tools are rebuilt from
+    the catalog on each cold start. Best-effort and idempotent — a failure to
+    materialize one tool never blocks the rest (or the call that triggered
+    this). Clients reconnect to observe synthesized tools (dynamic tool-list
+    changes need a reconnect on Horizon).
+    """
+    try:
+        rows = await catalog.list_published(vault, runtime.operator_npub())
+    except Exception:
+        logger.warning("could not load published tools for materialization", exc_info=True)
+        return
+    for row in rows:
+        key = row.get("key", "")
+        try:
+            runtime.register_dynamic_tool(
+                name=key,
+                param_schema=row.get("param_schema") or {},
+                runner=_make_runner(key),
+                intent=row.get("tool_intent") or row.get("description") or "",
+                category="read",
+            )
+        except Exception:
+            logger.warning("failed to materialize named tool '%s'", key, exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -218,27 +267,20 @@ async def _ensure_catalog() -> Any:
 # ---------------------------------------------------------------------------
 
 
-@tool
-@runtime.paid_tool(EXECUTE_QUERY_BY_KEY_UUID)
-async def execute_query_by_key(
+async def _run_named_query(
     key: str,
-    params: dict[str, Any] | None = None,
-    npub: Annotated[str, Field(description="Required. Your Nostr public key (npub1...) for credit billing.")] = "",
-    proof: str = "",
+    params: dict[str, Any] | None,
+    npub: str,
+    proof: str,
 ) -> dict[str, Any]:
-    """Execute a published, parameterized Cypher query by its key.
+    """Shared executor: resolve a published query by key, validate, run it.
 
-    You supply the key of an operator-published query plus its parameters.
-    The operator owns the query text; you never see or write raw Cypher.
-
-    Billing note: you are charged only for a delivered answer. If the key
-    is unknown, the parameters are invalid, or the query fails, the call
-    raises and your debit is rolled back (no charge for value not delivered).
-
-    Args:
-        key: The published query key (e.g. 'holdings_by_sector').
-        params: Parameters for the query — bound as Cypher $params, never
-            interpolated. Must match the query's declared schema.
+    Used by both the generic ``execute_query_by_key`` and every synthesized
+    named tool. Raises ``ValueError`` for an unknown key, invalid params, or
+    undelivered credentials so the caller's ``@paid_tool`` wrapper rolls back
+    the debit (refund-on-raise). ``npub`` / ``proof`` are taken for parity
+    with the dynamic-tool runner contract; identity gating already happened at
+    the wrapper, and parameters bind as Cypher ``$params`` (never interpolated).
     """
     vault = await _ensure_catalog()
     row = await catalog.get(vault, runtime.operator_npub(), key)
@@ -249,7 +291,7 @@ async def execute_query_by_key(
             "are available."
         )
 
-    errors = catalog.validate_params(row["param_schema"], params)
+    errors = validate_params(row["param_schema"], params)
     if errors:
         raise ValueError("Invalid parameters: " + "; ".join(errors))
 
@@ -276,6 +318,47 @@ async def execute_query_by_key(
         row_limit=row.get("row_limit", 1000),
         timeout_ms=row.get("timeout_ms", 5000),
     )
+
+
+def _make_runner(key: str):
+    """Build a dynamic-tool runner bound to a catalog ``key``.
+
+    Matches the wheel's runner contract ``async (params, npub, proof) -> dict``
+    and funnels through the one shared executor.
+    """
+    async def runner(
+        params: dict[str, Any], npub: str, proof: str
+    ) -> dict[str, Any]:
+        return await _run_named_query(key, params, npub, proof)
+
+    return runner
+
+
+@tool
+@runtime.paid_tool(EXECUTE_QUERY_BY_KEY_UUID)
+async def execute_query_by_key(
+    key: str,
+    params: dict[str, Any] | None = None,
+    npub: Annotated[str, Field(description="Required. Your Nostr public key (npub1...) for credit billing.")] = "",
+    proof: str = "",
+) -> dict[str, Any]:
+    """Execute a published, parameterized Cypher query by its key.
+
+    You supply the key of an operator-published query plus its parameters.
+    The operator owns the query text; you never see or write raw Cypher. If
+    the operator has published a query as a named tool (e.g.
+    ``cypher_find_airline_flights``), you can call that directly instead.
+
+    Billing note: you are charged only for a delivered answer. If the key
+    is unknown, the parameters are invalid, or the query fails, the call
+    raises and your debit is rolled back (no charge for value not delivered).
+
+    Args:
+        key: The published query key (e.g. 'holdings_by_sector').
+        params: Parameters for the query — bound as Cypher $params, never
+            interpolated. Must match the query's declared schema.
+    """
+    return await _run_named_query(key, params, npub, proof)
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +395,7 @@ async def create_query(
         timeout_ms: Best-effort query timeout (default 5000).
     """
     param_schema = param_schema or {}
-    if errs := catalog.validate_param_schema(param_schema):
+    if errs := validate_param_schema(param_schema):
         return {"success": False, "error": "; ".join(errs)}
     if err := catalog.assert_parameterized(cypher_template, param_schema):
         return {"success": False, "error": err}
@@ -350,7 +433,7 @@ async def update_query(
     Same shape as create_query, but the key must already exist.
     """
     param_schema = param_schema or {}
-    if errs := catalog.validate_param_schema(param_schema):
+    if errs := validate_param_schema(param_schema):
         return {"success": False, "error": "; ".join(errs)}
     if err := catalog.assert_parameterized(cypher_template, param_schema):
         return {"success": False, "error": err}
@@ -452,6 +535,92 @@ async def delete_query(
     if not removed:
         return {"success": False, "error": f"Query '{key}' not found."}
     return {"success": True, "key": key, "message": f"Deleted query '{key}'."}
+
+
+# ---------------------------------------------------------------------------
+# Tool-synthesis plane — publish a query as a named, typed MCP tool
+# ---------------------------------------------------------------------------
+
+
+@tool
+@runtime.paid_tool(PUBLISH_TOOL_UUID)
+async def publish_tool(
+    key: str,
+    tool_intent: str = "",
+    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
+    proof: str = "",
+) -> dict[str, Any]:
+    """Operator-only: expose a catalog query as a named, typed MCP tool.
+
+    Projects the published query as a first-class tool named ``cypher_<key>``
+    whose flat, typed parameters come from the query's param schema (e.g.
+    ``cypher_find_airline_flights(from_city, to_city)``). The tool is registered
+    immediately but starts **unpriced** — it appears in Pricing Studio like any
+    new tool; set its price there. Until priced, calls return "not priced yet
+    (TBD)". Patrons then call it by name with typed params instead of
+    ``execute_query_by_key``.
+
+    The key must be a valid tool identifier (^[a-z][a-z0-9_]*$). Reconnect to
+    see the new tool in the tool list.
+
+    Args:
+        key: An existing catalog query key (see ``list_queries``).
+        tool_intent: One-line description shown as the tool's purpose
+            (defaults to the query's description).
+    """
+    vault = await _ensure_catalog()
+    operator = runtime.operator_npub()
+    row = await catalog.get(vault, operator, key)
+    if row is None:
+        return {"success": False, "error": f"Query '{key}' not found. Create it first."}
+
+    intent = tool_intent or row.get("description") or ""
+    # register_dynamic_tool validates the key + schema and raises on bad input
+    # (surfaced by @paid_tool as tool_input_invalid); persist only on success.
+    tool_name = runtime.register_dynamic_tool(
+        name=key,
+        param_schema=row.get("param_schema") or {},
+        runner=_make_runner(key),
+        intent=intent,
+        category="read",
+    )
+    await catalog.set_as_tool(vault, operator, key, True, intent)
+    return {
+        "success": True,
+        "tool_name": tool_name,
+        "message": (
+            f"Published '{tool_name}'. It is unpriced — set its price in Pricing "
+            "Studio (it now appears there like any new tool); until then calls "
+            "return 'not priced yet (TBD)'. Reconnect to see it in the tool list."
+        ),
+    }
+
+
+@tool
+@runtime.paid_tool(UNPUBLISH_TOOL_UUID)
+async def unpublish_tool(
+    key: str,
+    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
+    proof: str = "",
+) -> dict[str, Any]:
+    """Operator-only: retire a previously published named tool.
+
+    The catalog query itself is kept (still runnable via
+    ``execute_query_by_key``); only its projected named tool is removed.
+    Reconnect to see it disappear from the tool list.
+    """
+    vault = await _ensure_catalog()
+    operator = runtime.operator_npub()
+    if await catalog.get(vault, operator, key) is None:
+        return {"success": False, "error": f"Query '{key}' not found."}
+    await catalog.set_as_tool(vault, operator, key, False, "")
+    removed = runtime.unregister_dynamic_tool(key, _quiet=True)
+    return {
+        "success": True,
+        "key": key,
+        "removed": removed,
+        "message": f"Unpublished the named tool for '{key}'. Reconnect to refresh the tool list.",
+    }
 
 
 # ---------------------------------------------------------------------------
