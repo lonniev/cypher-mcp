@@ -46,3 +46,24 @@ def test_validate_operator_creds_requires_neo4j_and_btcpay():
     errs = server.validate_operator_creds(bad)
     assert any("neo4j_password" in e for e in errs)
     assert any("neo4j_uri must start with" in e for e in errs)
+
+
+def test_edit_url_builds_browser_deep_link():
+    from urllib.parse import parse_qs, urlparse
+
+    url = server._edit_url(
+        "neo4j+s://abcd1234.databases.neo4j.io",
+        "MATCH (p:Person {name:$name}) RETURN p",
+    )
+    assert url.startswith("https://browser.neo4j.io/?")
+    assert " " not in url  # well-formed: spaces encoded, not raw
+    q = parse_qs(urlparse(url).query)
+    assert q["cmd"] == ["edit"]                 # edit mode, not run
+    assert q["db"] == ["neo4j"]
+    assert q["dbms"] == ["neo4j+s://abcd1234.databases.neo4j.io"]
+    assert q["arg"] == ["MATCH (p:Person {name:$name}) RETURN p"]  # decodes back
+
+
+def test_edit_url_empty_when_missing_uri_or_cypher():
+    assert server._edit_url("", "MATCH (n) RETURN n") == ""
+    assert server._edit_url("neo4j+s://x.databases.neo4j.io", "") == ""

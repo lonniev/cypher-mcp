@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 from typing import Annotated, Any
+from urllib.parse import quote
 
 from pydantic import Field
 
@@ -369,6 +370,37 @@ async def update_query(
     return {"success": True, "key": key, "message": f"Updated query '{key}'."}
 
 
+def _edit_url(neo4j_uri: str, cypher: str) -> str:
+    """Pure builder: a hosted-Neo4j-Browser deep link that opens ``cypher`` in
+    EDIT mode (``cmd=edit``) against ``neo4j_uri``. Returns "" if either is
+    empty. Values are URL-encoded so the link is well-formed regardless of
+    spaces / newlines in the Cypher.
+    """
+    if not neo4j_uri or not cypher:
+        return ""
+    params = (
+        f"dbms={quote(neo4j_uri, safe='')}"
+        "&db=neo4j"
+        f"&cmd=edit&arg={quote(cypher, safe='')}"
+    )
+    return f"https://browser.neo4j.io/?{params}"
+
+
+async def _browser_edit_url(cypher: str) -> str:
+    """Resolve this operator's neo4j_uri and build the Browser edit link for
+    ``cypher``. Best-effort — returns "" if creds aren't delivered yet; the
+    link is a convenience, never load-bearing (the raw template is always in
+    the response as a paste fallback). The neo4j_uri is used only in this
+    operator-only context (never reaches patrons); the password is deliberately
+    NOT in the link — the analyst authenticates once per browser session.
+    """
+    try:
+        creds = await runtime.load_credentials(["neo4j_uri"], service="cypher-operator")
+    except Exception:
+        return ""
+    return _edit_url((creds or {}).get("neo4j_uri") or "", cypher)
+
+
 @tool
 @runtime.paid_tool(GET_QUERY_UUID)
 async def get_query(
@@ -376,12 +408,23 @@ async def get_query(
     npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
     proof: str = "",
 ) -> dict[str, Any]:
-    """Operator-only: fetch one catalog entry (template + schema + metadata)."""
+    """Operator-only: fetch one catalog entry (template + schema + metadata).
+
+    Includes ``edit_url`` — a one-click deep link into the hosted Neo4j Browser
+    that pre-targets this operator's AuraDB and loads the template in EDIT mode,
+    so the analyst refines it in Neo4j's own UI and saves it back with
+    ``update_query``. Omitted if the operator's Neo4j credentials aren't
+    delivered yet (best-effort; the raw template is always present to paste).
+    """
     vault = await _ensure_catalog()
     row = await catalog.get(vault, runtime.operator_npub(), key)
     if row is None:
         return {"success": False, "error": f"Query '{key}' not found."}
-    return {"success": True, "query": row}
+    result: dict[str, Any] = {"success": True, "query": row}
+    edit_url = await _browser_edit_url(row.get("cypher_template", ""))
+    if edit_url:
+        result["edit_url"] = edit_url
+    return result
 
 
 @tool
