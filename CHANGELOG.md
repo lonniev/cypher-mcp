@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0] — 2026-06-29
+
+### Changed — BREAKING: identity-proof param renamed `proof` → `dpop_token`
+
+- Lockstep with **tollbooth-dpyc 0.57.0**, which unified the Secure Courier
+  possession token under one name (`dpop_token`), retiring the `proof_token`,
+  `poison`, and `proof` spellings. The SDK's `@paid_tool` decorator now extracts
+  `kwargs["dpop_token"]`, so every paid tool's identity-proof parameter is renamed
+  `proof` → `dpop_token` (clean cut, no backward-compat shim). A tool still
+  declaring `proof` would fail every paid call with `proof_required`.
+- Renamed in `execute_query_by_key` and the operator-only authoring/synthesis
+  tools, plus the shared `_run_named_query` executor and the dynamic-tool runner
+  contract (`async (params, npub, dpop_token) -> dict`).
+- SDK pin bumped `tollbooth-dpyc[nostr]==0.53.1` → `==0.57.0`; `uv.lock`
+  regenerated.
+
 ## [0.3.0] — 2026-06-18
 
 ### Added — named tools at runtime (L3 tool synthesis)

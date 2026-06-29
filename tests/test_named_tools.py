@@ -13,8 +13,8 @@ from cypher_mcp import server
 async def test_make_runner_delegates_to_shared_executor(monkeypatch):
     captured: dict = {}
 
-    async def fake_run(key, params, npub, proof):
-        captured.update(key=key, params=params, npub=npub, proof=proof)
+    async def fake_run(key, params, npub, dpop_token):
+        captured.update(key=key, params=params, npub=npub, dpop_token=dpop_token)
         return {"ok": True}
 
     monkeypatch.setattr(server, "_run_named_query", fake_run)
@@ -26,7 +26,7 @@ async def test_make_runner_delegates_to_shared_executor(monkeypatch):
         "key": "find_airline_flights",
         "params": {"from_city": "JFK"},
         "npub": "np",
-        "proof": "pf",
+        "dpop_token": "pf",
     }
 
 
