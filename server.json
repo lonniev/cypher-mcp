@@ -1,0 +1,16 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.lonniev/cypher-mcp",
+  "description": "Monetized graph answers via named Cypher queries — Tollbooth DPYC operator",
+  "version": "0.4.0",
+  "repository": {
+    "url": "https://github.com/lonniev/cypher-mcp",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://cypher-mcp.fastmcp.app/mcp"
+    }
+  ]
+}
