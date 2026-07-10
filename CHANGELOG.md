@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.1] — 2026-07-09
+
+### Changed
+
+- Bump **tollbooth-dpyc** pin `==0.62.0` → `==0.62.1` (security-hardening
+  batch): invoice-owner check on credit settlement, GCM credential vault,
+  encrypted self-provisioning ledger, no plaintext audit. `uv.lock` regenerated.
+
 ## [0.4.0] — 2026-06-29
 
 ### Changed — BREAKING: identity-proof param renamed `proof` → `dpop_token`
