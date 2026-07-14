@@ -116,10 +116,20 @@ async def _apply(url: str, operator_npub: str, operator_nsec: str,
 
     async with Client(url) as client:
         async def call(capability: str, args: dict[str, Any]) -> dict[str, Any]:
-            payload = {**args, "npub": operator_npub, "dpop_token": proof(capability)}
-            res = await client.call_tool(f"{SLUG}_{capability}", payload)
-            data = res.data if hasattr(res, "data") else res
-            return data if isinstance(data, dict) else {"raw": data}
+            # create_proof timestamps at whole-second resolution with a fixed body, so two
+            # calls signing for the same tool in the same second mint an identical Nostr
+            # event (same id) and the server's replay guard rejects the second as seen.
+            # Re-sign after the second ticks over — a fresh timestamp gives a fresh id.
+            for attempt in range(3):
+                payload = {**args, "npub": operator_npub, "dpop_token": proof(capability)}
+                res = await client.call_tool(f"{SLUG}_{capability}", payload)
+                data = res.data if hasattr(res, "data") else res
+                data = data if isinstance(data, dict) else {"raw": data}
+                if "proof" in str(data.get("error", "")).lower() and attempt < 2:
+                    await asyncio.sleep(1.1)
+                    continue
+                return data
+            return data
 
         # 1 + 2: author and publish each write template (idempotent). The published
         # tools appear in Pricing Studio unpriced — price them there. Starting
