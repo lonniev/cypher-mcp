@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.1] — 2026-07-14
+
+### Fixed — published (named) tools now materialize eagerly, so a cold instance reveals them
+
+- On stateless Horizon, synthesized named tools entered the runtime registry only when the
+  first *domain* call warmed `_ensure_catalog`. A cold instance's `tools/list` — and Pricing
+  Studio's Reconcile, which reads the live tool registry via the pricing model — therefore
+  missed freshly published tools until something warmed the instance.
+- A small `Middleware` now runs the existing `_materialize_published` once, before the first
+  `list_tools`/`call_tool` on each instance. Best-effort: a not-yet-configured operator never
+  has a request broken (failures are swallowed and retried on the next request). Published
+  tools are now reliably visible on any instance without a prior domain call.
+
 ## [0.5.0] — 2026-07-14
 
 ### Added — DPYC Software Factory mutation vocabulary (Task 1 substrate)

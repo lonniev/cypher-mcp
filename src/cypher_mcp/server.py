@@ -27,6 +27,7 @@ from urllib.parse import quote
 from pydantic import Field
 
 from fastmcp import FastMCP
+from fastmcp.server.middleware import Middleware
 
 from tollbooth.tool_identity import ToolIdentity, STANDARD_IDENTITIES
 from tollbooth.runtime import OperatorRuntime, register_standard_tools
@@ -260,6 +261,37 @@ async def _materialize_published(vault: Any) -> None:
             )
         except Exception:
             logger.warning("failed to materialize named tool '%s'", key, exc_info=True)
+
+
+class _EagerMaterializeMiddleware(Middleware):
+    """Materialize published (named) tools before the first list/call on each instance.
+
+    cypher-mcp is stateless on Horizon. Without this, synthesized tools only enter the
+    runtime registry when the first *domain* call warms ``_ensure_catalog`` — so a cold
+    instance's ``tools/list``, and Pricing Studio's Reconcile (which reads the live tool
+    registry via the pricing model), miss them. This runs the existing materialization
+    once, before serving. Best-effort: a not-yet-configured operator (no vault creds) must
+    never have a request broken, so failures are swallowed and retried on the next request.
+    """
+
+    async def _warm(self) -> None:
+        if _tools_materialized:
+            return
+        try:
+            await _ensure_catalog()
+        except Exception:
+            logger.debug("eager materialize deferred (operator not ready yet)", exc_info=True)
+
+    async def on_list_tools(self, context: Any, call_next: Any) -> Any:
+        await self._warm()
+        return await call_next(context)
+
+    async def on_call_tool(self, context: Any, call_next: Any) -> Any:
+        await self._warm()
+        return await call_next(context)
+
+
+mcp.add_middleware(_EagerMaterializeMiddleware())
 
 
 # ---------------------------------------------------------------------------
