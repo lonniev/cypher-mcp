@@ -14,10 +14,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `provenance:'llm-inferred-unverified'` as a Cypher literal — an agent key cannot
   claim authoritative provenance.
 - `scripts/seed_factory_vocabulary.py` — idempotent operator runbook that authors +
-  publishes the vocabulary and gates each tool **per-npub via the Constraint Engine**
-  (`json_expression` allow-list on `patron.npub`) rather than a bespoke ACL. The Porter
-  is denied `assert_rationale`/`bind_rationale_to_symbol`; membership is runtime-mutable
-  in Pricing Studio. `--dry-run` previews with no server or nsec.
+  publishes the vocabulary. Tools start **unlimited** (any funded patron, once priced in
+  Pricing Studio); per-npub limiting to the two agents is a later Pricing Studio session
+  adding a `json_expression` allow-list on `patron.npub` (Constraint Engine, not a bespoke
+  ACL — the Porter is denied `assert_rationale`). `--dry-run` previews (no server/nsec) and
+  prints the allow-list to replicate; `--gate` applies it programmatically if preferred.
 - `tests/test_factory_vocabulary.py` — validates every template against the wheel's
   author-time guards, proves the provenance literal is unforgeable, and pins the
   allow-list gating contract (listed npub allowed, others denied).

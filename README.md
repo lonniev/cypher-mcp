@@ -189,14 +189,17 @@ parameterized *write* templates — `record_triage`, `note_rejection`, `link_roo
 `cypher_<key>` tools. `assert_rationale` hard-codes `provenance:'llm-inferred-unverified'`
 as a Cypher literal, so an agent key can never claim authoritative provenance.
 
-Access is the **Constraint Engine**, not a bespoke ACL: each published tool carries a
-`json_expression` allow-list on `patron.npub`, so the Porter cannot reach `assert_rationale`
-and outsiders are denied by default. Containment is by **balance** — fund the Porter thin
-and the Journeyman thicker; a drained agent stops writing the graph but still triages on
-GitHub. This is runtime-mutable in Pricing Studio; changing membership needs no deploy.
+**Start unlimited, limit later.** Seeding just authors + publishes the tools; they then
+appear in **Pricing Studio** unpriced. Price them and any funded patron can call — the two
+agents just purchase api_sats like any patron. When you want to restrict calls to the two,
+add — in a Pricing Studio session — a `json_expression` allow-list on `patron.npub` per tool
+(Constraint Engine, not a bespoke ACL): listed npub allowed, everyone else denied by default,
+runtime-mutable with no deploy. Containment is also by **balance** — fund the Porter thin and
+the Journeyman thicker; a drained agent stops writing the graph but still triages on GitHub.
 
 **Seeding (operator, idempotent).** `scripts/seed_factory_vocabulary.py` authors + publishes
-the vocabulary and applies the per-npub gates + prices. Preview with no server/nsec:
+the vocabulary. `--dry-run` needs no server or nsec and also prints the exact allow-list to
+replicate in Pricing Studio when you limit access:
 
 ```bash
 python scripts/seed_factory_vocabulary.py --dry-run \
@@ -204,12 +207,12 @@ python scripts/seed_factory_vocabulary.py --dry-run \
 ```
 
 Apply against the live operator (operator nsec used transiently to sign one-shot kind-27235
-proofs — never logged or written to disk):
+proofs — never logged or written to disk). Add `--gate` (with both npubs) to also apply the
+per-npub allow-list programmatically instead of in Pricing Studio:
 
 ```bash
 python scripts/seed_factory_vocabulary.py \
-    --url https://cypher-mcp.fastmcp.app/mcp --operator-npub npub1fuhq0... \
-    --porter-npub npub1ymg... --journeyman-npub npub1m5q...
+    --url https://cypher-mcp.fastmcp.app/mcp --operator-npub npub1fuhq0...
 ```
 
 The vocabulary itself lives in `scripts/factory_vocabulary.py` (data, no I/O) and is covered

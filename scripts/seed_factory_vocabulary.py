@@ -3,14 +3,17 @@
 
 Idempotent, operator-run. For each template in :mod:`factory_vocabulary`:
   1. ``create_query`` it (access_mode='write'),
-  2. ``publish_tool`` it (so agents get a typed ``cypher_<key>`` tool),
-  3. gate + price it via ``set_pricing_model`` — a ``json_expression`` allow-list on
-     ``patron.npub`` per the tool's ``allow_roles`` (Constraint-Engine access control;
-     no bespoke ACL — see the design note and gotcha memory).
+  2. ``publish_tool`` it (so agents get a typed ``cypher_<key>`` tool).
 
-Access control is pricing-model configuration, so re-running with a changed npub set
-just updates the gate. Nothing here writes an nsec anywhere: the operator nsec is used
-transiently to sign one-shot kind-27235 proofs and is never logged or persisted.
+By default it stops there — the published tools are **unlimited** (any funded patron may
+call them once priced). Pricing and per-npub limiting are a Pricing Studio activity:
+price the tools, and — when ready — add a ``json_expression`` allow-list on ``patron.npub``
+to restrict calls to the two agents (Constraint-Engine access control; no bespoke ACL).
+``--dry-run`` prints that exact allow-list so you can replicate it in Pricing Studio, and
+``--gate`` applies it programmatically via ``set_pricing_model`` if you prefer.
+
+Nothing here writes an nsec anywhere: the operator nsec is used transiently to sign
+one-shot kind-27235 proofs and is never logged or persisted.
 
 Usage:
     # preview everything without calling the server or needing an nsec:
@@ -103,7 +106,8 @@ def apply_gate_and_price(model: dict[str, Any], npubs: dict[str, str]) -> dict[s
 # Driver (live)
 # --------------------------------------------------------------------------- #
 
-async def _apply(url: str, operator_npub: str, operator_nsec: str, npubs: dict[str, str]) -> int:
+async def _apply(url: str, operator_npub: str, operator_nsec: str,
+                 npubs: dict[str, str], gate: bool) -> int:
     from fastmcp import Client
     from tollbooth.identity_proof import create_proof
 
@@ -117,7 +121,10 @@ async def _apply(url: str, operator_npub: str, operator_nsec: str, npubs: dict[s
             data = res.data if hasattr(res, "data") else res
             return data if isinstance(data, dict) else {"raw": data}
 
-        # 1 + 2: author and publish each write template (idempotent).
+        # 1 + 2: author and publish each write template (idempotent). The published
+        # tools appear in Pricing Studio unpriced — price them there. Starting
+        # unpriced/ungated is deliberate: unlimited access to any funded patron until
+        # the operator chooses to price and (later) restrict.
         for t in VOCABULARY:
             r = await call("create_query", {
                 "key": t.key, "cypher_template": t.cypher,
@@ -128,24 +135,32 @@ async def _apply(url: str, operator_npub: str, operator_nsec: str, npubs: dict[s
             r = await call("publish_tool", {"key": t.key, "tool_intent": t.intent})
             print(f"  publish_tool {t.key}: {r.get('message') or r.get('error') or r}")
 
-        # 3: gate + price via the pricing model.
-        model_res = await call("get_pricing_model", {})
-        model = model_res.get("pricing_model") or model_res.get("model") or model_res
-        model = apply_gate_and_price(model, npubs)
-        r = await call("set_pricing_model", {"model_json": json.dumps(model)})
-        print(f"  set_pricing_model: {r.get('message') or r.get('error') or r}")
+        # 3 (opt-in only): gate + price via the pricing model. By default this is left
+        # to a Pricing Studio session — start unlimited, add the per-npub allow-list later.
+        if gate:
+            model_res = await call("get_pricing_model", {})
+            model = model_res.get("pricing_model") or model_res.get("model") or model_res
+            model = apply_gate_and_price(model, npubs)
+            r = await call("set_pricing_model", {"model_json": json.dumps(model)})
+            print(f"  set_pricing_model (gated to {list(npubs.values())}): "
+                  f"{r.get('message') or r.get('error') or r}")
+        else:
+            print("  (no gating applied — tools are unlimited/ungated; price them in "
+                  "Pricing Studio, add the per-npub allow-list there when ready)")
     return 0
 
 
 def _dry_run(npubs: dict[str, str]) -> int:
-    print("# create_query / publish_tool payloads")
+    print("# create_query / publish_tool payloads (applied by default).")
+    print("# 'gate' below is the per-npub allow-list to apply LATER — in a Pricing Studio")
+    print("# session, or with --gate — to limit calls to the two agents. Default = unlimited.\n")
     for t in VOCABULARY:
         allowed = resolve_roles(t.allow_roles, npubs)
-        print(f"\n## {t.key}  (allow: {allowed or '[NONE — set npubs]'})")
-        print(f"   access_mode=write  price={t.price_sats}")
+        print(f"## {t.key}  (limit-to: {allowed or '[set npubs to see the gate]'})")
+        print(f"   access_mode=write  suggested price={t.price_sats}")
         print(f"   cypher: {t.cypher}")
         print(f"   params: {json.dumps(t.param_schema)}")
-        print(f"   gate:   {json.dumps(build_gate_step(allowed))}")
+        print(f"   gate:   {json.dumps(build_gate_step(allowed))}\n")
     return 0
 
 
@@ -156,6 +171,9 @@ def main() -> int:
     ap.add_argument("--porter-npub", default=os.environ.get("PORTER_NPUB", ""))
     ap.add_argument("--journeyman-npub", default=os.environ.get("JOURNEYMAN_NPUB", ""))
     ap.add_argument("--dry-run", action="store_true", help="print payloads; no network, no nsec")
+    ap.add_argument("--gate", action="store_true",
+                    help="also apply the per-npub allow-list via set_pricing_model "
+                         "(default: leave unlimited; gate later in Pricing Studio). Requires npubs.")
     args = ap.parse_args()
 
     npubs = {PORTER: args.porter_npub, JOURNEYMAN: args.journeyman_npub}
@@ -165,8 +183,8 @@ def main() -> int:
     if not args.operator_npub:
         print("--operator-npub (or OPERATOR_NPUB) is required to apply", file=sys.stderr)
         return 2
-    if not (npubs[PORTER] and npubs[JOURNEYMAN]):
-        print("both --porter-npub and --journeyman-npub are required to apply", file=sys.stderr)
+    if args.gate and not (npubs[PORTER] and npubs[JOURNEYMAN]):
+        print("--gate requires both --porter-npub and --journeyman-npub", file=sys.stderr)
         return 2
     operator_nsec = os.environ.get("OPERATOR_NSEC", "")
     if not operator_nsec:
@@ -176,7 +194,7 @@ def main() -> int:
         print("no operator nsec provided", file=sys.stderr)
         return 2
 
-    return asyncio.run(_apply(args.url, args.operator_npub, operator_nsec, npubs))
+    return asyncio.run(_apply(args.url, args.operator_npub, operator_nsec, npubs, args.gate))
 
 
 if __name__ == "__main__":
