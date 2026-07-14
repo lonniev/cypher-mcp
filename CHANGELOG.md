@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] — 2026-07-14
+
+### Added — DPYC Software Factory mutation vocabulary (Task 1 substrate)
+
+- `scripts/factory_vocabulary.py` — the six operator-authored *write* templates
+  (`register_service`, `record_triage`, `note_rejection`, `link_root_cause`,
+  `assert_rationale`, `bind_rationale_to_symbol`) over a Service/Issue/Decision/
+  Symbol node model. `assert_rationale` hard-codes
+  `provenance:'llm-inferred-unverified'` as a Cypher literal — an agent key cannot
+  claim authoritative provenance.
+- `scripts/seed_factory_vocabulary.py` — idempotent operator runbook that authors +
+  publishes the vocabulary and gates each tool **per-npub via the Constraint Engine**
+  (`json_expression` allow-list on `patron.npub`) rather than a bespoke ACL. The Porter
+  is denied `assert_rationale`/`bind_rationale_to_symbol`; membership is runtime-mutable
+  in Pricing Studio. `--dry-run` previews with no server or nsec.
+- `tests/test_factory_vocabulary.py` — validates every template against the wheel's
+  author-time guards, proves the provenance literal is unforgeable, and pins the
+  allow-list gating contract (listed npub allowed, others denied).
+
+No core server or wheel change: the write path (`access_mode='write'`) and per-tool
+constraints already exist; this release adds the vocabulary, its seeding, and tests.
+
 ## [0.4.1] — 2026-07-09
 
 ### Changed
