@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.5.2 — 2026-07-16
+
+### Changed — track tollbooth-dpyc 0.63.3
+
+- Bumped the pinned SDK to 0.63.3 (npub-proof challenge DM now stamps the request time). Also cuts a release for changes accumulated since the last tag.
+
 ## [0.5.1] — 2026-07-14
 
 ### Fixed — published (named) tools now materialize eagerly, so a cold instance reveals them
