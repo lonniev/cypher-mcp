@@ -144,6 +144,16 @@ class TestSeedBuilders:
                     "suggest_capability_why", "link_capability_consumer"):
             assert by[f"cypher_{key}"]["chain"][0]["params"]["expression"]["value"] == [JOURNEYMAN_NPUB]
 
+    def test_gate_only_preserves_studio_prices(self):
+        # Closing the gate must NOT clobber prices an operator set in Studio.
+        model = {"tools": [
+            {"tool_name": "cypher_assert_rationale", "price_sats": 42, "priced": True, "chain": []},
+        ]}
+        apply_gate_and_price(model, NPUBS, set_prices=False)
+        tp = model["tools"][0]
+        assert tp["price_sats"] == 42 and tp["priced"] is True          # untouched
+        assert tp["chain"][0]["params"]["expression"]["value"] == [JOURNEYMAN_NPUB]  # gated
+
     def test_reads_are_priced_but_ungated(self):
         # Reads get a price but an empty chain (open to any funded patron).
         model = {"tools": [{"tool_name": f"cypher_{t.key}", "chain": []} for t in READ_VOCABULARY]}

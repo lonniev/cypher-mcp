@@ -84,11 +84,17 @@ def build_gate_step(allowed_npubs: list[str]) -> dict[str, Any]:
     }
 
 
-def apply_gate_and_price(model: dict[str, Any], npubs: dict[str, str]) -> dict[str, Any]:
-    """Return a copy of *model* with each vocabulary tool priced + gated to its roles.
+def apply_gate_and_price(model: dict[str, Any], npubs: dict[str, str],
+                         set_prices: bool = True) -> dict[str, Any]:
+    """Return a copy of *model* with each vocabulary tool gated to its roles, and — only
+    when *set_prices* is true — priced at its vocab default.
 
     Matches published tools by tool_name == f'{SLUG}_{key}'. Tools not yet present
     (publish step hasn't run) are reported to stderr and skipped.
+
+    ``set_prices=False`` is the GATE-ONLY path: it adds the per-npub allow-list chain but
+    leaves ``price_sats``/``priced`` untouched, so closing the gate never clobbers prices an
+    operator set in Pricing Studio.
     """
     by_key = {f"{SLUG}_{t.key}": t for t in ALL_TEMPLATES}
     tools = model.get("tools", [])
@@ -99,9 +105,10 @@ def apply_gate_and_price(model: dict[str, Any], npubs: dict[str, str]) -> dict[s
         if not vt:
             continue
         seen.add(name)
-        tp["price_sats"] = vt.price_sats
-        tp["priced"] = True
-        tp["price_type"] = "flat"
+        if set_prices:
+            tp["price_sats"] = vt.price_sats
+            tp["priced"] = True
+            tp["price_type"] = "flat"
         allowed = resolve_roles(vt.allow_roles, npubs)
         tp["chain"] = [build_gate_step(allowed)] if allowed else []
     for name in by_key:
@@ -155,15 +162,18 @@ async def _apply(url: str, operator_npub: str, operator_nsec: str,
 
         # 3 (opt-in): price and/or gate via the pricing model.
         #   --price : price every tool at its vocab price, NO allow-list (stays tolerant).
-        #   --gate  : price AND restrict each write to its role npubs (reads stay open).
+        #   --gate  : restrict each write to its role npubs (reads stay open). Does NOT
+        #             touch prices — closing the gate preserves whatever you set in Studio.
         # Default is neither — start unpriced/ungated and do it in Pricing Studio.
         if gate or price:
             model_res = await call("get_pricing_model", {})
             model = model_res.get("pricing_model") or model_res.get("model") or model_res
             # npubs drive the allow-list; empty (price-only) => empty chain => ungated.
-            model = apply_gate_and_price(model, npubs if gate else {})
+            # set_prices only on --price, so --gate never clobbers Studio-set prices.
+            model = apply_gate_and_price(model, npubs if gate else {}, set_prices=price)
             r = await call("set_pricing_model", {"model_json": json.dumps(model)})
-            label = f"gated to {list(npubs.values())}" if gate else "priced, ungated"
+            label = (f"gated to {list(npubs.values())}, prices preserved" if gate
+                     else "priced, ungated")
             print(f"  set_pricing_model ({label}): "
                   f"{r.get('message') or r.get('error') or r}")
         else:
@@ -203,8 +213,8 @@ def main() -> int:
                     help="price every tool at its vocab price with NO allow-list "
                          "(stays tolerant/ungated) — makes the tools callable for testing.")
     ap.add_argument("--gate", action="store_true",
-                    help="price AND apply the per-npub allow-list via set_pricing_model "
-                         "(default: leave unpriced; gate later in Pricing Studio). Requires npubs.")
+                    help="apply the per-npub allow-list to each write via set_pricing_model, "
+                         "PRESERVING existing prices (does not re-price). Requires npubs.")
     args = ap.parse_args()
 
     npubs = {
