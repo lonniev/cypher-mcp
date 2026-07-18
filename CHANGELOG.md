@@ -3,6 +3,40 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added — Intention Service Task 2: the derived forward map (Capability layer + read surface)
+
+- `scripts/factory_vocabulary.py` — extended the factory graph with two node types and a
+  read surface, per PersonalBrain `60c4c06d` ("Intention Service"):
+  - `(:Capability {name, why, provenance, keywords})` — a cross-cutting service ability
+    (e.g. "Secure Courier") spanning many symbols across many repos, with edges
+    `OWNED_BY` (multi-owner), `CONSUMED_BY`, `REALIZED_BY`.
+  - `(:Invariant {name, rule, provenance})` — a distinct, enforceable rule node (kept
+    separate from the Constraint Engine's vocabulary) with a bounded `GUARDS` symbol set
+    for the later drift alarm.
+  - One agent actor: the **Journeyman** writes the derived structure (`upsert_capability`,
+    `link_capability_consumer`, `bind_capability_to_symbol`, `index_symbol`) and its advice
+    on why a capability exists (`suggest_capability_why` → `inferred_why`, hard-coded
+    `llm-inferred-unverified`). The **Operator** (the human-run identity, a new `OPERATOR`
+    role) writes the authoritative why (`authorize_capability_why` → `human-authored`) and
+    authors `Invariant` nodes (`assert_invariant`, `guard_invariant_symbol`).
+  - **Provenance is never a parameter** anywhere in the vocabulary — every provenance is a
+    role-keyed Cypher literal, so the calling key decides authority. A Journeyman (LLM)
+    physically cannot stamp `human-authored`; it proposes advice, the Operator legislates.
+  - Four read templates published as tools (`which_service_handles`,
+    `what_realizes_capability`, `explain_capability`, `symbols_in_service`) — the forward
+    map query surface. Reads are open (priced, ungated).
+- `scripts/seed_factory_vocabulary.py` — authors + publishes writes then reads (honoring
+  each template's `access_mode`); `--gate` now takes `--harvester-npub` and gates each
+  write to its role npubs while leaving reads open.
+- `tests/test_factory_vocabulary.py` — pins the provenance boundary (agent-reachable
+  templates never parameterize provenance; harvester-only ones may), that reads are
+  read-only and open, and the harvester gating contract.
+
+No core server or wheel change: the read/write catalog and per-tool constraints already
+exist; this adds the vocabulary, its seeding, and tests.
+
 ## 0.5.2 — 2026-07-16
 
 ### Changed — track tollbooth-dpyc 0.63.3
