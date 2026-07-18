@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## 0.6.0 — 2026-07-18
 
 ### Added — Intention Service Task 2: the derived forward map (Capability layer + read surface)
 
