@@ -166,12 +166,21 @@ async def _apply(url: str, operator_npub: str, operator_nsec: str,
         #             touch prices — closing the gate preserves whatever you set in Studio.
         # Default is neither — start unpriced/ungated and do it in Pricing Studio.
         if gate or price:
-            model_res = await call("get_pricing_model", {})
+            def _data(res: Any) -> dict[str, Any]:
+                d = res.data if hasattr(res, "data") else res
+                return d if isinstance(d, dict) else {"raw": d}
+            # get/set_pricing_model have their OWN signatures — get takes no auth, set takes
+            # model_json + dpop_token (proof). NEITHER takes npub, so call them directly
+            # rather than through the npub-adding call() helper.
+            model_res = _data(await client.call_tool(f"{SLUG}_get_pricing_model", {}))
             model = model_res.get("pricing_model") or model_res.get("model") or model_res
             # npubs drive the allow-list; empty (price-only) => empty chain => ungated.
             # set_prices only on --price, so --gate never clobbers Studio-set prices.
             model = apply_gate_and_price(model, npubs if gate else {}, set_prices=price)
-            r = await call("set_pricing_model", {"model_json": json.dumps(model)})
+            r = _data(await client.call_tool(f"{SLUG}_set_pricing_model", {
+                "model_json": json.dumps(model),
+                "dpop_token": proof("set_pricing_model"),
+            }))
             label = (f"gated to {list(npubs.values())}, prices preserved" if gate
                      else "priced, ungated")
             print(f"  set_pricing_model ({label}): "
