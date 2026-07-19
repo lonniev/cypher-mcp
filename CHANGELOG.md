@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.6.1 — 2026-07-19
+
+### Added — clickable GitHub URLs on the factory graph (Issue / repo / PR)
+
+- `scripts/factory_vocabulary.py` — `Issue` nodes now carry the real GitHub URLs so a graph
+  reader can click straight through to the original artifacts:
+  - `record_triage` gains `issue_url` + `repo_url` params — the **actual** URLs the caller
+    fetches at runtime (`gh issue view <n> --json url`, `gh repo view --json url`), stored on
+    `i.url` / `i.repo_url`. Nothing is derived from a hardcoded owner.
+  - New write `link_pr(repo_name, issue_number, pr_url)` (Journeyman-gated) records the actual
+    URL of the PR that carried the fix (the URL `gh pr create` printed) on `i.pr_url`.
+  - New read `issue_provenance(repo_name, issue_number)` — the click-through surface: returns an
+    issue's `issue_url` / `repo_url` / `pr_url` plus its triage, rationale (Decisions),
+    rejections, and root-cause symbols.
+- A test guard (`test_no_template_hardcodes_a_github_owner`) fails if any template's Cypher
+  contains a literal `github.com/` owner — the no-hardcode rule can't silently regress.
+- Deploy is a re-seed of the live operator (`scripts/seed_factory_vocabulary.py`); templates
+  live in Neon, not the wheel, so no runtime change ships.
+
 ## 0.6.0 — 2026-07-18
 
 ### Added — Intention Service Task 2: the derived forward map (Capability layer + read surface)

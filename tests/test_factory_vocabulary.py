@@ -84,6 +84,23 @@ class TestVocabulary:
             if PORTER in t.allow_roles or JOURNEYMAN in t.allow_roles:
                 assert "'human-authored'" not in t.cypher, t.key
 
+    def test_record_triage_stores_actual_issue_and_repo_urls(self):
+        t = next(t for t in VOCABULARY if t.key == "record_triage")
+        # URLs are caller-supplied params (the real GitHub URLs), bound in the SET — never derived.
+        assert "issue_url" in t.param_schema and "repo_url" in t.param_schema
+        assert "i.url = $issue_url" in t.cypher and "i.repo_url = $repo_url" in t.cypher
+
+    def test_link_pr_is_journeyman_only_and_stores_actual_pr_url(self):
+        t = next(t for t in VOCABULARY if t.key == "link_pr")
+        assert t.allow_roles == (JOURNEYMAN,)
+        assert t.param_schema["pr_url"]["required"] is True
+        assert "i.pr_url = $pr_url" in t.cypher
+
+    def test_no_template_hardcodes_a_github_owner(self):
+        # The no-hardcode rule: URLs must be actual runtime values, never a baked-in owner string.
+        for t in [*VOCABULARY, *READ_VOCABULARY]:
+            assert "github.com/" not in t.cypher, t.key
+
 
 class TestReadVocabulary:
     @pytest.mark.parametrize("t", READ_VOCABULARY, ids=lambda t: t.key)
@@ -104,6 +121,13 @@ class TestReadVocabulary:
         # No per-npub gate on reads — any funded agent may resolve intent.
         for t in READ_VOCABULARY:
             assert t.allow_roles == ()
+
+    def test_issue_provenance_returns_the_three_urls(self):
+        t = next(t for t in READ_VOCABULARY if t.key == "issue_provenance")
+        assert t.access_mode == "read"
+        # The click-through surface returns the issue, repo, and PR URLs.
+        for field in ("issue_url", "repo_url", "pr_url"):
+            assert field in t.cypher, field
 
 
 class TestSeedBuilders:
