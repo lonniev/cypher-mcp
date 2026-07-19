@@ -10,7 +10,7 @@ and a read surface, written by the Journeyman (structure + advice) and the Opera
 Node model
 ----------
     (:Service {repo_npub, repo_name})                one per repo — the service is the actor
-    (:Issue   {repo_name, number, title, classification, disposition})
+    (:Issue   {repo_name, number, title, classification, disposition, url, repo_url, pr_url})
     (:Rejection {reason, at})                          history-preserving; linked to its Issue
     (:Decision {id, statement, reason, provenance, at}) provenance is a LITERAL here
     (:Symbol  {fqn})                                   a code location by fully-qualified name
@@ -99,11 +99,15 @@ VOCABULARY: list[Template] = [
     ),
     Template(
         key="record_triage",
+        # url/repo_url are the ACTUAL GitHub URLs, passed by the caller — never derived from a
+        # hardcoded owner. The agent fetches them at runtime (gh issue view --json url,
+        # gh repo view --json url) so a graph reader can click straight through to the artifacts.
         cypher=(
             "MERGE (s:Service {repo_name: $repo_name}) "
             "MERGE (i:Issue {repo_name: $repo_name, number: $issue_number}) "
             "SET i.title = $title, i.classification = $classification, "
-            "    i.disposition = $disposition, i.triaged_at = timestamp() "
+            "    i.disposition = $disposition, i.url = $issue_url, i.repo_url = $repo_url, "
+            "    i.triaged_at = timestamp() "
             "MERGE (i)-[:FILED_AGAINST]->(s) "
             "RETURN i.number AS issue"
         ),
@@ -115,8 +119,12 @@ VOCABULARY: list[Template] = [
                                "description": "type/* classification, e.g. 'bug'."},
             "disposition": {"type": "string", "required": True,
                             "description": "Routing disposition, e.g. 'agent/fix', 'rejected', 'blocked/upstream'."},
+            "issue_url": {"type": "string", "required": True,
+                          "description": "The issue's actual GitHub URL (gh issue view <n> --json url)."},
+            "repo_url": {"type": "string", "required": True,
+                         "description": "The repository's actual GitHub URL (gh repo view --json url)."},
         },
-        description="Record a triaged Issue and link it to its Service.",
+        description="Record a triaged Issue (with its GitHub issue + repo URLs) and link it to its Service.",
         intent="Record the Porter's triage of a GitHub issue.",
         allow_roles=(PORTER, JOURNEYMAN),
     ),
@@ -155,6 +163,24 @@ VOCABULARY: list[Template] = [
         description="Link an Issue to the code Symbol identified as its root cause.",
         intent="Point an issue at the code symbol that caused it.",
         allow_roles=(PORTER, JOURNEYMAN),
+    ),
+    Template(
+        key="link_pr",
+        # pr_url is the ACTUAL URL that `gh pr create` printed — never derived from an owner.
+        cypher=(
+            "MATCH (i:Issue {repo_name: $repo_name, number: $issue_number}) "
+            "SET i.pr_url = $pr_url "
+            "RETURN i.pr_url AS pr_url"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "issue_number": {"type": "int", "required": True, "description": "GitHub issue number."},
+            "pr_url": {"type": "string", "required": True,
+                       "description": "The actual GitHub URL of the PR that fixes this issue (from gh pr create)."},
+        },
+        description="Record the URL of the PR that carried the fix for an Issue (click-through provenance).",
+        intent="Attach the fix PR's GitHub URL to its issue.",
+        allow_roles=(JOURNEYMAN,),
     ),
     Template(
         key="assert_rationale",
@@ -441,6 +467,32 @@ READ_VOCABULARY: list[Template] = [
         },
         description="Resolve which Service(s) handle an intent keyword — before opening a file.",
         intent="Find which service handles a given intent.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        key="issue_provenance",
+        # The click-through surface: an issue's stored GitHub URLs (issue / repo / PR) plus its
+        # triage + rationale chain, so a graph reader can open the original artifacts in a browser.
+        cypher=(
+            "MATCH (i:Issue {repo_name: $repo_name, number: $issue_number}) "
+            "OPTIONAL MATCH (i)-[:ROOT_CAUSE]->(sym:Symbol) "
+            "OPTIONAL MATCH (i)-[:HAS_RATIONALE]->(d:Decision) "
+            "OPTIONAL MATCH (i)-[:HAS_REJECTION]->(r:Rejection) "
+            "RETURN i.url AS issue_url, i.repo_url AS repo_url, i.pr_url AS pr_url, "
+            "       i.title AS title, i.classification AS classification, i.disposition AS disposition, "
+            "       collect(DISTINCT sym.fqn) AS root_cause_symbols, "
+            "       [x IN collect(DISTINCT d) WHERE x IS NOT NULL | "
+            "           {statement: x.statement, reason: x.reason, provenance: x.provenance}] AS decisions, "
+            "       collect(DISTINCT r.reason) AS rejections"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "issue_number": {"type": "int", "required": True, "description": "GitHub issue number."},
+        },
+        description="An issue's click-through provenance: its GitHub issue/repo/PR URLs plus its "
+                    "triage, rationale (Decisions), rejections, and root-cause symbols.",
+        intent="Fetch an issue's GitHub URLs and provenance chain for browser click-through.",
         allow_roles=(),
         access_mode="read",
     ),
