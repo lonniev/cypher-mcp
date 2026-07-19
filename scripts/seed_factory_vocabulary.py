@@ -151,12 +151,20 @@ async def _apply(url: str, operator_npub: str, operator_nsec: str,
         # unpriced/ungated is deliberate: unlimited access to any funded patron until
         # the operator chooses to price and (later) restrict.
         for t in ALL_TEMPLATES:
-            r = await call("create_query", {
+            payload = {
                 "key": t.key, "cypher_template": t.cypher,
                 "param_schema": t.param_schema, "description": t.description,
                 "access_mode": t.access_mode,
-            })
-            print(f"  create_query {t.key} ({t.access_mode}): {r.get('message') or r.get('error') or r}")
+            }
+            r = await call("create_query", payload)
+            # create_query refuses an existing key; fall back to update_query so a re-seed
+            # actually PROPAGATES a changed definition (new params / cypher), not just additions.
+            if "already exists" in str(r):
+                r = await call("update_query", payload)
+                verb = "update_query"
+            else:
+                verb = "create_query"
+            print(f"  {verb} {t.key} ({t.access_mode}): {r.get('message') or r.get('error') or r}")
             r = await call("publish_tool", {"key": t.key, "tool_intent": t.intent})
             print(f"  publish_tool {t.key}: {r.get('message') or r.get('error') or r}")
 
