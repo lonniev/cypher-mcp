@@ -4,18 +4,21 @@
 // symbols), capability_patents (patent grounding), and context_pack (invariants
 // + precedent issues, matched to this capability).
 
-import { Link, useParams } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   capabilityPatents,
   contextPack,
   explainCapability,
   whatRealizesCapability,
   type CapabilityExplain,
+  type CapabilitySummary,
   type ContextPackEntry,
   type GraphSymbol,
   type PatentRef,
 } from "../../lib/mcp";
-import { useMetered } from "../../lib/graphCache";
+import { useMetered, readCache } from "../../lib/graphCache";
+import { useSwipeNav } from "../../lib/useSwipeNav";
 import { MeteredBar, Empty, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import {
@@ -31,6 +34,7 @@ import {
   SymbolRow,
   RepoBadge,
   PatentBadge,
+  Pager,
   initialsOf,
 } from "./dossier";
 
@@ -52,6 +56,17 @@ function issueLinkFromUrl(url?: string, number?: number): string | null {
 export default function CapabilityDetail() {
   const { name = "" } = useParams();
   const decoded = decodeURIComponent(name);
+  const nav = useNavigate();
+
+  // Swipe / arrow between capabilities in the register's (cached) A–Z order.
+  const siblings = useMemo(() => {
+    const cached = readCache<CapabilitySummary[]>("capabilities:list")?.data ?? [];
+    return [...new Set(cached.map((c) => String(c.name ?? "")).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, []);
+  const idx = siblings.indexOf(decoded);
+  const goPrev = idx > 0 ? () => nav(`/capabilities/${encodeURIComponent(siblings[idx - 1])}`) : undefined;
+  const goNext = idx >= 0 && idx < siblings.length - 1 ? () => nav(`/capabilities/${encodeURIComponent(siblings[idx + 1])}`) : undefined;
+  const swipe = useSwipeNav({ prev: goPrev, next: goNext });
 
   const m = useMetered<Bundle>(`capability:${decoded}`, "explain_capability", async () => {
     const [explain, symbols, patents, packs] = await Promise.all([
@@ -72,11 +87,12 @@ export default function CapabilityDetail() {
   const precedents = b?.pack?.precedents ?? [];
 
   return (
-    <DossierWrap>
+    <DossierWrap swipe={swipe}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <Link to="/capabilities" className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
-          <Icon name="back" /> Register
+          <Icon name="back" size={15} /> Register
         </Link>
+        <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label="capability" />
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} note="1 dossier = 4 graph queries" />
       {m.error && <MeteredError error={m.error} />}

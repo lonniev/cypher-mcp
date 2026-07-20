@@ -3,9 +3,11 @@
 // rejections in its triage, and its external GitHub record. issue_provenance is
 // one cached read.
 
-import { Link, useParams } from "react-router-dom";
-import { issueProvenance, type IssueProvenance } from "../../lib/mcp";
-import { useMetered } from "../../lib/graphCache";
+import { useMemo } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { issueProvenance, type IssueProvenance, type IssueSummary } from "../../lib/mcp";
+import { useMetered, readCache } from "../../lib/graphCache";
+import { useSwipeNav } from "../../lib/useSwipeNav";
 import { MeteredBar, Empty, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import {
@@ -22,6 +24,7 @@ import {
   ResolvedPill,
   IconLink,
   Annotate,
+  Pager,
 } from "./dossier";
 
 function resolved(disposition?: string): boolean {
@@ -32,6 +35,20 @@ export default function IssueDetail() {
   const { repo = "", number = "" } = useParams();
   const decodedRepo = decodeURIComponent(repo);
   const num = Number(number);
+  const nav = useNavigate();
+
+  // Swipe / arrow between issues in the register's (cached) order.
+  const siblings = useMemo(() => {
+    const cached = readCache<IssueSummary[]>("issues:list")?.data ?? [];
+    return cached
+      .filter((i) => i.repo_name && i.number != null)
+      .map((i) => ({ repo: String(i.repo_name), number: Number(i.number) }));
+  }, []);
+  const idx = siblings.findIndex((s) => s.repo === decodedRepo && s.number === num);
+  const toIssue = (s: { repo: string; number: number }) => nav(`/issues/${encodeURIComponent(s.repo)}/${s.number}`);
+  const goPrev = idx > 0 ? () => toIssue(siblings[idx - 1]) : undefined;
+  const goNext = idx >= 0 && idx < siblings.length - 1 ? () => toIssue(siblings[idx + 1]) : undefined;
+  const swipe = useSwipeNav({ prev: goPrev, next: goNext });
 
   const m = useMetered<IssueProvenance>(`issue:${decodedRepo}#${num}`, "issue_provenance", () =>
     issueProvenance(decodedRepo, num),
@@ -44,11 +61,12 @@ export default function IssueDetail() {
   const caps = d?.capabilities ?? [];
 
   return (
-    <DossierWrap>
+    <DossierWrap swipe={swipe}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <Link to="/capabilities" className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
-          <Icon name="back" /> Capabilities
+        <Link to="/issues" className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
+          <Icon name="back" size={15} /> Issues
         </Link>
+        <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label="issue" />
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}

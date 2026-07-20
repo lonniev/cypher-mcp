@@ -18,6 +18,7 @@ import ProfilePage from "./components/ProfilePage";
 import Contents from "./components/notebook/Contents";
 import Capabilities from "./components/notebook/Capabilities";
 import CapabilityDetail from "./components/notebook/CapabilityDetail";
+import Issues from "./components/notebook/Issues";
 import Concordance from "./components/notebook/Concordance";
 import Metrics from "./components/notebook/Metrics";
 import QueryCatalog from "./components/notebook/QueryCatalog";
@@ -92,6 +93,7 @@ export default function App() {
                 <Route index element={<Contents />} />
                 <Route path="capabilities" element={<Capabilities />} />
                 <Route path="capabilities/:name" element={<CapabilityDetail />} />
+                <Route path="issues" element={<Issues />} />
                 <Route path="concordance" element={<Concordance />} />
                 <Route path="metrics" element={<Metrics />} />
                 <Route path="catalog" element={<QueryCatalog />} />

@@ -792,13 +792,48 @@ export async function whichServiceHandles(keyword: string): Promise<WhichService
   return asArray<WhichServiceEntry>(r);
 }
 
+// Root-cause symbols come back as a list of bare fqn STRINGS; rejections as bare
+// reason strings. Normalize both so the views can trust structured objects.
+function normalizeSymbols(v: unknown): GraphSymbol[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((x) => (typeof x === "string" ? { fqn: x, symbol: x } : (x as GraphSymbol)));
+}
+function normalizeRejections(v: unknown): { reason?: string; at?: string }[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((x) => (typeof x === "string" ? { reason: x } : (x as { reason?: string; at?: string })));
+}
+
 /// issue_provenance — the click-through triage/scope/root-cause/rationale surface.
 export async function issueProvenance(repoName: string, issueNumber: number): Promise<IssueProvenance> {
   const r = await callTool<IssueProvenance>("issue_provenance", {
     repo_name: repoName,
     issue_number: issueNumber,
   });
-  return { ...r, capabilities: asStrList(r.capabilities) };
+  return {
+    ...r,
+    capabilities: asStrList(r.capabilities),
+    root_cause_symbols: normalizeSymbols(r.root_cause_symbols),
+    rejections: normalizeRejections(r.rejections),
+  };
+}
+
+/// A compact issue for the Issues register (peer of CapabilitySummary).
+export interface IssueSummary {
+  repo_name?: string;
+  number?: number;
+  title?: string;
+  classification?: string;
+  disposition?: string;
+  resolved_via?: string;
+  url?: string;
+  pr_url?: string;
+  capabilities?: string[];
+}
+
+/// list_issues — the full compact issue catalog (peer of list_capabilities).
+export async function listIssues(): Promise<IssueSummary[]> {
+  const r = await callTool<unknown>("list_issues", {});
+  return asArray<IssueSummary>(r).map((i) => ({ ...i, capabilities: asStrList(i.capabilities) }));
 }
 
 /// factory_resolution_stats — the grep-fallback distribution (the headline metric).

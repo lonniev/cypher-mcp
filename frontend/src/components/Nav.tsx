@@ -66,6 +66,7 @@ export default function Nav() {
 
       {tab("/", "Contents", true)}
       {tab("/capabilities", "Capabilities")}
+      {tab("/issues", "Issues")}
       {tab("/concordance", "Concordance")}
       {tab("/metrics", "Metrics")}
       {tab("/catalog", "Catalog")}

@@ -558,8 +558,12 @@ READ_VOCABULARY: list[Template] = [
             "OPTIONAL MATCH (i)-[:ROOT_CAUSE]->(sym:Symbol) "
             "OPTIONAL MATCH (i)-[:HAS_RATIONALE]->(d:Decision) "
             "OPTIONAL MATCH (i)-[:HAS_REJECTION]->(r:Rejection) "
-            "RETURN i.url AS issue_url, i.repo_url AS repo_url, i.pr_url AS pr_url, "
+            "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(cap:Capability) "
+            "RETURN i.repo_name AS repo_name, i.number AS number, "
+            "       i.url AS issue_url, i.repo_url AS repo_url, i.pr_url AS pr_url, "
             "       i.title AS title, i.classification AS classification, i.disposition AS disposition, "
+            "       i.actionable_text AS actionable_text, coalesce(i.resolved_via, '') AS resolved_via, "
+            "       collect(DISTINCT cap.name) AS capabilities, "
             "       collect(DISTINCT sym.fqn) AS root_cause_symbols, "
             "       [x IN collect(DISTINCT d) WHERE x IS NOT NULL | "
             "           {statement: x.statement, reason: x.reason, provenance: x.provenance}] AS decisions, "
@@ -569,9 +573,32 @@ READ_VOCABULARY: list[Template] = [
             "repo_name": {"type": "string", "required": True, "description": "Repository name."},
             "issue_number": {"type": "int", "required": True, "description": "GitHub issue number."},
         },
-        description="An issue's click-through provenance: its GitHub issue/repo/PR URLs plus its "
+        description="An issue's click-through provenance: its GitHub issue/repo/PR URLs, the "
+                    "capability it concerns and how its code was located (resolved_via), plus its "
                     "triage, rationale (Decisions), rejections, and root-cause symbols.",
         intent="Fetch an issue's GitHub URLs and provenance chain for browser click-through.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        # Peer of list_capabilities: the compact issue catalog that backs the Issues register.
+        # Small graph, so returning every issue is cheap; the FE filters/sorts client-side (and a
+        # future paged variant can add search/limit/offset params).
+        key="list_issues",
+        cypher=(
+            "MATCH (i:Issue) "
+            "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(c:Capability) "
+            "RETURN i.repo_name AS repo_name, i.number AS number, i.title AS title, "
+            "       i.classification AS classification, i.disposition AS disposition, "
+            "       coalesce(i.resolved_via, '') AS resolved_via, "
+            "       i.url AS url, coalesce(i.pr_url, '') AS pr_url, "
+            "       collect(DISTINCT c.name) AS capabilities "
+            "ORDER BY i.number DESC"
+        ),
+        param_schema={},
+        description="The compact issue catalog (repo, number, title, classification, disposition, "
+                    "resolved_via, capabilities) — the Issues index, peer to list_capabilities.",
+        intent="List every triaged issue for the Issues register.",
         allow_roles=(),
         access_mode="read",
     ),

@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   Boxes,
+  History,
   SearchCode,
   Gauge,
   ScrollText,
@@ -41,6 +42,14 @@ export default function Contents() {
       icon: <Boxes className="h-5 w-5" />,
       meter: "metered",
       count: caps ? `${caps.length} entries` : undefined,
+    },
+    {
+      to: "/issues",
+      title: "Issues",
+      blurb:
+        "Every issue the Service Desk has triaged — classification, disposition, root cause, and the capability it touched. A peer entry into the graph; open one to see its full case file.",
+      icon: <History className="h-5 w-5" />,
+      meter: "metered",
     },
     {
       to: "/concordance",

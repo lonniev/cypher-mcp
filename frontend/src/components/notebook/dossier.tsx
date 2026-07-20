@@ -7,6 +7,7 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Icon, langIcon, type IconName } from "./icons";
+import type { SwipeNav } from "../../lib/useSwipeNav";
 
 /// Parse a GitHub issue/PR reference from a pasted URL or a `repo#123` shorthand.
 export function parseIssueRef(s: string): { repo: string; number: number } | null {
@@ -129,9 +130,31 @@ export function IconLink({ href, name, label }: { href?: string; name: IconName;
 
 // ─── Card structure ────────────────────────────────────────────────────────
 
-/// The warm "desk" a dossier sits on.
-export function DossierWrap({ children }: { children: ReactNode }) {
-  return <div className="mx-auto max-w-4xl px-5 py-8">{children}</div>;
+/// The warm "desk" a dossier sits on. Accepts swipe handlers so a gesture pages
+/// between sibling dossiers.
+export function DossierWrap({ children, swipe }: { children: ReactNode; swipe?: SwipeNav }) {
+  return (
+    <div className="mx-auto max-w-4xl px-5 py-8" onTouchStart={swipe?.onTouchStart} onTouchEnd={swipe?.onTouchEnd}>
+      {children}
+    </div>
+  );
+}
+
+/// Prev · n/N · Next pager — the visible affordance for the swipe/arrow gesture.
+export function Pager({ index, total, onPrev, onNext, label }: { index: number; total: number; onPrev?: () => void; onNext?: () => void; label: string }) {
+  if (total <= 1 || index < 0) return null;
+  const btn = "grid h-7 w-7 place-items-center rounded-md border border-stone-200 text-stone-500 transition-colors enabled:hover:border-amber-400 enabled:hover:text-amber-600 disabled:opacity-30 dark:border-zinc-700 dark:text-zinc-400 dark:enabled:hover:text-amber-400";
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      <button type="button" disabled={!onPrev} onClick={onPrev} aria-label={`Previous ${label}`} className={btn}>
+        <Icon name="back" size={15} />
+      </button>
+      <span className="font-mono tabular-nums text-stone-400 dark:text-zinc-500">{index + 1} / {total}</span>
+      <button type="button" disabled={!onNext} onClick={onNext} aria-label={`Next ${label}`} className={btn}>
+        <Icon name="back" size={15} className="rotate-180" />
+      </button>
+    </div>
+  );
 }
 
 export function Dossier({
