@@ -709,6 +709,22 @@ function asArray<T>(payload: unknown): T[] {
   return [];
 }
 
+/// Unwrap the FIRST row from a named-query tool result. These tools answer with
+/// a `{success, rows:[...]}` envelope even for single-object queries, so a wrapper
+/// that expects one object must take rows[0]. An empty `rows` (e.g. a query that
+/// matched nothing) yields `{}`, which callers read as "not found".
+function firstRow<T>(payload: unknown): T {
+  if (Array.isArray(payload)) return (payload[0] ?? {}) as T;
+  if (payload && typeof payload === "object") {
+    const p = payload as Record<string, unknown>;
+    for (const k of ["rows", "results", "data", "items"]) {
+      if (Array.isArray(p[k])) return ((p[k] as unknown[])[0] ?? {}) as T;
+    }
+    return payload as T; // already a bare row object
+  }
+  return {} as T;
+}
+
 /// Normalize a "list of text" graph field to string[]. The graph stores some of
 /// these as a comma-separated STRING (e.g. keywords: "a, b, c"), some as arrays,
 /// and some as arrays of objects (e.g. invariants as {name, rule}). Coerce them
@@ -743,7 +759,7 @@ export async function listCapabilities(): Promise<CapabilitySummary[]> {
 
 /// explain_capability — the "why" + provenance + owners/consumers for one name.
 export async function explainCapability(name: string): Promise<CapabilityExplain> {
-  const r = await callTool<CapabilityExplain>("explain_capability", { name });
+  const r = firstRow<CapabilityExplain>(await callTool<unknown>("explain_capability", { name }));
   return { ...r, owners: asStrList(r.owners), consumers: asStrList(r.consumers) };
 }
 
@@ -783,7 +799,7 @@ export async function capabilityPatents(name: string): Promise<PatentRef[]> {
 
 /// explain_patent_element — one numeral → its capabilities + invariants.
 export async function explainPatentElement(ref: number): Promise<PatentElementDetail> {
-  const r = await callTool<PatentElementDetail>("explain_patent_element", { ref });
+  const r = firstRow<PatentElementDetail>(await callTool<unknown>("explain_patent_element", { ref }));
   return { ...r, capabilities: asStrList(r.capabilities), invariants: asStrList(r.invariants) };
 }
 
@@ -806,10 +822,9 @@ function normalizeRejections(v: unknown): { reason?: string; at?: string }[] {
 
 /// issue_provenance — the click-through triage/scope/root-cause/rationale surface.
 export async function issueProvenance(repoName: string, issueNumber: number): Promise<IssueProvenance> {
-  const r = await callTool<IssueProvenance>("issue_provenance", {
-    repo_name: repoName,
-    issue_number: issueNumber,
-  });
+  const r = firstRow<IssueProvenance>(
+    await callTool<unknown>("issue_provenance", { repo_name: repoName, issue_number: issueNumber }),
+  );
   return {
     ...r,
     capabilities: asStrList(r.capabilities),
