@@ -18,7 +18,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { priceForTool } from "./pricing";
 
-const CACHE_PREFIX = "cypher:graph-cache:v1:";
+// v2: bumped when the mcp wrappers began normalizing list fields (keywords etc.)
+// to string[]. Abandoning v1 caches forces a fresh, normalized re-fetch instead
+// of rendering a stale pre-normalization shape.
+const CACHE_PREFIX = "cypher:graph-cache:v2:";
 
 interface CacheEnvelope<T> {
   data: T;

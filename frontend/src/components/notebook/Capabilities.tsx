@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { listCapabilities, type CapabilitySummary, type SortDir } from "../../lib/mcp";
+import { asStrList, listCapabilities, type CapabilitySummary, type SortDir } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
 import { SortHeader, TableShell } from "../PagedTable";
 import { Page, MeteredBar, Empty, MeteredError, faint, muted } from "./ui";
@@ -18,9 +18,16 @@ export default function Capabilities() {
   const [sortCol, setSortCol] = useState<Col>("name");
   const [dir, setDir] = useState<SortDir>("asc");
 
-  // Guard against a malformed row (missing name): a nameless capability must
-  // never throw during render — coerce every name to a string up front.
-  const rows = (m.data ?? []).map((c) => ({ ...c, name: String(c.name ?? "") }));
+  // Guard every row at the render boundary — not just fresh data (the wrapper
+  // normalizes that) but ALSO data hydrated from an older cache, where keywords
+  // may still be a comma-string and name may be missing. Coerce so .join / .some
+  // can never throw.
+  const rows = (m.data ?? []).map((c) => ({
+    ...c,
+    name: String(c.name ?? ""),
+    keywords: asStrList(c.keywords),
+    owners: asStrList(c.owners),
+  }));
 
   // Keyword index — every distinct keyword, most-used first (a concordance head).
   const keywordIndex = useMemo(() => {

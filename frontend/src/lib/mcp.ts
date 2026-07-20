@@ -707,7 +707,8 @@ function asArray<T>(payload: unknown): T[] {
 /// these as a comma-separated STRING (e.g. keywords: "a, b, c"), some as arrays,
 /// and some as arrays of objects (e.g. invariants as {name, rule}). Coerce them
 /// all so the views can trust string[] and never call .join/.map on a string.
-function asStrList(v: unknown): string[] {
+/// Exported so a render site can also coerce data hydrated from an older cache.
+export function asStrList(v: unknown): string[] {
   if (typeof v === "string") return v.split(",").map((s) => s.trim()).filter(Boolean);
   if (Array.isArray(v)) {
     return v
