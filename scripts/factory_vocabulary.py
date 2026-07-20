@@ -10,10 +10,15 @@ and a read surface, written by the Journeyman (structure + advice) and the Opera
 Node model
 ----------
     (:Service {repo_npub, repo_name})                one per repo — the service is the actor
-    (:Issue   {repo_name, number, title, classification, disposition, url, repo_url, pr_url})
+    (:Issue   {repo_name, number, title, classification, disposition, url, repo_url, pr_url,
+               actionable_text, resolved_via})        actionable_text = Porter's rough→spec translation;
+                                                       resolved_via = graph | scoped-grep | wide-grep (the metric)
     (:Rejection {reason, at})                          history-preserving; linked to its Issue
     (:Decision {id, statement, reason, provenance, at}) provenance is a LITERAL here
-    (:Symbol  {fqn})                                   a code location by fully-qualified name
+    (:Symbol  {fqn, lang, file_path, verified_at_sha, anchor_provenance})
+                                                       fqn = fully-qualified name; file_path + verified_at_sha
+                                                       are the grep-scoping ANCHOR the Journeyman writes
+                                                       post-edit (anchor_provenance='journeyman-verified')
     (:Capability {name, keywords, why, provenance, inferred_why})  cross-cutting ability, e.g. "Secure Courier"
     (:Invariant  {name, rule, provenance})             an enforceable rule, e.g. "exactly two transaction types"
     (:PatentElement {ref, name, figures, claim_family})  a patent reference numeral, e.g. 610 "Secure Courier channel"
@@ -30,6 +35,8 @@ Node model
     (:Capability)-[:DESCRIBED_IN]->(:PatentElement)    grounds the why in the filed patent
     (:Invariant)-[:DESCRIBED_IN]->(:PatentElement)
     (:Symbol)-[:IN_SERVICE]->(:Service)
+    (:Issue)-[:ABOUT_CAPABILITY]->(:Capability)        precedent: a future fuzzy issue on the same
+                                                       theme matches this issue's actionable_text
 
 Provenance — the asymmetry that defends against confabulation
 -------------------------------------------------------------
@@ -126,6 +133,50 @@ VOCABULARY: list[Template] = [
         },
         description="Record a triaged Issue (with its GitHub issue + repo URLs) and link it to its Service.",
         intent="Record the Porter's triage of a GitHub issue.",
+        allow_roles=(PORTER, JOURNEYMAN),
+    ),
+    Template(
+        key="record_scope",
+        # The Porter's rough-English -> actionable spec, plus HOW it resolved the code
+        # (graph = context_pack alone; scoped-grep = graph narrowed a grep; wide-grep = the
+        # graph missed and a whole-repo grep was needed). resolved_via is the token-savings
+        # metric: as the graph learns, wide-grep should trend to zero.
+        cypher=(
+            "MERGE (i:Issue {repo_name: $repo_name, number: $issue_number}) "
+            "SET i.actionable_text = $actionable_text, i.resolved_via = $resolved_via, "
+            "    i.scoped_at = timestamp() "
+            "RETURN i.number AS issue"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "issue_number": {"type": "int", "required": True, "description": "GitHub issue number."},
+            "actionable_text": {"type": "string", "required": True,
+                                "description": "The Porter's rough-English -> actionable spec translation."},
+            "resolved_via": {"type": "string", "required": True,
+                             "description": "How the code was located: 'graph' | 'scoped-grep' | 'wide-grep'."},
+        },
+        description="Record the Porter's actionable spec for an Issue and HOW it located the code "
+                    "(resolved_via — the grep-fallback metric).",
+        intent="Record the actionable spec and the code-location method for an issue.",
+        allow_roles=(PORTER, JOURNEYMAN),
+    ),
+    Template(
+        key="link_issue_to_capability",
+        cypher=(
+            "MERGE (i:Issue {repo_name: $repo_name, number: $issue_number}) "
+            "MERGE (c:Capability {name: $capability_name}) "
+            "MERGE (i)-[:ABOUT_CAPABILITY]->(c) "
+            "RETURN c.name AS capability"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "issue_number": {"type": "int", "required": True, "description": "GitHub issue number."},
+            "capability_name": {"type": "string", "required": True,
+                                "description": "Capability the issue is about (from context_pack)."},
+        },
+        description="Link an Issue to the Capability it concerns (ABOUT_CAPABILITY), so a future "
+                    "fuzzy issue on the same theme matches this one's actionable_text as precedent.",
+        intent="Attach an issue to the capability it is about.",
         allow_roles=(PORTER, JOURNEYMAN),
     ),
     Template(
@@ -284,6 +335,34 @@ VOCABULARY: list[Template] = [
         },
         description="Bind a Capability to a code Symbol that realizes it (REALIZED_BY).",
         intent="Attach a capability to one of the symbols that implement it.",
+        allow_roles=(JOURNEYMAN,),
+    ),
+    Template(
+        # The grep-scoping ANCHOR. Journeyman-only, written POST-EDIT: the agent that just
+        # changed the file records where the symbol lives and the sha it verified against, so
+        # the next issue on this theme greps a tiny scope (or skips grep). anchor_provenance is
+        # the hard-coded literal 'journeyman-verified' — no param — because the authority comes
+        # from having actually edited the code, not from a trusted argument. Line numbers are
+        # deliberately NOT stored: the Porter re-greps within file_path to re-pin exact location,
+        # so a coarse file+symbol anchor never goes stale in a way that misleads.
+        key="anchor_symbol",
+        cypher=(
+            "MERGE (sym:Symbol {fqn: $symbol_fqn}) "
+            "SET sym.file_path = $file_path, sym.verified_at_sha = $verified_at_sha, "
+            "    sym.anchor_provenance = 'journeyman-verified', sym.anchored_at = timestamp() "
+            "RETURN sym.fqn AS symbol"
+        ),
+        param_schema={
+            "symbol_fqn": {"type": "string", "required": True,
+                           "description": "Fully-qualified name of the symbol just edited."},
+            "file_path": {"type": "string", "required": True,
+                          "description": "Repo-relative path of the file the symbol lives in (the grep scope)."},
+            "verified_at_sha": {"type": "string", "required": True,
+                                "description": "Commit/PR sha the anchor was verified against (from git)."},
+        },
+        description="Anchor a Symbol to its file_path + verified_at_sha (provenance "
+                    "'journeyman-verified'). Written post-edit so future triage greps a narrow scope.",
+        intent="Record where a symbol lives so future triage scopes its grep.",
         allow_roles=(JOURNEYMAN,),
     ),
     Template(
@@ -516,17 +595,57 @@ READ_VOCABULARY: list[Template] = [
         access_mode="read",
     ),
     Template(
+        # The Porter's flagship Tier-1 answer: ONE call returns the whole grep-scoping bundle
+        # for an intent keyword, so the agent greps only inside the returned files (or skips
+        # grep) instead of re-tokenizing the repo. Per matched capability: owner repos, the
+        # realizing symbols WITH file_path anchors, the invariants guarding them, and precedent
+        # issues' actionable_text (the shared spec from a prior fuzzy issue on this theme) + why.
+        # Doctrine: grep only within `symbols[].file`; widen to a repo grep ONLY if symbols is
+        # empty, and then record_scope(resolved_via='wide-grep') so the miss is measured.
+        key="context_pack",
+        cypher=(
+            "MATCH (c:Capability) "
+            "WHERE toLower(c.name) CONTAINS toLower($keyword) "
+            "   OR toLower(c.keywords) CONTAINS toLower($keyword) "
+            "OPTIONAL MATCH (c)-[:OWNED_BY]->(o:Service) "
+            "OPTIONAL MATCH (c)-[:REALIZED_BY]->(sym:Symbol) "
+            "OPTIONAL MATCH (inv:Invariant)-[:GUARDS]->(sym) "
+            "OPTIONAL MATCH (i:Issue)-[:ABOUT_CAPABILITY]->(c) "
+            "RETURN c.name AS capability, c.keywords AS keywords, "
+            "       c.why AS why, c.provenance AS provenance, c.inferred_why AS inferred_why, "
+            "       collect(DISTINCT o.repo_name) AS owners, "
+            "       [x IN collect(DISTINCT sym) WHERE x IS NOT NULL | "
+            "           {fqn: x.fqn, file: x.file_path, lang: x.lang, verified_at_sha: x.verified_at_sha}] AS symbols, "
+            "       collect(DISTINCT inv.name) AS invariants, "
+            "       [x IN collect(DISTINCT i) WHERE x IS NOT NULL | "
+            "           {number: x.number, url: x.url, actionable_text: x.actionable_text}] AS precedents "
+            "ORDER BY capability"
+        ),
+        param_schema={
+            "keyword": {"type": "string", "required": True,
+                        "description": "Intent keyword from the issue, e.g. 'npub proof', 'books health'."},
+        },
+        description="ONE-call grep-scoping bundle for an intent keyword: matched capabilities with "
+                    "owner repos, realizing symbols (fqn + file_path anchor), guarding invariants, and "
+                    "precedent issues' actionable_text + why. Grep only inside the returned files.",
+        intent="Return the code-orienteering scope for an intent keyword.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
         key="what_realizes_capability",
         cypher=(
             "MATCH (c:Capability {name: $name})-[:REALIZED_BY]->(sym:Symbol) "
             "OPTIONAL MATCH (c)-[:OWNED_BY]->(o:Service) "
-            "RETURN sym.fqn AS symbol, o.repo_name AS owner "
+            "RETURN sym.fqn AS symbol, sym.file_path AS file, sym.verified_at_sha AS verified_at_sha, "
+            "       o.repo_name AS owner "
             "ORDER BY symbol"
         ),
         param_schema={
             "name": {"type": "string", "required": True, "description": "Capability name."},
         },
-        description="List the code Symbols (and owning Services) that realize a Capability.",
+        description="List the code Symbols (fqn + file_path anchor + owning Service) that realize a "
+                    "Capability — the grep scope for a fix.",
         intent="Find the symbols that implement a capability.",
         allow_roles=(),
         access_mode="read",
@@ -555,13 +674,13 @@ READ_VOCABULARY: list[Template] = [
         key="symbols_in_service",
         cypher=(
             "MATCH (sym:Symbol)-[:IN_SERVICE]->(s:Service {repo_name: $repo_name}) "
-            "RETURN sym.fqn AS symbol, sym.lang AS lang "
+            "RETURN sym.fqn AS symbol, sym.lang AS lang, sym.file_path AS file "
             "ORDER BY symbol"
         ),
         param_schema={
             "repo_name": {"type": "string", "required": True, "description": "Repository name."},
         },
-        description="List the indexed code Symbols belonging to a Service.",
+        description="List the indexed code Symbols (fqn + file_path anchor) belonging to a Service.",
         intent="List a service's indexed symbols.",
         allow_roles=(),
         access_mode="read",
@@ -597,6 +716,22 @@ READ_VOCABULARY: list[Template] = [
         },
         description="List the patent elements a Capability is grounded in (its DESCRIBED_IN trace).",
         intent="Show a capability's patent grounding.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        # The token-savings metric. As the graph accretes anchors, 'wide-grep' (whole-repo
+        # re-tokenization) should trend to zero and 'graph'/'scoped-grep' should dominate.
+        key="factory_resolution_stats",
+        cypher=(
+            "MATCH (i:Issue) WHERE i.resolved_via IS NOT NULL "
+            "RETURN i.resolved_via AS resolved_via, count(*) AS n "
+            "ORDER BY n DESC"
+        ),
+        param_schema={},
+        description="Grep-fallback metric: how issues were located (graph | scoped-grep | wide-grep). "
+                    "Watch wide-grep trend to zero as the intention graph learns.",
+        intent="Report how issues were located, to measure grep-scope shrinkage.",
         allow_roles=(),
         access_mode="read",
     ),
