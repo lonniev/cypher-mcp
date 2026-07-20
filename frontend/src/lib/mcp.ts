@@ -703,24 +703,57 @@ function asArray<T>(payload: unknown): T[] {
   return [];
 }
 
+/// Normalize a "list of text" graph field to string[]. The graph stores some of
+/// these as a comma-separated STRING (e.g. keywords: "a, b, c"), some as arrays,
+/// and some as arrays of objects (e.g. invariants as {name, rule}). Coerce them
+/// all so the views can trust string[] and never call .join/.map on a string.
+function asStrList(v: unknown): string[] {
+  if (typeof v === "string") return v.split(",").map((s) => s.trim()).filter(Boolean);
+  if (Array.isArray(v)) {
+    return v
+      .map((x) => {
+        if (typeof x === "string") return x.trim();
+        if (x && typeof x === "object") {
+          const o = x as Record<string, unknown>;
+          return String(o.rule ?? o.name ?? o.text ?? JSON.stringify(x));
+        }
+        return String(x);
+      })
+      .filter(Boolean);
+  }
+  return [];
+}
+
 /// list_capabilities — the full compact catalog for semantic triage.
 export async function listCapabilities(): Promise<CapabilitySummary[]> {
   const r = await callTool<unknown>("list_capabilities", {});
-  return asArray<CapabilitySummary>(r);
+  return asArray<CapabilitySummary>(r).map((c) => ({
+    ...c,
+    keywords: asStrList(c.keywords),
+    owners: asStrList(c.owners),
+  }));
 }
 
 /// explain_capability — the "why" + provenance + owners/consumers for one name.
 export async function explainCapability(name: string): Promise<CapabilityExplain> {
-  return callTool<CapabilityExplain>("explain_capability", { name });
+  const r = await callTool<CapabilityExplain>("explain_capability", { name });
+  return { ...r, owners: asStrList(r.owners), consumers: asStrList(r.consumers) };
 }
 
 /// context_pack — the flagship bundle(s) per capability matching a keyword.
 export async function contextPack(keyword: string): Promise<ContextPackEntry[]> {
   const r = await callTool<unknown>("context_pack", { keyword });
   // Sometimes a single bundle, sometimes a list of them.
-  if (Array.isArray(r)) return r as ContextPackEntry[];
-  if (r && typeof r === "object" && "capability" in (r as object)) return [r as ContextPackEntry];
-  return asArray<ContextPackEntry>(r);
+  let entries: ContextPackEntry[];
+  if (Array.isArray(r)) entries = r as ContextPackEntry[];
+  else if (r && typeof r === "object" && "capability" in (r as object)) entries = [r as ContextPackEntry];
+  else entries = asArray<ContextPackEntry>(r);
+  return entries.map((e) => ({
+    ...e,
+    keywords: asStrList(e.keywords),
+    owners: asStrList(e.owners),
+    invariants: asStrList(e.invariants),
+  }));
 }
 
 /// what_realizes_capability — the implementing symbols (grep scope for a fix).
@@ -743,7 +776,8 @@ export async function capabilityPatents(name: string): Promise<PatentRef[]> {
 
 /// explain_patent_element — one numeral → its capabilities + invariants.
 export async function explainPatentElement(ref: number): Promise<PatentElementDetail> {
-  return callTool<PatentElementDetail>("explain_patent_element", { ref });
+  const r = await callTool<PatentElementDetail>("explain_patent_element", { ref });
+  return { ...r, capabilities: asStrList(r.capabilities), invariants: asStrList(r.invariants) };
 }
 
 /// which_service_handles — resolve an intent keyword → repo + capability.
