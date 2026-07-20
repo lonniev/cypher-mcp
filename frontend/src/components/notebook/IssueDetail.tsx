@@ -57,7 +57,14 @@ export default function IssueDetail() {
         <Dossier accent="amber" tab="Issue" tabNo={`Case file №${num}`}>
           <DossierHead
             crest={`#${num}`}
-            role={<>{decodedRepo}{d.classification ? ` · ${d.classification}` : ""}</>}
+            role={
+              <>
+                <Link to={`/services/${encodeURIComponent(decodedRepo)}`} className="hover:text-amber-700 hover:underline dark:hover:text-amber-300">
+                  {decodedRepo}
+                </Link>
+                {d.classification ? ` · ${d.classification}` : ""}
+              </>
+            }
             roleIcon="github"
             title={d.title ?? `Issue #${num}`}
             tags={[d.classification, d.disposition].filter(Boolean) as string[]}
@@ -73,11 +80,11 @@ export default function IssueDetail() {
           />
 
           <BoxScore>
-            <Stat num={symbols.length} label="Root cause" accent />
-            <Stat num={decisions.length} label="Decisions" />
-            <Stat num={rejections.length} label="Rejections" />
-            <Stat num={caps.length} label="Capability" />
-            <Stat num={d.pr_url ? 1 : 0} label="PR" />
+            <Stat icon="symbol" num={symbols.length} label="Root cause" accent drill="issue-rootcause" tip="The code symbol found at fault." />
+            <Stat icon="quote" num={decisions.length} label="Decisions" drill="issue-decisions" tip="Recorded rationale for the fix." />
+            <Stat icon="close" num={rejections.length} label="Rejections" drill="issue-rejections" tip="Triage paths that were ruled out." />
+            <Stat icon="verified" num={caps.length} label="Capability" drill="issue-capability" tip="The capability this issue touched." />
+            <Stat icon="github" num={d.pr_url ? 1 : 0} label="PR" drill="issue-external" tip="The pull request that resolved it." />
             {d.resolved_via && (
               <div className="min-w-[92px] flex-1 border-r border-stone-200 px-3.5 py-3 text-center last:border-r-0 dark:border-zinc-800">
                 <ResolvedPill mode={d.resolved_via} />
@@ -95,8 +102,8 @@ export default function IssueDetail() {
 
           <Cells>
             {caps.length > 0 && (
-              <Cell>
-                <Eyebrow icon="swap">About capability</Eyebrow>
+              <Cell id="issue-capability">
+                <Eyebrow icon="swap" info="Center the capability instead and this issue becomes one of its cells — the grammar inverts.">About capability</Eyebrow>
                 <div className="flex flex-wrap gap-2">
                   {caps.map((c) => (
                     <Link
@@ -112,8 +119,8 @@ export default function IssueDetail() {
               </Cell>
             )}
 
-            <Cell>
-              <Eyebrow icon="symbol" count={`${symbols.length} symbol${symbols.length === 1 ? "" : "s"}`}>Root cause</Eyebrow>
+            <Cell id="issue-rootcause">
+              <Eyebrow icon="symbol" count={`${symbols.length} symbol${symbols.length === 1 ? "" : "s"}`} info="The symbol the Service Desk pinned as the fault. Links to its owning service.">Root cause</Eyebrow>
               {symbols.length ? (
                 <div className="flex flex-col gap-2.5">
                   {symbols.map((s, i) => {
@@ -126,8 +133,8 @@ export default function IssueDetail() {
               )}
             </Cell>
 
-            <Cell>
-              <Eyebrow icon="quote" count={decisions.length || undefined}>Decisions</Eyebrow>
+            <Cell id="issue-decisions">
+              <Eyebrow icon="quote" count={decisions.length || undefined} info="Why the fix was made this way. A human-authored decision is doctrine.">Decisions</Eyebrow>
               {decisions.length ? (
                 <ul className="flex flex-col gap-3">
                   {decisions.map((dec, i) => (
@@ -148,8 +155,8 @@ export default function IssueDetail() {
               )}
             </Cell>
 
-            <Cell>
-              <Eyebrow icon="history" count={rejections.length || undefined}>Rejections</Eyebrow>
+            <Cell id="issue-rejections">
+              <Eyebrow icon="history" count={rejections.length || undefined} info="Triage directions the Porter considered and ruled out — the road not taken.">Rejections</Eyebrow>
               {rejections.length ? (
                 <ul className="flex flex-col gap-2">
                   {rejections.map((r, i) => (
@@ -164,8 +171,8 @@ export default function IssueDetail() {
               )}
             </Cell>
 
-            <Cell span>
-              <Eyebrow icon="open">External record</Eyebrow>
+            <Cell id="issue-external" span>
+              <Eyebrow icon="open" info="Open the live GitHub issue, its pull request, or the repository.">External record</Eyebrow>
               <div className="flex flex-wrap items-center gap-3">
                 {d.issue_url ? (
                   <a href={d.issue_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">

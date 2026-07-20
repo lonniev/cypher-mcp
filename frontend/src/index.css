@@ -20,3 +20,11 @@
 }
 .animate-stamp { animation: stampIn 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
 @media (prefers-reduced-motion: reduce) { .animate-stamp { animation: none; opacity: 0.92; } }
+
+/* Cell drilldown flash — when a box-score stat is clicked. */
+@keyframes cellFlash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 83, 9, 0); }
+  20% { box-shadow: inset 0 0 0 2px rgba(180, 83, 9, 0.6); }
+}
+.cell-flash { animation: cellFlash 1.2s ease; }
+@media (prefers-reduced-motion: reduce) { .cell-flash { animation: none; } }

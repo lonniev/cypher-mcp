@@ -10,19 +10,27 @@ import { Icon, langIcon, type IconName } from "./icons";
 
 // ─── Micro-affordances ─────────────────────────────────────────────────────
 
+// Shared popover styling. Triggered by an ancestor carrying `group/tip`.
+export const POP_CLS =
+  "pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-max max-w-[230px] -translate-x-1/2 translate-y-1 rounded-lg bg-zinc-900 px-2.5 py-2 text-left text-[12px] font-normal normal-case leading-snug tracking-normal text-zinc-50 opacity-0 shadow-lg transition duration-150 group-hover/tip:translate-y-0 group-hover/tip:opacity-100 group-focus-within/tip:translate-y-0 group-focus-within/tip:opacity-100 dark:bg-zinc-100 dark:text-zinc-900";
+
 /// A hover/focus tooltip. Teaches without prose.
 export function Tip({ text, children }: { text: string; children: ReactNode }) {
   return (
     <span className="group/tip relative inline-flex focus-within:z-30">
       {children}
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-max max-w-[230px] -translate-x-1/2 translate-y-1 rounded-lg bg-zinc-900 px-2.5 py-2 text-left text-[12px] font-normal normal-case leading-snug tracking-normal text-zinc-50 opacity-0 shadow-lg transition duration-150 group-hover/tip:translate-y-0 group-hover/tip:opacity-100 group-focus-within/tip:translate-y-0 group-focus-within/tip:opacity-100 dark:bg-zinc-100 dark:text-zinc-900"
-      >
-        {text}
-      </span>
+      <span role="tooltip" className={POP_CLS}>{text}</span>
     </span>
   );
+}
+
+/// Smooth-scroll to a cell and flash it — the drilldown behind a stat click.
+export function drillTo(id: string): void {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("cell-flash");
+  window.setTimeout(() => el.classList.remove("cell-flash"), 1200);
 }
 
 export function InfoTip({ text }: { text: string }) {
@@ -125,6 +133,7 @@ export function DossierHead({
   roleIcon,
   title,
   tags,
+  tagHref,
   stamp,
 }: {
   crest: string;
@@ -132,8 +141,12 @@ export function DossierHead({
   roleIcon?: IconName;
   title: string;
   tags?: string[];
+  /// When provided, each keyword tag becomes a drilldown link to this target.
+  tagHref?: (tag: string) => string;
   stamp?: ReactNode;
 }) {
+  const tagCls =
+    "inline-flex items-center gap-1 rounded border border-stone-200 bg-stone-50 px-2 py-0.5 font-mono text-[11px] text-stone-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400";
   return (
     <div className="relative flex gap-4 border-b border-stone-200 px-6 pb-5 pt-7 dark:border-zinc-800">
       <Crest initials={crest} />
@@ -147,11 +160,15 @@ export function DossierHead({
         </h2>
         {tags && tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {tags.map((t) => (
-              <span key={t} className="rounded border border-stone-200 bg-stone-50 px-2 py-0.5 font-mono text-[11px] text-stone-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-                {t}
-              </span>
-            ))}
+            {tags.map((t) =>
+              tagHref ? (
+                <Link key={t} to={tagHref(t)} title={`Look up “${t}” in the concordance`} className={`${tagCls} transition-colors hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-300`}>
+                  <Icon name="tag" className="text-[10px] opacity-70" /> {t}
+                </Link>
+              ) : (
+                <span key={t} className={tagCls}>{t}</span>
+              ),
+            )}
           </div>
         )}
       </div>
@@ -198,11 +215,39 @@ export function BoxScore({ children }: { children: ReactNode }) {
   return <div className="flex flex-wrap items-stretch border-b border-stone-200 dark:border-zinc-800">{children}</div>;
 }
 
-export function Stat({ num, label, accent }: { num: ReactNode; label: string; accent?: boolean }) {
+/// An interactive stat tile: an icon, the count, a drilldown (click scrolls to
+/// and flashes the matching cell), and a popup that explains what it counts.
+export function Stat({
+  icon,
+  num,
+  label,
+  accent,
+  tip,
+  drill,
+}: {
+  icon?: IconName;
+  num: ReactNode;
+  label: string;
+  accent?: boolean;
+  tip?: string;
+  /// id of the Cell to scroll to when clicked.
+  drill?: string;
+}) {
   return (
-    <div className="min-w-[92px] flex-1 border-r border-stone-200 px-3.5 py-3 text-center last:border-r-0 dark:border-zinc-800">
-      <div className={`font-mono text-2xl font-semibold tabular-nums ${accent ? "text-amber-600 dark:text-amber-400" : ""}`}>{num}</div>
-      <div className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500">{label}</div>
+    <div className="min-w-[92px] flex-1 border-r border-stone-200 last:border-r-0 dark:border-zinc-800">
+      <button
+        type="button"
+        onClick={drill ? () => drillTo(drill) : undefined}
+        aria-label={tip ? `${label}: ${tip}` : label}
+        className={`group/tip relative flex w-full flex-col items-center px-3.5 py-3 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${drill ? "cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/10" : "cursor-default"}`}
+      >
+        <span className="flex items-center gap-1.5">
+          {icon && <Icon name={icon} className="text-[13px] text-stone-400 group-hover/tip:text-amber-600 dark:text-zinc-500 dark:group-hover/tip:text-amber-400" />}
+          <span className={`font-mono text-2xl font-semibold tabular-nums ${accent ? "text-amber-600 dark:text-amber-400" : ""}`}>{num}</span>
+        </span>
+        <span className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500">{label}</span>
+        {tip && <span role="tooltip" className={POP_CLS}>{tip}</span>}
+      </button>
     </div>
   );
 }
@@ -213,16 +258,21 @@ export function Cells({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-1 gap-px bg-stone-200 sm:grid-cols-2 dark:bg-zinc-800">{children}</div>;
 }
 
-export function Cell({ span, children }: { span?: boolean; children: ReactNode }) {
-  return <div className={`bg-white px-5 py-4 dark:bg-zinc-900 ${span ? "sm:col-span-2" : ""}`}>{children}</div>;
+export function Cell({ id, span, children }: { id?: string; span?: boolean; children: ReactNode }) {
+  return (
+    <div id={id} className={`scroll-mt-20 rounded-sm bg-white px-5 py-4 dark:bg-zinc-900 ${span ? "sm:col-span-2" : ""}`}>
+      {children}
+    </div>
+  );
 }
 
-export function Eyebrow({ icon, children, count }: { icon: IconName; children: ReactNode; count?: ReactNode }) {
+export function Eyebrow({ icon, children, count, info }: { icon: IconName; children: ReactNode; count?: ReactNode; info?: string }) {
   return (
     <div className="mb-2.5 flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-stone-400 dark:text-zinc-500">
       <Icon name={icon} className="text-[14px] text-stone-500 dark:text-zinc-400" />
       {children}
       {count != null && <span className="text-stone-400 dark:text-zinc-500">· {count}</span>}
+      {info && <span className="ml-auto"><InfoTip text={info} /></span>}
     </div>
   );
 }
@@ -234,6 +284,7 @@ export function SymbolRow({
   file,
   lang,
   sha,
+  owner,
   ghHref,
   copyValue,
 }: {
@@ -241,17 +292,30 @@ export function SymbolRow({
   file?: string;
   lang?: string;
   sha?: string;
+  /// Owning service/repo — makes the symbol name a drilldown to that service.
+  owner?: string;
   ghHref?: string;
   copyValue?: string;
 }) {
+  const nameCls = "min-w-0 truncate font-mono text-[13px]";
   return (
     <div className="flex items-center gap-2.5">
       <Icon name={langIcon(lang, file)} className="text-[15px] text-[#35618e] dark:text-[#6e9bc9]" />
-      <span className="min-w-0 truncate font-mono text-[13px]">{fqn}</span>
+      {owner ? (
+        <Link to={`/services/${encodeURIComponent(owner)}`} title={`In ${owner} — open its symbol index`} className={`${nameCls} hover:text-amber-700 hover:underline dark:hover:text-amber-300`}>
+          {fqn}
+        </Link>
+      ) : (
+        <span className={nameCls}>{fqn}</span>
+      )}
       {(file || sha) && (
         <span className="shrink-0 font-mono text-[11px] text-stone-400 dark:text-zinc-500">
           {file}
-          {sha && <span className="ml-1.5 text-[#35618e] dark:text-[#6e9bc9]">@{sha.slice(0, 7)}</span>}
+          {sha && (
+            <Tip text="Journeyman-verified at this commit SHA.">
+              <span tabIndex={0} className="ml-1.5 cursor-help text-[#35618e] dark:text-[#6e9bc9]">@{sha.slice(0, 7)}</span>
+            </Tip>
+          )}
         </span>
       )}
       <span className="ml-auto flex shrink-0 gap-1.5">

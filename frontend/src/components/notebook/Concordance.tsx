@@ -3,8 +3,8 @@
 // pack per matching capability (context_pack) — the one query that resolves
 // twelve repos to a single grounded answer. Metered, cached per keyword.
 
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Search, FileCode2, ShieldAlert, GitPullRequestArrow } from "lucide-react";
 import {
   contextPack,
@@ -32,6 +32,7 @@ const RECENTS_KEY = "concordance:recents";
 export default function Concordance() {
   const [input, setInput] = useState("");
   const [keyword, setKeyword] = useState("");
+  const [params] = useSearchParams();
 
   function commit(k: string) {
     const kw = k.trim();
@@ -41,6 +42,13 @@ export default function Concordance() {
     const prev = readCache<string[]>(RECENTS_KEY)?.data ?? [];
     writeCache(RECENTS_KEY, [kw, ...prev.filter((x) => x !== kw)].slice(0, 8));
   }
+
+  // Deep-link: a capability's keyword tag lands here as /concordance?q=<term>.
+  useEffect(() => {
+    const q = params.get("q");
+    if (q) commit(q);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   const recents = readCache<string[]>(RECENTS_KEY)?.data ?? [];
 
