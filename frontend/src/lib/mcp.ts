@@ -671,9 +671,14 @@ export interface IssueProvenance {
   issue_url?: string;
   repo_url?: string;
   pr_url?: string;
+  repo_name?: string;
+  number?: number;
   title?: string;
   classification?: string;
   disposition?: string;
+  actionable_text?: string;
+  resolved_via?: string;
+  capabilities?: string[];
   root_cause_symbols?: GraphSymbol[];
   decisions?: IssueDecision[];
   rejections?: { reason?: string; at?: string }[];
@@ -789,10 +794,11 @@ export async function whichServiceHandles(keyword: string): Promise<WhichService
 
 /// issue_provenance — the click-through triage/scope/root-cause/rationale surface.
 export async function issueProvenance(repoName: string, issueNumber: number): Promise<IssueProvenance> {
-  return callTool<IssueProvenance>("issue_provenance", {
+  const r = await callTool<IssueProvenance>("issue_provenance", {
     repo_name: repoName,
     issue_number: issueNumber,
   });
+  return { ...r, capabilities: asStrList(r.capabilities) };
 }
 
 /// factory_resolution_stats — the grep-fallback distribution (the headline metric).

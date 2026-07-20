@@ -12,3 +12,11 @@
 .dark ::-webkit-scrollbar-thumb {
   background: #3f3f46; /* zinc-700 */
 }
+
+/* Dossier provenance stamp — settles onto the card on load. */
+@keyframes stampIn {
+  0% { opacity: 0; transform: rotate(-7deg) scale(1.5); }
+  100% { opacity: 0.92; transform: rotate(-7deg) scale(1); }
+}
+.animate-stamp { animation: stampIn 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+@media (prefers-reduced-motion: reduce) { .animate-stamp { animation: none; opacity: 0.92; } }

@@ -1,206 +1,214 @@
-// Capability leaf — the deep read for one capability. One cached bundle of
-// three graph queries: explain_capability (the ‘why’ + provenance + owners /
-// consumers), what_realizes_capability (the implementing symbols across repos),
-// and capability_patents (the patent numerals that ground the rationale).
+// Capability dossier — the deep read for one capability, as a case file.
+// One cached bundle of four graph queries: explain_capability (the ‘why’ +
+// provenance + owners/consumers), what_realizes_capability (implementing
+// symbols), capability_patents (patent grounding), and context_pack (invariants
+// + precedent issues, matched to this capability).
 
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, FileCode2, Landmark } from "lucide-react";
 import {
   capabilityPatents,
+  contextPack,
   explainCapability,
   whatRealizesCapability,
   type CapabilityExplain,
+  type ContextPackEntry,
   type GraphSymbol,
   type PatentRef,
 } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
+import { MeteredBar, Empty, MeteredError, muted } from "./ui";
+import { Icon } from "./icons";
 import {
-  Page,
-  MeteredBar,
-  SectionLabel,
-  ProvenanceSeal,
-  Empty,
-  MeteredError,
-  XRef,
-  card,
-  faint,
-  muted,
-} from "./ui";
+  DossierWrap,
+  Dossier,
+  DossierHead,
+  Stamp,
+  BoxScore,
+  Stat,
+  Cells,
+  Cell,
+  Eyebrow,
+  SymbolRow,
+  RepoBadge,
+  PatentBadge,
+  initialsOf,
+} from "./dossier";
 
 interface Bundle {
   explain: CapabilityExplain;
   symbols: GraphSymbol[];
   patents: PatentRef[];
+  pack: ContextPackEntry | null;
+}
+
+/// GitHub issue URLs carry the repo — parse it so a precedent can open the
+/// issue's OWN dossier (the inversion), falling back to the external link.
+function issueLinkFromUrl(url?: string, number?: number): string | null {
+  if (!url || number == null) return null;
+  const m = url.match(/github\.com\/[^/]+\/([^/]+)\/(?:issues|pull)\/\d+/i);
+  return m ? `/issues/${encodeURIComponent(m[1])}/${number}` : null;
 }
 
 export default function CapabilityDetail() {
   const { name = "" } = useParams();
   const decoded = decodeURIComponent(name);
 
-  const m = useMetered<Bundle>(
-    `capability:${decoded}`,
-    "explain_capability",
-    async () => {
-      const [explain, symbols, patents] = await Promise.all([
-        explainCapability(decoded),
-        whatRealizesCapability(decoded),
-        capabilityPatents(decoded),
-      ]);
-      return { explain, symbols, patents };
-    },
-  );
+  const m = useMetered<Bundle>(`capability:${decoded}`, "explain_capability", async () => {
+    const [explain, symbols, patents, packs] = await Promise.all([
+      explainCapability(decoded),
+      whatRealizesCapability(decoded),
+      capabilityPatents(decoded),
+      contextPack(decoded),
+    ]);
+    const pack =
+      packs.find((p) => (p.capability ?? "").toLowerCase() === decoded.toLowerCase()) ?? packs[0] ?? null;
+    return { explain, symbols, patents, pack };
+  });
 
   const b = m.data;
   const explain = b?.explain;
+  const doctrine = !!explain?.why;
+  const invariants = b?.pack?.invariants ?? [];
+  const precedents = b?.pack?.precedents ?? [];
 
   return (
-    <Page
-      eyebrow="Capability"
-      title={decoded}
-      actions={
-        <Link
-          to="/capabilities"
-          className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}
-        >
-          <ArrowLeft className="h-4 w-4" /> Register
+    <DossierWrap>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <Link to="/capabilities" className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
+          <Icon name="back" /> Register
         </Link>
-      }
-    >
-      <MeteredBar
-        cachedAt={m.cachedAt}
-        loading={m.loading}
-        priceSats={m.priceSats}
-        onRefresh={m.refresh}
-        note="1 leaf = 3 graph queries"
-      />
-
+      </div>
+      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} note="1 dossier = 4 graph queries" />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.cold && m.loading && <Empty>Reading the capability…</Empty>}
+      {!m.error && m.cold && m.loading && <Empty>Assembling the case file…</Empty>}
 
       {explain && (
-        <div className="space-y-7">
-          {/* Rationale — doctrine vs. advice, unmistakably distinguished */}
-          <section>
-            <SectionLabel>Rationale</SectionLabel>
-            {explain.why ? (
-              <div className={`${card} p-4`}>
-                <div className="mb-2">
-                  <ProvenanceSeal provenance={explain.provenance ?? "human-authored"} />
+        <Dossier accent="blue" tab="Capability" tabNo="Case file">
+          <DossierHead
+            crest={initialsOf(decoded)}
+            role="Capability · intention graph"
+            roleIcon="verified"
+            title={decoded}
+            tags={(b?.pack?.keywords ?? explain.owners ?? []).slice(0, 6)}
+            stamp={
+              doctrine ? (
+                <Stamp tone="good" icon="verified" label="Human-authored" sub="Doctrine" tip="A human wrote this rationale — an agent physically can't forge it. Treat it as doctrine." />
+              ) : explain.inferred_why ? (
+                <Stamp tone="warn" icon="info" label="Agent-inferred" sub="Unverified" tip="An agent suggested this rationale. It awaits an operator's review — advice, not doctrine." />
+              ) : undefined
+            }
+          />
+
+          <BoxScore>
+            <Stat num={explain.owners?.length ?? 0} label="Owners" />
+            <Stat num={explain.consumers?.length ?? 0} label="Consumers" />
+            <Stat num={b?.symbols.length ?? 0} label="Symbols" accent />
+            <Stat num={b?.patents.length ?? 0} label="Patents" />
+            <Stat num={precedents.length} label="Precedents" />
+            <Stat num={invariants.length} label="Guards" />
+          </BoxScore>
+
+          {/* Rationale */}
+          <div className="border-b border-stone-200 px-6 py-5 dark:border-zinc-800">
+            <Eyebrow icon="quote">Rationale</Eyebrow>
+            {doctrine ? (
+              <>
+                <blockquote className="border-l-[3px] border-amber-500 pl-4 font-serif text-[17px] leading-relaxed">{explain.why}</blockquote>
+                <div className="mt-2.5 flex items-center gap-1.5 font-mono text-[12px] text-stone-500 dark:text-zinc-400">
+                  <Icon name="verified" className="text-[14px] text-emerald-600 dark:text-emerald-400" />
+                  Operator · human-authored
                 </div>
-                <p className="font-serif text-[15px] leading-relaxed text-stone-800 dark:text-zinc-100">
-                  {explain.why}
-                </p>
-              </div>
+              </>
             ) : explain.inferred_why ? (
-              <div className={`${card} p-4`}>
-                <div className="mb-2">
-                  <ProvenanceSeal provenance={explain.inferred_provenance ?? "llm-inferred-unverified"} />
+              <>
+                <blockquote className="border-l-[3px] border-amber-400 pl-4 font-serif text-[17px] leading-relaxed">{explain.inferred_why}</blockquote>
+                <p className={`mt-2 text-xs ${muted}`}>No human rationale is authorized yet — an agent's suggestion, awaiting review.</p>
+              </>
+            ) : (
+              <p className={`text-sm ${muted}`}>No rationale recorded yet.</p>
+            )}
+          </div>
+
+          <Cells>
+            <Cell>
+              <Eyebrow icon="symbol" count={b?.symbols.length ?? 0}>Realized by</Eyebrow>
+              {b && b.symbols.length > 0 ? (
+                <div className="flex flex-col gap-2.5">
+                  {b.symbols.map((s, i) => {
+                    const fqn = s.symbol ?? s.fqn ?? "(unnamed)";
+                    return <SymbolRow key={fqn + i} fqn={fqn} file={s.file ?? s.file_path} lang={s.lang} sha={s.verified_at_sha} copyValue={fqn} />;
+                  })}
                 </div>
-                <p className="font-serif text-[15px] leading-relaxed text-stone-800 dark:text-zinc-100">
-                  {explain.inferred_why}
-                </p>
-                <p className={`mt-2 text-xs ${faint}`}>
-                  No human rationale has been authorized yet — this is an agent's suggestion awaiting
-                  an operator's review.
-                </p>
-              </div>
-            ) : (
-              <Empty>No rationale recorded for this capability yet.</Empty>
-            )}
-          </section>
+              ) : (
+                <p className={`text-sm ${muted}`}>No symbols bound yet.</p>
+              )}
+            </Cell>
 
-          {/* Services */}
-          <section className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <SectionLabel>Owned by</SectionLabel>
-              <ServiceList repos={explain.owners} empty="No owning service recorded." />
-            </div>
-            <div>
-              <SectionLabel>Consumed by</SectionLabel>
-              <ServiceList repos={explain.consumers} empty="No consumers recorded." />
-            </div>
-          </section>
-
-          {/* Realizing symbols — the grep scope for any fix */}
-          <section>
-            <SectionLabel>Realized by · code symbols</SectionLabel>
-            {b && b.symbols.length > 0 ? (
-              <div className={`${card} divide-y divide-stone-100 dark:divide-zinc-800`}>
-                {b.symbols.map((s, i) => (
-                  <SymbolRow key={(s.symbol ?? s.fqn ?? "") + i} s={s} />
-                ))}
+            <Cell>
+              <Eyebrow icon="dns">Affiliations</Eyebrow>
+              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-stone-400 dark:text-zinc-500">Owned by</div>
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {(explain.owners ?? []).length ? explain.owners!.map((o) => <RepoBadge key={o} repo={o} />) : <span className={`text-sm ${muted}`}>—</span>}
               </div>
-            ) : (
-              <Empty>No symbols bound to this capability yet.</Empty>
-            )}
-          </section>
-
-          {/* Patent grounding */}
-          <section>
-            <SectionLabel>Grounded in · patent elements</SectionLabel>
-            {b && b.patents.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {b.patents.map((p) => (
-                  <Link
-                    key={p.ref}
-                    to={`/patent/${p.ref}`}
-                    className={`${card} flex items-center gap-2 px-3 py-2 transition-colors hover:border-amber-300 dark:hover:border-amber-500/40`}
-                  >
-                    <Landmark className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <span className="text-sm">
-                      <span className="font-mono text-amber-700 dark:text-amber-300">[{p.ref}]</span>{" "}
-                      {p.name}
-                    </span>
-                    {p.figures && <span className={`text-[11px] ${faint}`}>fig {p.figures}</span>}
-                  </Link>
-                ))}
+              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-stone-400 dark:text-zinc-500">Consumed by · {explain.consumers?.length ?? 0}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {(explain.consumers ?? []).length ? explain.consumers!.map((c) => <RepoBadge key={c} repo={c} />) : <span className={`text-sm ${muted}`}>—</span>}
               </div>
-            ) : (
-              <Empty>Not yet traced to a filed patent element.</Empty>
+            </Cell>
+
+            <Cell>
+              <Eyebrow icon="bookmark" count={`${b?.patents.length ?? 0} patent elements`}>Decorations</Eyebrow>
+              {b && b.patents.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {b.patents.map((p) => (p.ref != null ? <PatentBadge key={p.ref} refNum={p.ref} name={p.name} /> : null))}
+                </div>
+              ) : (
+                <p className={`text-sm ${muted}`}>Not yet traced to a patent element.</p>
+              )}
+            </Cell>
+
+            <Cell>
+              <Eyebrow icon="verified" count={`${invariants.length} invariant${invariants.length === 1 ? "" : "s"}`}>House rules</Eyebrow>
+              {invariants.length ? (
+                <ul className="flex flex-col gap-2">
+                  {invariants.map((inv, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[13.5px]">
+                      <Icon name="check" className="mt-0.5 text-[15px] text-emerald-600 dark:text-emerald-400" />
+                      <span>{inv}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={`text-sm ${muted}`}>No invariant guards this capability yet.</p>
+              )}
+            </Cell>
+
+            {precedents.length > 0 && (
+              <Cell span>
+                <Eyebrow icon="history" count={`${precedents.length} precedents`}>Case history</Eyebrow>
+                <ul className="flex flex-col gap-2">
+                  {precedents.map((pr, i) => {
+                    const internal = issueLinkFromUrl(pr.url, pr.number);
+                    return (
+                      <li key={i} className="flex items-center gap-2.5">
+                        <Icon name="github" className="text-[15px] text-stone-500 dark:text-zinc-400" />
+                        {internal ? (
+                          <Link to={internal} className="font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">#{pr.number}</Link>
+                        ) : pr.url ? (
+                          <a href={pr.url} target="_blank" rel="noopener noreferrer" className="font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">#{pr.number}</a>
+                        ) : (
+                          <span className="font-mono text-[12.5px]">#{pr.number}</span>
+                        )}
+                        {pr.actionable_text && <span className={`text-[13px] ${muted}`}>{pr.actionable_text}</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Cell>
             )}
-          </section>
-        </div>
+          </Cells>
+        </Dossier>
       )}
-    </Page>
-  );
-}
-
-function ServiceList({ repos, empty }: { repos?: string[]; empty: string }) {
-  if (!repos || repos.length === 0) return <div className={`text-sm ${faint}`}>{empty}</div>;
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {repos.map((r) => (
-        <XRef key={r} to={`/services/${encodeURIComponent(r)}`}>
-          <span className="font-mono text-[13px]">{r}</span>
-        </XRef>
-      ))}
-    </div>
-  );
-}
-
-function SymbolRow({ s }: { s: GraphSymbol }) {
-  const fqn = s.symbol ?? s.fqn ?? "(unnamed)";
-  const file = s.file ?? s.file_path;
-  return (
-    <div className="flex items-start gap-3 px-4 py-2.5">
-      <FileCode2 className="mt-0.5 h-4 w-4 shrink-0 text-stone-400 dark:text-zinc-500" />
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-mono text-[13px] text-stone-800 dark:text-zinc-100">{fqn}</div>
-        <div className={`mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] ${muted}`}>
-          {file && <span className="font-mono">{file}</span>}
-          {s.lang && <span className={faint}>{s.lang}</span>}
-          {s.owner && (
-            <XRef to={`/services/${encodeURIComponent(s.owner)}`}>
-              <span className="font-mono">{s.owner}</span>
-            </XRef>
-          )}
-          {s.verified_at_sha && (
-            <span className={`font-mono ${faint}`} title="Journeyman-verified at this commit">
-              @ {s.verified_at_sha.slice(0, 8)}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
+    </DossierWrap>
   );
 }
