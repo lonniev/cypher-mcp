@@ -69,7 +69,7 @@ export default function CapabilityDetail() {
   const goNext = idx >= 0 && idx < siblings.length - 1 ? () => nav(`/capabilities/${encodeURIComponent(siblings[idx + 1])}`) : undefined;
   const swipe = useSwipeNav({ prev: goPrev, next: goNext });
 
-  const m = useMetered<Bundle>(`capability:${decoded}`, "explain_capability", async () => {
+  const m = useMetered<Bundle>(`capability:${decoded}`, async () => {
     const [explain, symbols, patents, packs] = await Promise.all([
       explainCapability(decoded),
       whatRealizesCapability(decoded),
@@ -95,7 +95,7 @@ export default function CapabilityDetail() {
         </Link>
         <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label="capability" />
       </div>
-      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} note="1 dossier = 4 graph queries" />
+      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
       {!m.error && m.cold && m.loading && <QuoteScroller heading="Assembling the case file…" className="py-12" />}
 

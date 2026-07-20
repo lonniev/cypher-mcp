@@ -45,9 +45,8 @@ export default function Hero() {
           concordance, cross-referenced registers, and a metrics ledger — not a bouncing bubble map.
         </p>
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-stone-600 dark:text-zinc-400">
-          Sign in with a Nostr key. Operational status reads free; graph reads settle in Bitcoin
-          Lightning and are cached, so you rarely pay for the same page twice. Provenance is honest
-          throughout — human-authored doctrine is marked apart from an agent's unverified advice.
+          Sign in with a Nostr key. Provenance is honest throughout — human-authored doctrine is
+          marked apart from an agent's unverified advice.
         </p>
 
         <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
@@ -64,7 +63,7 @@ export default function Hero() {
           <Feature
             icon={<Gauge className="h-5 w-5" />}
             title="Token-savings ledger"
-            body="Watch how the Service Desk finds code — graph vs. grep — and see the graph pay for itself over time."
+            body="Watch how the Service Desk finds code — graph vs. grep — and see wide-grep shrink toward zero as the graph learns."
           />
         </div>
 

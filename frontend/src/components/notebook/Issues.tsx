@@ -32,7 +32,6 @@ export default function Issues() {
   const [since, setSince] = useState(0);
   const m = useMetered<IssueSummary[]>(
     `issues:list:since=${since}`,
-    "list_issues",
     () => listIssues({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0 }),
     { autoFetch: false },
   );
@@ -64,7 +63,7 @@ export default function Issues() {
 
   return (
     <Page eyebrow="Register" title="Issues" lede="Every issue the Service Desk has triaged. Filter here, open a known issue directly, or run elastic search in the Concordance.">
-      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
+      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
 
       {!m.error && (
@@ -112,7 +111,7 @@ export default function Issues() {
           {m.loading ? (
             <QuoteScroller heading="Reading the issue catalog…" className="py-12" />
           ) : !m.data ? (
-            <LoadPanel label={since > 0 ? "Load recent issues" : "Load issues"} priceSats={m.priceSats} onLoad={m.refresh} />
+            <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
             <Empty>No issues match this filter.</Empty>
           ) : (

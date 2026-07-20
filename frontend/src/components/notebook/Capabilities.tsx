@@ -32,7 +32,6 @@ export default function Capabilities() {
   const [since, setSince] = useState(0);
   const m = useMetered<CapabilitySummary[]>(
     `capabilities:list:since=${since}`,
-    "list_capabilities",
     () => listCapabilities({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0 }),
     { autoFetch: false },
   );
@@ -73,7 +72,7 @@ export default function Capabilities() {
 
   return (
     <Page eyebrow="Register" title="Capabilities" lede="The fleet's abilities. Filter here, run full elastic search in the Concordance, or open a known issue directly.">
-      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
+      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
 
       {!m.error && (
@@ -156,7 +155,7 @@ export default function Capabilities() {
           {m.loading ? (
             <QuoteScroller heading="Reading the capability catalog…" className="py-12" />
           ) : !m.data ? (
-            <LoadPanel label={since > 0 ? "Load recent capabilities" : "Load capabilities"} priceSats={m.priceSats} onLoad={m.refresh} />
+            <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
             <Empty>No entries match this filter.</Empty>
           ) : (

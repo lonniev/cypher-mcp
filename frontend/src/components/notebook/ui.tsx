@@ -6,7 +6,7 @@
 
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ExternalLink, RefreshCw, ShieldCheck, Sparkle, BookOpen, Clock } from "lucide-react";
+import { ExternalLink, RefreshCw, ShieldCheck, Sparkle, BookOpen, Clock, PlayCircle } from "lucide-react";
 import { ageLabel } from "../../lib/graphCache";
 import { SINCE_PRESETS } from "../../lib/time";
 
@@ -124,42 +124,34 @@ export function ProvenanceSeal({ provenance }: { provenance?: string }) {
   );
 }
 
-/// The metered-read header: cache age + live price + a Refresh that pays for a
-/// fresh call. Cost is shown BEFORE it is spent — no surprise sat debits.
+/// The read header: how fresh the shown data is, and a Refresh to re-run it.
 export function MeteredBar({
   cachedAt,
   loading,
-  priceSats,
   onRefresh,
   note,
 }: {
   cachedAt: number | null;
   loading: boolean;
-  priceSats: number | null;
   onRefresh: () => void;
   note?: string;
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
       <span className={faint}>
-        {loading ? "Reading the graph…" : cachedAt ? `Cached · ${ageLabel(cachedAt)}` : "Not yet read"}
+        {loading ? "Reading the graph…" : cachedAt ? `Updated ${ageLabel(cachedAt)}` : "Not yet loaded"}
       </span>
       {note && <span className={faint}>· {note}</span>}
-      <span className="ml-auto flex items-center gap-2">
-        {priceSats != null && (
-          <span className={faint}>
-            {priceSats === 0 ? "free" : `~${priceSats.toLocaleString()} sats / read`}
-          </span>
-        )}
-        <button
-          onClick={onRefresh}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 px-2.5 py-1 font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-amber-500/50 dark:hover:text-amber-300"
-        >
-          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
-      </span>
+      <button
+        onClick={onRefresh}
+        disabled={loading}
+        aria-label="Refresh"
+        title="Refresh"
+        className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-stone-300 px-2.5 py-1 font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-amber-500/50 dark:hover:text-amber-300"
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+        Refresh
+      </button>
     </div>
   );
 }
@@ -195,34 +187,19 @@ export function XRef({ to, children }: { to: string; children: ReactNode }) {
   );
 }
 
-/// The "set your filters, then run the query" state — a register shows this
-/// instead of auto-fetching on tab entry, so the user isn't billed for a
-/// fetch-all before they've chosen a window. Shows the live per-read price.
-export function LoadPanel({
-  label,
-  priceSats,
-  onLoad,
-  loading,
-}: {
-  label: string;
-  priceSats: number | null;
-  onLoad: () => void;
-  loading?: boolean;
-}) {
+/// The "set your filters, then query" state — a register shows this on tab entry
+/// so the user can choose a window before running the read.
+export function LoadPanel({ onLoad, loading }: { onLoad: () => void; loading?: boolean }) {
   return (
     <div className={`${card} flex flex-col items-center gap-3 px-6 py-10 text-center`}>
-      <BookOpen className="h-6 w-6 text-stone-300 dark:text-zinc-600" />
-      <p className={`max-w-sm text-sm ${muted}`}>
-        Set your filters above, then run the query. Nothing is fetched — or billed — until you do.
-      </p>
+      <p className={`max-w-sm text-sm ${muted}`}>Set your filters above, then query the graph.</p>
       <button
         onClick={onLoad}
         disabled={loading}
         className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-500 disabled:opacity-40"
       >
-        <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-        {label}
-        {priceSats != null && <span className="opacity-80">· {priceSats === 0 ? "free" : `~${priceSats} sats`}</span>}
+        <PlayCircle className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
+        Query
       </button>
     </div>
   );
@@ -245,24 +222,17 @@ export function ErrorNote({ children }: { children: ReactNode }) {
   );
 }
 
-/// A metered-read error, rendered with intent. An empty-balance error becomes a
-/// calm Top-up call to action (the common case — graph reads cost sats) rather
-/// than a raw "0 sats available" string; everything else shows the message.
+/// A read error, rendered with intent. An empty-balance error becomes a Top-up
+/// call to action (a real block, not an apology); everything else shows the message.
 export function MeteredError({ error }: { error: string }) {
   const broke = /insufficient balance|required for|0 sats available/i.test(error);
   if (broke) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
-        <div className="mb-1 text-sm font-medium text-amber-800 dark:text-amber-300">
-          Your credit balance is empty
-        </div>
-        <p className="mb-3 text-xs leading-relaxed text-amber-700/90 dark:text-amber-200/80">
-          Graph reads settle in Bitcoin Lightning. Top up a small balance and this register loads
-          on the next read. {error}
-        </p>
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <span className="text-sm font-medium text-amber-800 dark:text-amber-300">Your balance is empty.</span>
         <Link
           to="/wallet"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-500"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-500"
         >
           Top up
         </Link>

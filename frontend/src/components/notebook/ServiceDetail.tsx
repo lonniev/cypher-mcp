@@ -17,7 +17,6 @@ export default function ServiceDetail() {
 
   const m = useMetered<GraphSymbol[]>(
     `service:${decoded}`,
-    "symbols_in_service",
     () => symbolsInService(decoded),
   );
 
@@ -52,7 +51,7 @@ export default function ServiceDetail() {
         </Link>
       }
     >
-      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
+      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
       {!m.error && m.cold && m.loading && <Empty>Reading indexed symbols…</Empty>}
 

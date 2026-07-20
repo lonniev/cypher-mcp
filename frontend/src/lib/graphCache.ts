@@ -16,7 +16,6 @@
 // on a timer, and the cost of every live read is shown before it is paid.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { priceForTool } from "./pricing";
 
 // v3: bumped when the single-object wrappers began unwrapping the {success,rows}
 // envelope's first row (explain_capability / explain_patent_element /
@@ -68,25 +67,21 @@ export interface MeteredState<T> {
   cachedAt: number | null;
   loading: boolean;
   error: string | null;
-  /// Live per-call price in sats (from check_price), or null if unknown/free.
-  priceSats: number | null;
-  /// Force a live (paid) fetch. Also used for the first load when uncached.
+  /// Run the read (also the first load when uncached).
   refresh: () => void;
   /// True the first time we render before any cache/fetch has resolved.
   cold: boolean;
 }
 
 /**
- * Cache-first metered read.
+ * Cache-first graph read.
  *
  * @param cacheKey  stable key (include params, e.g. `capability:pricing`)
- * @param toolId    the published tool id, priced via the pricing model
- * @param fetcher   the mcp wrapper that performs the paid call
+ * @param fetcher   the mcp wrapper that performs the call
  * @param opts.autoFetch    fetch once on mount when uncached (default true)
  */
 export function useMetered<T>(
   cacheKey: string,
-  toolId: string,
   fetcher: () => Promise<T>,
   opts: { autoFetch?: boolean } = {},
 ): MeteredState<T> {
@@ -95,7 +90,6 @@ export function useMetered<T>(
   const [cachedAt, setCachedAt] = useState<number | null>(cached?.at ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [priceSats, setPriceSats] = useState<number | null>(null);
   const [cold, setCold] = useState<boolean>(!cached);
   const inFlight = useRef(false);
 
@@ -129,19 +123,6 @@ export function useMetered<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
 
-  // Preview the price for the Refresh affordance from the pricing model (a free
-  // read; check_price can't quote dynamic tools). Best-effort — a miss just
-  // hides the price.
-  useEffect(() => {
-    let live = true;
-    priceForTool(toolId)
-      .then((p) => live && setPriceSats(p))
-      .catch(() => live && setPriceSats(null));
-    return () => {
-      live = false;
-    };
-  }, [toolId]);
-
   // On cacheKey change (e.g. the caller switched the time window), re-hydrate
   // from that key's cache — show a prior result instantly, or nothing if none.
   // Only auto-fetch when the caller opts in (registers pass autoFetch:false so a
@@ -161,7 +142,6 @@ export function useMetered<T>(
     cachedAt,
     loading,
     error,
-    priceSats,
     refresh: () => void doFetch(),
     cold,
   };

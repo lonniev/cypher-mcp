@@ -107,7 +107,7 @@ export default function Concordance() {
       )}
 
       {!keyword ? (
-        <Empty>Enter a keyword to search the graph. Each lookup is cached, so repeats are free.</Empty>
+        <Empty>Enter a keyword to search the graph.</Empty>
       ) : (
         <ConcordanceResult key={keyword} keyword={keyword} />
       )}
@@ -123,7 +123,6 @@ interface Result {
 function ConcordanceResult({ keyword }: { keyword: string }) {
   const m = useMetered<Result>(
     `concordance:${keyword}`,
-    "context_pack",
     async () => {
       const [services, packs] = await Promise.all([
         whichServiceHandles(keyword),
@@ -140,7 +139,7 @@ function ConcordanceResult({ keyword }: { keyword: string }) {
       <MeteredBar
         cachedAt={m.cachedAt}
         loading={m.loading}
-        priceSats={m.priceSats}
+       
         onRefresh={m.refresh}
         note={`“${keyword}”`}
       />

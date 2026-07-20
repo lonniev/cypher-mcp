@@ -51,7 +51,7 @@ export default function IssueDetail() {
   const goNext = idx >= 0 && idx < siblings.length - 1 ? () => toIssue(siblings[idx + 1]) : undefined;
   const swipe = useSwipeNav({ prev: goPrev, next: goNext });
 
-  const m = useMetered<IssueProvenance>(`issue:${decodedRepo}#${num}`, "issue_provenance", () =>
+  const m = useMetered<IssueProvenance>(`issue:${decodedRepo}#${num}`, () =>
     issueProvenance(decodedRepo, num),
   );
 
@@ -84,7 +84,7 @@ export default function IssueDetail() {
         </Link>
         <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label="issue" />
       </div>
-      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
+      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
       {!m.error && m.loading && !d && <QuoteScroller heading="Pulling the case file…" className="py-12" />}
 

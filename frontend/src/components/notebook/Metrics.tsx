@@ -39,7 +39,6 @@ const FALLBACK: Tone = { bar: "bg-zinc-400", text: "text-stone-600 dark:text-zin
 export default function Metrics() {
   const m = useMetered<ResolutionStat[]>(
     "metrics:resolution",
-    "factory_resolution_stats",
     factoryResolutionStats,
   );
 
@@ -62,7 +61,7 @@ export default function Metrics() {
       title="Factory Metrics"
       lede="Every issue the Service Desk resolves records HOW its code was found. The greener that mix, the more the intention graph is paying for itself in tokens it saves."
     >
-      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
+      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
 
       {m.error && <MeteredError error={m.error} />}
       {!m.error && m.cold && m.loading && <Empty>Reading the resolution ledger…</Empty>}

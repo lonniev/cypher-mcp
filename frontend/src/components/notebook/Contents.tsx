@@ -1,6 +1,5 @@
 // The cover page — Front Matter masthead over the Table of Contents. Every
-// register in the notebook is listed here with its purpose and whether reading
-// it is free (operational) or metered (intention graph). This is the map the
+// register in the notebook is listed here with its purpose. This is the map the
 // architect starts from.
 
 import type { ReactNode } from "react";
@@ -24,7 +23,6 @@ interface Entry {
   title: string;
   blurb: string;
   icon: ReactNode;
-  meter: "free" | "metered";
   count?: string;
 }
 
@@ -40,7 +38,6 @@ export default function Contents() {
       blurb:
         "The abilities the fleet owns — each with its human-authored ‘why’ (doctrine) or an agent's inferred rationale, its owning and consuming services, and the symbols that realize it.",
       icon: <Boxes className="h-5 w-5" />,
-      meter: "metered",
       count: caps ? `${caps.length} entries` : undefined,
     },
     {
@@ -49,7 +46,6 @@ export default function Contents() {
       blurb:
         "Every issue the Service Desk has triaged — classification, disposition, root cause, and the capability it touched. A peer entry into the graph; open one to see its full case file.",
       icon: <History className="h-5 w-5" />,
-      meter: "metered",
     },
     {
       to: "/concordance",
@@ -57,7 +53,6 @@ export default function Contents() {
       blurb:
         "Look up any keyword and see which services handle it and the full context pack — the one query that resolves twelve repos to one answer.",
       icon: <SearchCode className="h-5 w-5" />,
-      meter: "metered",
     },
     {
       to: "/metrics",
@@ -65,15 +60,13 @@ export default function Contents() {
       blurb:
         "How the Service Desk locates code — graph, scoped-grep, or wide-grep. Watch wide-grep trend to zero as the graph learns. The token-savings ledger.",
       icon: <Gauge className="h-5 w-5" />,
-      meter: "metered",
     },
     {
       to: "/catalog",
       title: "Query Catalog",
       blurb:
-        "The published dynamic tool set and its prices — the apparatus of the graph service, read straight from the operator's pricing model.",
+        "The published tool set — the apparatus of the graph service, read straight from the operator's pricing model.",
       icon: <ScrollText className="h-5 w-5" />,
-      meter: "free",
     },
   ];
 
@@ -85,8 +78,7 @@ export default function Contents() {
         <>
           A read-only architect's notebook over the intention graph that grounds the DPYC Software
           Factory — capabilities, code symbols, invariants, patent tracing, and the issues the
-          Service Desk has triaged. Operational status is free; graph reads settle in Bitcoin
-          Lightning and are cached so you rarely pay twice.
+          Service Desk has triaged.
         </>
       }
     >
@@ -113,18 +105,7 @@ export default function Contents() {
               <ArrowRight className="h-4 w-4 text-stone-300 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-500 dark:text-zinc-600" />
             </div>
             <p className={`text-sm leading-relaxed ${muted}`}>{e.blurb}</p>
-            <div className="mt-1 flex items-center gap-2 text-[11px]">
-              <span
-                className={`rounded-full px-2 py-0.5 font-medium ${
-                  e.meter === "free"
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                    : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
-                }`}
-              >
-                {e.meter === "free" ? "free" : "metered"}
-              </span>
-              {e.count && <span className={faint}>{e.count}</span>}
-            </div>
+            {e.count && <div className={`mt-1 text-[11px] ${faint}`}>{e.count}</div>}
           </Link>
         ))}
       </div>

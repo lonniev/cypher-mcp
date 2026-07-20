@@ -15,7 +15,6 @@ export default function PatentDetail() {
 
   const m = useMetered<PatentElementDetail>(
     `patent:${ref}`,
-    "explain_patent_element",
     () => explainPatentElement(refNum),
   );
 
@@ -41,7 +40,7 @@ export default function PatentDetail() {
         </Link>
       }
     >
-      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
+      <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
       {!m.error && m.cold && m.loading && <Empty>Reading the patent element…</Empty>}
 
