@@ -106,6 +106,13 @@ export function useMetered<T>(
     setError(null);
     try {
       const result = await fetcher();
+      // A tool can answer with a soft-error envelope ({success:false, error})
+      // instead of raising. Surface it as an error rather than handing a shape
+      // the view doesn't expect to the renderer (which could then crash).
+      const soft = result as { success?: boolean; error?: string } | null;
+      if (soft && typeof soft === "object" && !Array.isArray(soft) && soft.success === false) {
+        throw new Error(soft.error || "The graph read failed.");
+      }
       setData(result);
       setCachedAt(writeCache(cacheKey, result));
     } catch (e) {

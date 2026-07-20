@@ -18,7 +18,9 @@ export default function Capabilities() {
   const [sortCol, setSortCol] = useState<Col>("name");
   const [dir, setDir] = useState<SortDir>("asc");
 
-  const rows = m.data ?? [];
+  // Guard against a malformed row (missing name): a nameless capability must
+  // never throw during render — coerce every name to a string up front.
+  const rows = (m.data ?? []).map((c) => ({ ...c, name: String(c.name ?? "") }));
 
   // Keyword index — every distinct keyword, most-used first (a concordance head).
   const keywordIndex = useMemo(() => {
