@@ -34,6 +34,17 @@ jobs:
         env:
           VITE_MCP_URL: /mcp
 
+      # Self-provision the Pages project on first deploy so a fresh clone needs
+      # no manual `wrangler pages project create`. Idempotent: a create against
+      # an existing project is a no-op we tolerate.
+      - name: Ensure Pages project exists
+        working-directory: frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'cypher-app' }}
+        run: npx --yes wrangler@4 pages project create "$PROJECT" --production-branch main || true
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
         with:
