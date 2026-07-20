@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.0 — 2026-07-20
+
+### Added — grep-scoping "context pack" + code anchors (Service Desk token savings)
+
+The intention graph now carries enough code-orienteering detail that Porter/Journeyman grep a
+narrow scope (or skip grep) instead of re-tokenizing whole repos through Anthropic. Borrows the
+*idea* (not the code) of `code-review-graph`'s token-optimized context, kept intention-first.
+
+- **Symbol anchors.** `Symbol` nodes gain `file_path`, `verified_at_sha`, `anchor_provenance`.
+  Line numbers are deliberately not stored — the Porter re-greps within `file_path` to re-pin
+  exact location, so a coarse file+symbol anchor never goes stale in a misleading way.
+- **New write `anchor_symbol(symbol_fqn, file_path, verified_at_sha)`** (Journeyman-only) — the
+  post-edit anchor. Provenance is the hard-coded literal `'journeyman-verified'` (authority comes
+  from having edited the code, not from a param).
+- **New write `record_scope(repo_name, issue_number, actionable_text, resolved_via)`** (Porter) —
+  stores the rough-English→spec translation and HOW the code was located
+  (`graph` | `scoped-grep` | `wide-grep`), the token-savings metric.
+- **New write `link_issue_to_capability(...)`** — `(:Issue)-[:ABOUT_CAPABILITY]->(:Capability)`,
+  so a future fuzzy issue on the same theme matches this one's `actionable_text` as precedent.
+- **New read `context_pack(keyword)`** — the flagship: one call returns the whole grep-scoping
+  bundle per matched capability (owner repos, realizing symbols *with `file_path`*, guarding
+  invariants, precedent issues' `actionable_text` + why). Grep only inside the returned files.
+- **New read `factory_resolution_stats()`** — grep-fallback metric; watch `wide-grep` trend to 0.
+- `what_realizes_capability` and `symbols_in_service` now return `file_path` (and `verified_at_sha`).
+
+Seed with `scripts/seed_factory_vocabulary.py` (idempotent) and price the new tools in Pricing
+Studio; reads stay open, writes stay role-gated (Porter/Journeyman).
+
 ## 0.6.1 — 2026-07-19
 
 ### Added — clickable GitHub URLs on the factory graph (Issue / repo / PR)
