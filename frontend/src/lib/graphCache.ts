@@ -16,7 +16,7 @@
 // on a timer, and the cost of every live read is shown before it is paid.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { checkPrice } from "./mcp";
+import { priceForTool } from "./pricing";
 
 const CACHE_PREFIX = "cypher:graph-cache:v1:";
 
@@ -76,16 +76,15 @@ export interface MeteredState<T> {
  * Cache-first metered read.
  *
  * @param cacheKey  stable key (include params, e.g. `capability:pricing`)
- * @param toolId    the published tool id for the check_price preview
+ * @param toolId    the published tool id, priced via the pricing model
  * @param fetcher   the mcp wrapper that performs the paid call
- * @param opts.priceParams  params passed to check_price for an accurate quote
  * @param opts.autoFetch    fetch once on mount when uncached (default true)
  */
 export function useMetered<T>(
   cacheKey: string,
   toolId: string,
   fetcher: () => Promise<T>,
-  opts: { priceParams?: Record<string, unknown>; autoFetch?: boolean } = {},
+  opts: { autoFetch?: boolean } = {},
 ): MeteredState<T> {
   const cached = readCache<T>(cacheKey);
   const [data, setData] = useState<T | null>(cached?.data ?? null);
@@ -97,7 +96,6 @@ export function useMetered<T>(
   const inFlight = useRef(false);
 
   const autoFetch = opts.autoFetch ?? true;
-  const priceParams = opts.priceParams;
 
   const doFetch = useCallback(async () => {
     if (inFlight.current) return;
@@ -127,20 +125,18 @@ export function useMetered<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
 
-  // Preview the live price for the Refresh affordance (free call, best-effort).
+  // Preview the price for the Refresh affordance from the pricing model (a free
+  // read; check_price can't quote dynamic tools). Best-effort — a miss just
+  // hides the price.
   useEffect(() => {
     let live = true;
-    checkPrice(toolId, priceParams ?? {})
-      .then((p) => {
-        if (!live) return;
-        const c = p.effective_cost ?? p.cost ?? p.base_cost;
-        setPriceSats(typeof c === "number" ? c : null);
-      })
+    priceForTool(toolId)
+      .then((p) => live && setPriceSats(p))
       .catch(() => live && setPriceSats(null));
     return () => {
       live = false;
     };
-  }, [toolId, JSON.stringify(priceParams ?? {})]);
+  }, [toolId]);
 
   // First load: fetch once if there's no cache to show.
   useEffect(() => {

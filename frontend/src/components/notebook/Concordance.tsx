@@ -19,7 +19,7 @@ import {
   SectionLabel,
   ProvenanceSeal,
   Empty,
-  ErrorNote,
+  MeteredError,
   Outbound,
   XRef,
   card,
@@ -117,7 +117,6 @@ function ConcordanceResult({ keyword }: { keyword: string }) {
       ]);
       return { services, packs };
     },
-    { priceParams: { keyword } },
   );
 
   const r = m.data;
@@ -131,7 +130,7 @@ function ConcordanceResult({ keyword }: { keyword: string }) {
         onRefresh={m.refresh}
         note={`“${keyword}”`}
       />
-      {m.error && <ErrorNote>{m.error}</ErrorNote>}
+      {m.error && <MeteredError error={m.error} />}
       {!m.error && m.cold && m.loading && <Empty>Searching the graph for “{keyword}”…</Empty>}
 
       {r && (

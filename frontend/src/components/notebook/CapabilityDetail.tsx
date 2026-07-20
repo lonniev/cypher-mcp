@@ -20,7 +20,7 @@ import {
   SectionLabel,
   ProvenanceSeal,
   Empty,
-  ErrorNote,
+  MeteredError,
   XRef,
   card,
   faint,
@@ -48,7 +48,6 @@ export default function CapabilityDetail() {
       ]);
       return { explain, symbols, patents };
     },
-    { priceParams: { name: decoded } },
   );
 
   const b = m.data;
@@ -75,7 +74,7 @@ export default function CapabilityDetail() {
         note="1 leaf = 3 graph queries"
       />
 
-      {m.error && <ErrorNote>{m.error}</ErrorNote>}
+      {m.error && <MeteredError error={m.error} />}
       {!m.error && m.cold && m.loading && <Empty>Reading the capability…</Empty>}
 
       {explain && (

@@ -250,6 +250,10 @@ const BOOTSTRAP_TOOLS = new Set([
   // Public kind-0 profile reads/relays — take explicit npub, no proof envelope.
   "get_nostr_profile",
   "publish_nostr_profile",
+  // Operator-wide reads that take NO npub/proof envelope (the wheel rejects an
+  // unexpected `npub` kwarg on these). They describe the operator, not a patron.
+  "get_pricing_model",
+  "get_operator_onboarding_status",
 ]);
 
 /// Tools too noisy/background to clutter the debug log (polled liveness).

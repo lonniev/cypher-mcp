@@ -7,7 +7,7 @@
 
 import { factoryResolutionStats, type ResolutionStat } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
-import { Page, MeteredBar, SectionLabel, Empty, ErrorNote, card, faint, muted } from "./ui";
+import { Page, MeteredBar, SectionLabel, Empty, MeteredError, card, faint, muted } from "./ui";
 
 // Semantic ordering + palette: cheapest resolution first, costliest last.
 const ORDER = ["graph", "scoped-grep", "wide-grep"];
@@ -64,7 +64,7 @@ export default function Metrics() {
     >
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
 
-      {m.error && <ErrorNote>{m.error}</ErrorNote>}
+      {m.error && <MeteredError error={m.error} />}
       {!m.error && m.cold && m.loading && <Empty>Reading the resolution ledger…</Empty>}
 
       {m.data && (total === 0 ? (

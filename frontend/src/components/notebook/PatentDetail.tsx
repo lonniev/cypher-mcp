@@ -7,7 +7,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Landmark, Boxes, ShieldAlert } from "lucide-react";
 import { explainPatentElement, type PatentElementDetail } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
-import { Page, MeteredBar, SectionLabel, Empty, ErrorNote, XRef, card, faint, muted } from "./ui";
+import { Page, MeteredBar, SectionLabel, Empty, MeteredError, XRef, card, faint, muted } from "./ui";
 
 export default function PatentDetail() {
   const { ref = "" } = useParams();
@@ -17,7 +17,6 @@ export default function PatentDetail() {
     `patent:${ref}`,
     "explain_patent_element",
     () => explainPatentElement(refNum),
-    { priceParams: { ref: refNum } },
   );
 
   const d = m.data;
@@ -43,7 +42,7 @@ export default function PatentDetail() {
       }
     >
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
-      {m.error && <ErrorNote>{m.error}</ErrorNote>}
+      {m.error && <MeteredError error={m.error} />}
       {!m.error && m.cold && m.loading && <Empty>Reading the patent element…</Empty>}
 
       {d && (

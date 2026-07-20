@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import { listCapabilities, type CapabilitySummary, type SortDir } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
 import { SortHeader, TableShell } from "../PagedTable";
-import { Page, MeteredBar, Empty, ErrorNote, faint, muted } from "./ui";
+import { Page, MeteredBar, Empty, MeteredError, faint, muted } from "./ui";
 
 type Col = "name" | "owners" | "keywords";
 
@@ -61,7 +61,7 @@ export default function Capabilities() {
     >
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
 
-      {m.error && <ErrorNote>{m.error}</ErrorNote>}
+      {m.error && <MeteredError error={m.error} />}
 
       {!m.error && (
         <>

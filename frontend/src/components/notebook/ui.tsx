@@ -187,6 +187,33 @@ export function ErrorNote({ children }: { children: ReactNode }) {
   );
 }
 
+/// A metered-read error, rendered with intent. An empty-balance error becomes a
+/// calm Top-up call to action (the common case — graph reads cost sats) rather
+/// than a raw "0 sats available" string; everything else shows the message.
+export function MeteredError({ error }: { error: string }) {
+  const broke = /insufficient balance|required for|0 sats available/i.test(error);
+  if (broke) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <div className="mb-1 text-sm font-medium text-amber-800 dark:text-amber-300">
+          Your credit balance is empty
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-amber-700/90 dark:text-amber-200/80">
+          Graph reads settle in Bitcoin Lightning. Top up a small balance and this register loads
+          on the next read. {error}
+        </p>
+        <Link
+          to="/wallet"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-500"
+        >
+          Top up
+        </Link>
+      </div>
+    );
+  }
+  return <ErrorNote>{error}</ErrorNote>;
+}
+
 /// A short-hex npub chip (identity is a key, never a name).
 export function NpubChip({ npub }: { npub?: string }) {
   if (!npub) return <span className={faint}>—</span>;

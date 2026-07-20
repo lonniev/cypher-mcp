@@ -8,7 +8,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, FileCode2 } from "lucide-react";
 import { symbolsInService, type GraphSymbol } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
-import { Page, MeteredBar, SectionLabel, Empty, ErrorNote, card, faint, muted } from "./ui";
+import { Page, MeteredBar, SectionLabel, Empty, MeteredError, card, faint, muted } from "./ui";
 
 export default function ServiceDetail() {
   const { repo = "" } = useParams();
@@ -19,7 +19,6 @@ export default function ServiceDetail() {
     `service:${decoded}`,
     "symbols_in_service",
     () => symbolsInService(decoded),
-    { priceParams: { repo_name: decoded } },
   );
 
   const rows = m.data ?? [];
@@ -54,7 +53,7 @@ export default function ServiceDetail() {
       }
     >
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
-      {m.error && <ErrorNote>{m.error}</ErrorNote>}
+      {m.error && <MeteredError error={m.error} />}
       {!m.error && m.cold && m.loading && <Empty>Reading indexed symbols…</Empty>}
 
       {m.data && (rows.length === 0 ? (
