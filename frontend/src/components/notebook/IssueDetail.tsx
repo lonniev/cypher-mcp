@@ -21,6 +21,7 @@ import {
   SymbolRow,
   ResolvedPill,
   IconLink,
+  Annotate,
 } from "./dossier";
 
 function resolved(disposition?: string): boolean {
@@ -84,11 +85,13 @@ export default function IssueDetail() {
             <Stat icon="quote" num={decisions.length} label="Decisions" drill="issue-decisions" tip="Recorded rationale for the fix." />
             <Stat icon="close" num={rejections.length} label="Rejections" drill="issue-rejections" tip="Triage paths that were ruled out." />
             <Stat icon="verified" num={caps.length} label="Capability" drill="issue-capability" tip="The capability this issue touched." />
-            <Stat icon="github" num={d.pr_url ? 1 : 0} label="PR" drill="issue-external" tip="The pull request that resolved it." />
+            <Stat icon="github" num={(d.issue_url ? 1 : 0) + (d.pr_url ? 1 : 0) + (d.repo_url ? 1 : 0)} label="Record" drill="issue-record" tip="Links to the live GitHub issue, its pull request, and the repository." />
             {d.resolved_via && (
               <div className="min-w-[92px] flex-1 border-r border-stone-200 px-3.5 py-3 text-center last:border-r-0 dark:border-zinc-800">
                 <ResolvedPill mode={d.resolved_via} />
-                <div className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500">Resolved via</div>
+                <div className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500">
+                  <Annotate text="How the Service Desk located the code — graph is cheapest (no grep), wide-grep the costliest.">Resolved via</Annotate>
+                </div>
               </div>
             )}
           </BoxScore>
@@ -103,7 +106,7 @@ export default function IssueDetail() {
           <Cells>
             {caps.length > 0 && (
               <Cell id="issue-capability">
-                <Eyebrow icon="swap" info="Center the capability instead and this issue becomes one of its cells — the grammar inverts.">About capability</Eyebrow>
+                <Eyebrow icon="swap" count={caps.length} info="Center the capability instead and this issue becomes one of its cells — the grammar inverts.">Capability</Eyebrow>
                 <div className="flex flex-wrap gap-2">
                   {caps.map((c) => (
                     <Link
@@ -171,8 +174,8 @@ export default function IssueDetail() {
               )}
             </Cell>
 
-            <Cell id="issue-external" span>
-              <Eyebrow icon="open" info="Open the live GitHub issue, its pull request, or the repository.">External record</Eyebrow>
+            <Cell id="issue-record" span>
+              <Eyebrow icon="open" info="Open the live GitHub issue, its pull request, or the repository.">Record</Eyebrow>
               <div className="flex flex-wrap items-center gap-3">
                 {d.issue_url ? (
                   <a href={d.issue_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">

@@ -24,6 +24,7 @@ export default function Capabilities() {
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("name");
   const [dir, setDir] = useState<SortDir>("asc");
+  const [showAllKw, setShowAllKw] = useState(false);
 
   // Coerce at the render boundary — stale caches / drift can't crash .join.
   const rows = (m.data ?? []).map((c) => ({
@@ -89,9 +90,12 @@ export default function Capabilities() {
 
           {keywordIndex.length > 0 && (
             <div className="mb-5">
-              <div className={`mb-1.5 text-[11px] uppercase tracking-widest ${faint}`}>Keyword index</div>
+              <div className={`mb-1.5 flex items-center gap-2 text-[11px] uppercase tracking-widest ${faint}`}>
+                <span>Keyword index</span>
+                <span className="normal-case tracking-normal">· {keywordIndex.length} terms</span>
+              </div>
               <div className="flex flex-wrap gap-1.5">
-                {keywordIndex.slice(0, 40).map(([k, n]) => (
+                {(showAllKw ? keywordIndex : keywordIndex.slice(0, 14)).map(([k, n]) => (
                   <button
                     key={k}
                     onClick={() => setQ((cur) => (cur === k ? "" : k))}
@@ -104,7 +108,16 @@ export default function Capabilities() {
                     <Icon name="tag" className="text-[10px] opacity-70" /> {k} <span className={faint}>{n}</span>
                   </button>
                 ))}
+                {keywordIndex.length > 14 && (
+                  <button
+                    onClick={() => setShowAllKw((s) => !s)}
+                    className="rounded-full px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:underline dark:text-amber-300"
+                  >
+                    {showAllKw ? "Show fewer" : `+${keywordIndex.length - 14} more`}
+                  </button>
+                )}
               </div>
+              <p className={`mt-1.5 text-[11px] ${faint}`}>The index is a starting set — for the full term space, run the Concordance's elastic search.</p>
             </div>
           )}
 

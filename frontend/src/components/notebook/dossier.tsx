@@ -49,11 +49,13 @@ export function IssueJump({ compact }: { compact?: boolean }) {
 
 // ─── Micro-affordances ─────────────────────────────────────────────────────
 
-// Shared popover styling. Triggered by an ancestor carrying `group/tip`.
+// Annotation popover — a panel-colored note with an amber rule (the tactic from
+// optionality-mcp's annotate.tsx), NOT a stark high-contrast chip. Triggered by
+// an ancestor carrying `group/tip`.
 export const POP_CLS =
-  "pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-max max-w-[230px] -translate-x-1/2 translate-y-1 rounded-lg bg-zinc-900 px-2.5 py-2 text-left text-[12px] font-normal normal-case leading-snug tracking-normal text-zinc-50 opacity-0 shadow-lg transition duration-150 group-hover/tip:translate-y-0 group-hover/tip:opacity-100 group-focus-within/tip:translate-y-0 group-focus-within/tip:opacity-100 dark:bg-zinc-100 dark:text-zinc-900";
+  "pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-max max-w-[240px] -translate-x-1/2 translate-y-1 rounded-md border border-amber-400/70 bg-white px-3 py-2 text-left text-[12px] font-normal normal-case leading-snug tracking-normal text-stone-700 opacity-0 shadow-[0_6px_24px_rgba(60,48,30,0.18)] transition duration-150 group-hover/tip:translate-y-0 group-hover/tip:opacity-100 group-focus-within/tip:translate-y-0 group-focus-within/tip:opacity-100 dark:border-amber-500/50 dark:bg-zinc-900 dark:text-zinc-200";
 
-/// A hover/focus tooltip. Teaches without prose.
+/// A hover/focus popover around an arbitrary trigger (no underline).
 export function Tip({ text, children }: { text: string; children: ReactNode }) {
   return (
     <span className="group/tip relative inline-flex focus-within:z-30">
@@ -63,27 +65,27 @@ export function Tip({ text, children }: { text: string; children: ReactNode }) {
   );
 }
 
-/// Smooth-scroll to a cell and flash it — the drilldown behind a stat click.
+/// Annotate a term: a dotted amber underline is the affordance; the note appears
+/// on hover/focus. The definition rides on the word itself, not a separate icon.
+export function Annotate({ text, children }: { text: string; children: ReactNode }) {
+  return (
+    <span className="group/tip relative inline focus-within:z-30">
+      <span tabIndex={0} className="cursor-help border-b border-dotted border-amber-500/70 outline-none">{children}</span>
+      <span role="tooltip" className={POP_CLS}>{text}</span>
+    </span>
+  );
+}
+
+/// Smooth-scroll to a cell and mark it — the drilldown behind a stat click.
 export function drillTo(id: string): void {
   const el = document.getElementById(id);
   if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });
-  el.classList.add("cell-flash");
-  window.setTimeout(() => el.classList.remove("cell-flash"), 1200);
-}
-
-export function InfoTip({ text }: { text: string }) {
-  return (
-    <Tip text={text}>
-      <button
-        type="button"
-        aria-label="More information"
-        className="grid h-5 w-5 place-items-center rounded text-[15px] text-stone-400 transition-colors hover:text-amber-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 dark:text-zinc-500 dark:hover:text-amber-400"
-      >
-        <Icon name="info" />
-      </button>
-    </Tip>
-  );
+  el.classList.remove("cell-mark");
+  // reflow so the animation restarts on repeat clicks
+  void el.offsetWidth;
+  el.classList.add("cell-mark");
+  window.setTimeout(() => el.classList.remove("cell-mark"), 1600);
 }
 
 const iconBtn =
@@ -284,7 +286,7 @@ export function Stat({
           {icon && <Icon name={icon} className="text-[13px] text-stone-400 group-hover/tip:text-amber-600 dark:text-zinc-500 dark:group-hover/tip:text-amber-400" />}
           <span className={`font-mono text-2xl font-semibold tabular-nums ${accent ? "text-amber-600 dark:text-amber-400" : ""}`}>{num}</span>
         </span>
-        <span className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500">{label}</span>
+        <span className={`mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500 ${tip ? "border-b border-dotted border-amber-500/50 group-hover/tip:border-amber-500" : ""}`}>{label}</span>
         {tip && <span role="tooltip" className={POP_CLS}>{tip}</span>}
       </button>
     </div>
@@ -299,7 +301,7 @@ export function Cells({ children }: { children: ReactNode }) {
 
 export function Cell({ id, span, children }: { id?: string; span?: boolean; children: ReactNode }) {
   return (
-    <div id={id} className={`scroll-mt-20 rounded-sm bg-white px-5 py-4 dark:bg-zinc-900 ${span ? "sm:col-span-2" : ""}`}>
+    <div id={id} className={`relative scroll-mt-20 bg-white px-5 py-4 dark:bg-zinc-900 ${span ? "sm:col-span-2" : ""}`}>
       {children}
     </div>
   );
@@ -309,9 +311,8 @@ export function Eyebrow({ icon, children, count, info }: { icon: IconName; child
   return (
     <div className="mb-2.5 flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-stone-400 dark:text-zinc-500">
       <Icon name={icon} className="text-[14px] text-stone-500 dark:text-zinc-400" />
-      {children}
+      {info ? <Annotate text={info}>{children}</Annotate> : children}
       {count != null && <span className="text-stone-400 dark:text-zinc-500">· {count}</span>}
-      {info && <span className="ml-auto"><InfoTip text={info} /></span>}
     </div>
   );
 }

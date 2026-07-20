@@ -101,12 +101,12 @@ export default function CapabilityDetail() {
           />
 
           <BoxScore>
-            <Stat icon="dns" num={explain.owners?.length ?? 0} label="Owners" drill="cap-affiliations" tip="Services that own this capability." />
-            <Stat icon="groups" num={explain.consumers?.length ?? 0} label="Consumers" drill="cap-affiliations" tip="Services that depend on this capability." />
+            <Stat icon="dns" num={explain.owners?.length ?? 0} label="Owners" drill="cap-owners" tip="Services that own this capability." />
+            <Stat icon="groups" num={explain.consumers?.length ?? 0} label="Consumers" drill="cap-consumers" tip="Services that depend on this capability." />
             <Stat icon="symbol" num={b?.symbols.length ?? 0} label="Symbols" accent drill="cap-symbols" tip="Code symbols that implement it — the grep scope for a fix." />
             <Stat icon="bookmark" num={b?.patents.length ?? 0} label="Patents" drill="cap-patents" tip="Filed patent elements that ground its rationale." />
-            <Stat icon="history" num={precedents.length} label="Precedents" drill="cap-history" tip="Prior issues that touched this capability." />
-            <Stat icon="verified" num={invariants.length} label="Guards" drill="cap-rules" tip="Invariants the fleet must not violate." />
+            <Stat icon="history" num={precedents.length} label="Precedents" drill="cap-precedents" tip="Prior issues that touched this capability." />
+            <Stat icon="verified" num={invariants.length} label="Invariants" drill="cap-invariants" tip="Rules the fleet must not violate." />
           </BoxScore>
 
           {/* Rationale */}
@@ -132,7 +132,7 @@ export default function CapabilityDetail() {
 
           <Cells>
             <Cell id="cap-symbols">
-              <Eyebrow icon="symbol" count={b?.symbols.length ?? 0} info="Each symbol links to its owning service. Copy the FQN or open it on GitHub.">Realized by</Eyebrow>
+              <Eyebrow icon="symbol" count={b?.symbols.length ?? 0} info="The code that implements this capability — the grep scope for a fix. Each links to its owning service; copy the FQN or open it on GitHub.">Symbols</Eyebrow>
               {b && b.symbols.length > 0 ? (
                 <div className="flex flex-col gap-2.5">
                   {b.symbols.map((s, i) => {
@@ -145,20 +145,8 @@ export default function CapabilityDetail() {
               )}
             </Cell>
 
-            <Cell id="cap-affiliations">
-              <Eyebrow icon="dns" info="Owners provide the capability; consumers depend on it. Each badge opens that service.">Affiliations</Eyebrow>
-              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-stone-400 dark:text-zinc-500">Owned by</div>
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {(explain.owners ?? []).length ? explain.owners!.map((o) => <RepoBadge key={o} repo={o} />) : <span className={`text-sm ${muted}`}>—</span>}
-              </div>
-              <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-stone-400 dark:text-zinc-500">Consumed by · {explain.consumers?.length ?? 0}</div>
-              <div className="flex flex-wrap gap-1.5">
-                {(explain.consumers ?? []).length ? explain.consumers!.map((c) => <RepoBadge key={c} repo={c} />) : <span className={`text-sm ${muted}`}>—</span>}
-              </div>
-            </Cell>
-
             <Cell id="cap-patents">
-              <Eyebrow icon="bookmark" count={`${b?.patents.length ?? 0} patent elements`} info="Reference numerals from the filed provisional. Each opens the patent element.">Decorations</Eyebrow>
+              <Eyebrow icon="bookmark" count={b?.patents.length ?? 0} info="Filed patent reference numerals that ground this capability's rationale. Each opens the patent element.">Patents</Eyebrow>
               {b && b.patents.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {b.patents.map((p) => (p.ref != null ? <PatentBadge key={p.ref} refNum={p.ref} name={p.name} /> : null))}
@@ -168,8 +156,22 @@ export default function CapabilityDetail() {
               )}
             </Cell>
 
-            <Cell id="cap-rules">
-              <Eyebrow icon="verified" count={`${invariants.length} invariant${invariants.length === 1 ? "" : "s"}`} info="Human-authored rules the fleet must not violate — drift alarms if broken.">House rules</Eyebrow>
+            <Cell id="cap-owners">
+              <Eyebrow icon="dns" count={explain.owners?.length ?? 0} info="Services that own and provide this capability. Each badge opens that service.">Owners</Eyebrow>
+              <div className="flex flex-wrap gap-1.5">
+                {(explain.owners ?? []).length ? explain.owners!.map((o) => <RepoBadge key={o} repo={o} />) : <span className={`text-sm ${muted}`}>—</span>}
+              </div>
+            </Cell>
+
+            <Cell id="cap-consumers">
+              <Eyebrow icon="groups" count={explain.consumers?.length ?? 0} info="Services that depend on this capability. Each badge opens that service.">Consumers</Eyebrow>
+              <div className="flex flex-wrap gap-1.5">
+                {(explain.consumers ?? []).length ? explain.consumers!.map((c) => <RepoBadge key={c} repo={c} />) : <span className={`text-sm ${muted}`}>—</span>}
+              </div>
+            </Cell>
+
+            <Cell id="cap-invariants" span>
+              <Eyebrow icon="verified" count={invariants.length} info="Human-authored rules the fleet must not violate — a drift alarm fires if one is broken.">Invariants</Eyebrow>
               {invariants.length ? (
                 <ul className="flex flex-col gap-2">
                   {invariants.map((inv, i) => (
@@ -185,8 +187,8 @@ export default function CapabilityDetail() {
             </Cell>
 
             {precedents.length > 0 && (
-              <Cell id="cap-history" span>
-                <Eyebrow icon="history" count={`${precedents.length} precedents`} info="Prior issues about this capability. Each opens its own issue dossier.">Case history</Eyebrow>
+              <Cell id="cap-precedents" span>
+                <Eyebrow icon="history" count={precedents.length} info="Prior issues about this capability. Each opens its own issue dossier.">Precedents</Eyebrow>
                 <ul className="flex flex-col gap-2">
                   {precedents.map((pr, i) => {
                     const internal = issueLinkFromUrl(pr.url, pr.number);
