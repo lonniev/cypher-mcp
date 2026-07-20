@@ -822,6 +822,7 @@ export interface IssueSummary {
   repo_name?: string;
   number?: number;
   title?: string;
+  actionable_text?: string;
   classification?: string;
   disposition?: string;
   resolved_via?: string;

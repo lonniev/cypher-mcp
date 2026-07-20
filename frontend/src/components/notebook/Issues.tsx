@@ -112,7 +112,9 @@ export default function Issues() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug text-stone-900 group-hover:text-amber-700 dark:text-zinc-50 dark:group-hover:text-amber-300">{i.title ?? `Issue #${i.number}`}</h3>
+                        <h3 className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug text-stone-900 group-hover:text-amber-700 dark:text-zinc-50 dark:group-hover:text-amber-300">
+                          {i.title?.trim() || i.actionable_text?.trim() || `Issue #${i.number}`}
+                        </h3>
                         <Icon name="open" size={15} className="mt-0.5 shrink-0 text-stone-300 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-500 dark:text-zinc-600" />
                       </div>
                       <div className="mt-1 inline-flex items-center gap-1 font-mono text-[10.5px] text-stone-500 dark:text-zinc-400">
@@ -120,6 +122,10 @@ export default function Issues() {
                       </div>
                     </div>
                   </div>
+                  {/* Secondary summary — the Porter's triage spec, when the card's headline is the GitHub title. */}
+                  {i.title?.trim() && i.actionable_text?.trim() && (
+                    <div className={`line-clamp-2 text-[12.5px] leading-snug ${muted}`}>{i.actionable_text}</div>
+                  )}
                   <div className="flex flex-wrap items-center gap-1.5">
                     {i.classification && <span className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">{i.classification}</span>}
                     {i.disposition && (
