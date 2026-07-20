@@ -70,21 +70,25 @@ export function Icon({
   className = "",
   style,
   title,
+  size = 16,
 }: {
   name: IconName;
   className?: string;
   style?: CSSProperties;
   title?: string;
+  /// Rendered size in px. Decoupled from surrounding font-size so an icon in a
+  /// tiny caption isn't itself tiny. Default 16.
+  size?: number;
 }) {
-  const cls = `inline-block h-[1em] w-[1em] shrink-0 align-[-0.14em] ${className}`;
+  const cls = `inline-block shrink-0 align-[-0.15em] ${className}`;
   const L = LUCIDE[name];
   if (L) {
-    return <L className={cls} style={style} strokeWidth={2} aria-hidden={title ? undefined : true} aria-label={title} />;
+    return <L size={size} className={cls} strokeWidth={2.15} style={style} aria-hidden={title ? undefined : true} aria-label={title} />;
   }
   const b = BRAND[name];
   if (!b) return null;
   return (
-    <svg viewBox={b.vb ?? "0 0 24 24"} className={`${cls} fill-current`} style={style} role={title ? "img" : "presentation"} aria-label={title} aria-hidden={title ? undefined : true}>
+    <svg width={size} height={size} viewBox={b.vb ?? "0 0 24 24"} className={`${cls} fill-current`} style={style} role={title ? "img" : "presentation"} aria-label={title} aria-hidden={title ? undefined : true}>
       <path d={b.path} />
     </svg>
   );

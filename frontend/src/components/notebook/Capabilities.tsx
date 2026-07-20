@@ -105,7 +105,7 @@ export default function Capabilities() {
                         : "border-stone-200 text-stone-500 hover:border-amber-300 dark:border-zinc-800 dark:text-zinc-400"
                     }`}
                   >
-                    <Icon name="tag" className="text-[10px] opacity-70" /> {k} <span className={faint}>{n}</span>
+                    <Icon name="tag" size={12} className="opacity-70" /> {k} <span className={faint}>{n}</span>
                   </button>
                 ))}
                 {keywordIndex.length > 14 && (
@@ -163,7 +163,7 @@ export default function Capabilities() {
                         <div className="mt-1 flex flex-wrap gap-1">
                           {c.owners.slice(0, 3).map((o) => (
                             <span key={o} className="inline-flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">
-                              <Icon name="github" className="text-[11px]" /> {o}
+                              <Icon name="github" size={13} /> {o}
                             </span>
                           ))}
                           {c.owners.length > 3 && <span className={`text-[10.5px] ${faint}`}>+{c.owners.length - 3}</span>}

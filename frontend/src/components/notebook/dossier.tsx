@@ -204,7 +204,7 @@ export function DossierHead({
             {tags.map((t) =>
               tagHref ? (
                 <Link key={t} to={tagHref(t)} title={`Look up “${t}” in the concordance`} className={`${tagCls} transition-colors hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-300`}>
-                  <Icon name="tag" className="text-[10px] opacity-70" /> {t}
+                  <Icon name="tag" size={11} className="opacity-70" /> {t}
                 </Link>
               ) : (
                 <span key={t} className={tagCls}>{t}</span>
@@ -283,7 +283,7 @@ export function Stat({
         className={`group/tip relative flex w-full flex-col items-center px-3.5 py-3 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${drill ? "cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/10" : "cursor-default"}`}
       >
         <span className="flex items-center gap-1.5">
-          {icon && <Icon name={icon} className="text-[13px] text-stone-400 group-hover/tip:text-amber-600 dark:text-zinc-500 dark:group-hover/tip:text-amber-400" />}
+          {icon && <Icon name={icon} size={19} className="text-stone-400 group-hover/tip:text-amber-600 dark:text-zinc-500 dark:group-hover/tip:text-amber-400" />}
           <span className={`font-mono text-2xl font-semibold tabular-nums ${accent ? "text-amber-600 dark:text-amber-400" : ""}`}>{num}</span>
         </span>
         <span className={`mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500 ${tip ? "border-b border-dotted border-amber-500/50 group-hover/tip:border-amber-500" : ""}`}>{label}</span>
@@ -372,7 +372,7 @@ const badge =
 export function RepoBadge({ repo }: { repo: string }) {
   return (
     <Link to={`/services/${encodeURIComponent(repo)}`} className={badge}>
-      <Icon name="github" className="text-[13px] text-stone-500 dark:text-zinc-400" />
+      <Icon name="github" size={14} className="text-stone-500 dark:text-zinc-400" />
       {repo}
     </Link>
   );
