@@ -1,0 +1,96 @@
+// Unauthenticated landing hero. Typographic + a CSS gradient wash (no
+// hand-drawn SVG scenery) and a single lucide glyph as the brand mark.
+// Voice is descriptive-functional; the Tollbooth DPYC mention is discreet but
+// always present, and pitches the real differentiator — operator-controlled
+// dynamic pricing at the MCP layer.
+
+import { Notebook, Boxes, SearchCode, Gauge } from "lucide-react";
+import type { ReactNode } from "react";
+
+export default function Hero() {
+  return (
+    <section className="relative overflow-hidden border-b border-stone-200 dark:border-zinc-800">
+      {/* ambient gradient — pure CSS, decorative only */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-400/20 blur-3xl"
+      />
+
+      <div className="relative mx-auto max-w-5xl px-6 py-16 sm:py-20">
+        <div className="mb-6 flex items-center gap-3">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-500/15 text-amber-500 ring-1 ring-amber-500/30">
+            <Notebook className="h-6 w-6" />
+          </span>
+          <div>
+            <div className="font-serif text-2xl font-semibold tracking-tight">
+              Cypher <span className="font-normal text-stone-400 dark:text-zinc-500">Lab Notebook</span>
+            </div>
+            <div className="text-xs uppercase tracking-widest text-amber-600 dark:text-amber-400">
+              The DPYC Agentic Service Desk, read as a bound volume
+            </div>
+          </div>
+        </div>
+
+        <h1 className="max-w-2xl font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+          Study the intention graph that grounds the Software Factory.
+        </h1>
+        <p className="mt-4 max-w-2xl text-base leading-relaxed text-stone-600 dark:text-zinc-400">
+          Cypher MCP holds the fleet's institutional memory — capabilities and the code that
+          realizes them, invariants, patent tracing, and every issue the Service Desk has triaged.
+          This is the architect's reading room over that graph: a table of contents, a keyword
+          concordance, cross-referenced registers, and a metrics ledger — not a bouncing bubble map.
+        </p>
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-stone-600 dark:text-zinc-400">
+          Sign in with a Nostr key. Operational status reads free; graph reads settle in Bitcoin
+          Lightning and are cached, so you rarely pay for the same page twice. Provenance is honest
+          throughout — human-authored doctrine is marked apart from an agent's unverified advice.
+        </p>
+
+        <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
+          <Feature
+            icon={<Boxes className="h-5 w-5" />}
+            title="Cross-referenced registers"
+            body="Capabilities, symbols, services, and patent elements — each entry links to the others, the way a good index should."
+          />
+          <Feature
+            icon={<SearchCode className="h-5 w-5" />}
+            title="Keyword concordance"
+            body="One lookup resolves twelve repos to a single grounded answer: which service, which symbols, which precedents."
+          />
+          <Feature
+            icon={<Gauge className="h-5 w-5" />}
+            title="Token-savings ledger"
+            body="Watch how the Service Desk finds code — graph vs. grep — and see the graph pay for itself over time."
+          />
+        </div>
+
+        <p className="mt-8 text-xs text-stone-400 dark:text-zinc-500">
+          Powered by{" "}
+          <a
+            href="https://tollbooth-dpyc.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-600/90 hover:underline dark:text-amber-400/90"
+          >
+            Tollbooth DPYC™
+          </a>{" "}
+          — operator-controlled dynamic pricing at the MCP layer.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function Feature({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
+  return (
+    <div className="rounded-xl border border-stone-200 bg-white/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+      <div className="mb-2 text-amber-500">{icon}</div>
+      <div className="text-sm font-medium">{title}</div>
+      <div className="mt-1 text-xs leading-relaxed text-stone-500 dark:text-zinc-400">{body}</div>
+    </div>
+  );
+}
