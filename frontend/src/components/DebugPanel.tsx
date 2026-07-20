@@ -1,9 +1,14 @@
 // On-screen MCP activity log, ported from taxsort-mcp. A fixed bottom bar that
 // shows every MCP call/result/error so you can see what the FE is doing —
 // invaluable during bring-up and for watching metered graph reads settle.
+//
+// Hardened for capture: the log persists across reloads (localStorage), a Copy
+// button grabs the whole thing, and uncaught errors + proof-expiry bounces are
+// folded in — so an error that flips the view can still be read afterward.
 
-import { useState } from "react";
-import { clearDebug, useDebugLog, type DebugEntry } from "../lib/debugLog";
+import { useEffect, useState } from "react";
+import { clearDebug, debugLogText, debugPush, useDebugLog, type DebugEntry } from "../lib/debugLog";
+import { onProofExpired } from "../lib/mcp";
 
 const TYPE_COLOR: Record<DebugEntry["type"], string> = {
   info: "text-sky-400",
@@ -11,6 +16,8 @@ const TYPE_COLOR: Record<DebugEntry["type"], string> = {
   result: "text-green-400",
   error: "text-red-400",
 };
+
+const OPEN_KEY = "cypher:debug-open:v1";
 
 function isFailure(entry: DebugEntry): boolean {
   if (entry.type === "error") return true;
@@ -21,9 +28,43 @@ function isFailure(entry: DebugEntry): boolean {
   return false;
 }
 
+// Fold uncaught errors, promise rejections, and proof bounces into the log —
+// once per page, guarded so React StrictMode / remounts don't double-register.
+let globalsWired = false;
+function wireGlobalCapture(): void {
+  if (globalsWired) return;
+  globalsWired = true;
+  window.addEventListener("error", (e) => debugPush("error", `window.error: ${e.message}`));
+  window.addEventListener("unhandledrejection", (e) =>
+    debugPush("error", `unhandledrejection: ${String((e as PromiseRejectionEvent).reason)}`),
+  );
+  onProofExpired((msg) => debugPush("info", `proof expired → returning to sign-in: ${msg}`));
+}
+
 export default function DebugPanel() {
   const log = useDebugLog();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>(() => window.localStorage.getItem(OPEN_KEY) === "1");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => wireGlobalCapture(), []);
+
+  function toggle() {
+    setOpen((o) => {
+      const next = !o;
+      window.localStorage.setItem(OPEN_KEY, next ? "1" : "0");
+      return next;
+    });
+  }
+
+  function copy() {
+    navigator.clipboard?.writeText(debugLogText()).then(
+      () => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1500);
+      },
+      () => {},
+    );
+  }
 
   const errorCount = log.filter(isFailure).length;
 
@@ -33,15 +74,24 @@ export default function DebugPanel() {
           tab is never overlapped by the expanded log. */}
       <div className="flex gap-1 pr-3">
         {open && (
-          <button
-            onClick={clearDebug}
-            className="rounded-t-lg bg-zinc-700 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
-          >
-            Clear
-          </button>
+          <>
+            <button
+              onClick={copy}
+              className="rounded-t-lg bg-zinc-700 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+              title="Copy the whole log to the clipboard"
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+            <button
+              onClick={clearDebug}
+              className="rounded-t-lg bg-zinc-700 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-600"
+            >
+              Clear
+            </button>
+          </>
         )}
         <button
-          onClick={() => setOpen(!open)}
+          onClick={toggle}
           className={`rounded-t-lg px-3 py-1 text-xs text-white ${
             errorCount > 0 ? "bg-red-700 hover:bg-red-600" : "bg-zinc-800 hover:bg-zinc-700"
           }`}

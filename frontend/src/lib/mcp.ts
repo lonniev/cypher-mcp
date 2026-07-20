@@ -454,8 +454,11 @@ export interface CheckBalanceResult {
   error_code?: string;
 }
 
+/// Balance is a free convenience read that the nav bar polls on every
+/// navigation. It is best-effort: a lapsed proof must never log the architect
+/// out from a background poll — only a user-initiated metered graph read does.
 export async function checkBalance(): Promise<CheckBalanceResult> {
-  return callTool<CheckBalanceResult>("check_balance", {});
+  return callTool<CheckBalanceResult>("check_balance", {}, { bestEffort: true });
 }
 
 export interface CheckPriceResult {
@@ -522,8 +525,10 @@ export interface AccountStatementResult {
   error?: string;
 }
 
+/// Best-effort: a background statement read on the Profile page must not bounce
+/// the architect to sign-in.
 export async function getAccountStatement(days = 30): Promise<AccountStatementResult> {
-  return callTool<AccountStatementResult>("account_statement", { days });
+  return callTool<AccountStatementResult>("account_statement", { days }, { bestEffort: true });
 }
 
 // ─── Pricing model (free) — the published dynamic tool set + prices ─────────
