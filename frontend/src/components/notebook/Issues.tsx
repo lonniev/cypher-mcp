@@ -6,8 +6,8 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { asStrList, listIssues, type IssueSummary, type SortDir } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
-import { toMillis, relTime, withinDays } from "../../lib/time";
-import { Page, MeteredBar, Empty, MeteredError, SinceFilter, faint, muted } from "./ui";
+import { toMillis, relTime } from "../../lib/time";
+import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
 import QuoteScroller from "../QuoteScroller";
 import { IssueJump, ResolvedPill } from "./dossier";
@@ -25,19 +25,23 @@ function resolved(disposition?: string): boolean {
 }
 
 export default function Issues() {
-  const m = useMetered<IssueSummary[]>("issues:list", "list_issues", listIssues);
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("recent");
   const [dir, setDir] = useState<SortDir>("desc");
+  // Server-side time window: each window is its own cached read; no auto-fetch.
   const [since, setSince] = useState(0);
+  const m = useMetered<IssueSummary[]>(
+    `issues:list:since=${since}`,
+    "list_issues",
+    () => listIssues({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0 }),
+    { autoFetch: false },
+  );
 
   const rows = (m.data ?? []).map((i) => ({ ...i, capabilities: asStrList(i.capabilities) }));
-  const hasTimestamps = rows.some((i) => toMillis(i.updated_at) != null);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const out = rows.filter((i) => {
-      if (!withinDays(toMillis(i.updated_at), since)) return false;
       if (!needle) return true;
       return (
         String(i.number ?? "").includes(needle) ||
@@ -56,7 +60,7 @@ export default function Issues() {
       return sign * ((toMillis(a.updated_at) ?? 0) - (toMillis(b.updated_at) ?? 0));
     });
     return out;
-  }, [rows, q, sortCol, dir, since]);
+  }, [rows, q, sortCol, dir]);
 
   return (
     <Page eyebrow="Register" title="Issues" lede="Every issue the Service Desk has triaged. Filter here, open a known issue directly, or run elastic search in the Concordance.">
@@ -88,8 +92,8 @@ export default function Issues() {
 
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className={`text-xs ${faint}`}>{filtered.length} of {rows.length} issues</span>
-              {hasTimestamps && <SinceFilter value={since} onChange={setSince} />}
+              <span className={`text-xs ${faint}`}>{m.data ? `${filtered.length} of ${rows.length} issues` : "not loaded"}</span>
+              <SinceFilter value={since} onChange={setSince} />
             </div>
             <div className="flex items-center gap-1">
               {SORTS.map((s) => (
@@ -105,10 +109,12 @@ export default function Issues() {
             </div>
           </div>
 
-          {m.cold && m.loading ? (
+          {m.loading ? (
             <QuoteScroller heading="Reading the issue catalog…" className="py-12" />
+          ) : !m.data ? (
+            <LoadPanel label={since > 0 ? "Load recent issues" : "Load issues"} priceSats={m.priceSats} onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
-            <Empty>{rows.length === 0 ? "No issues recorded yet." : "No issues match this filter."}</Empty>
+            <Empty>No issues match this filter.</Empty>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {filtered.map((i) => (

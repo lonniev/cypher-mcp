@@ -195,6 +195,39 @@ export function XRef({ to, children }: { to: string; children: ReactNode }) {
   );
 }
 
+/// The "set your filters, then run the query" state — a register shows this
+/// instead of auto-fetching on tab entry, so the user isn't billed for a
+/// fetch-all before they've chosen a window. Shows the live per-read price.
+export function LoadPanel({
+  label,
+  priceSats,
+  onLoad,
+  loading,
+}: {
+  label: string;
+  priceSats: number | null;
+  onLoad: () => void;
+  loading?: boolean;
+}) {
+  return (
+    <div className={`${card} flex flex-col items-center gap-3 px-6 py-10 text-center`}>
+      <BookOpen className="h-6 w-6 text-stone-300 dark:text-zinc-600" />
+      <p className={`max-w-sm text-sm ${muted}`}>
+        Set your filters above, then run the query. Nothing is fetched — or billed — until you do.
+      </p>
+      <button
+        onClick={onLoad}
+        disabled={loading}
+        className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-500 disabled:opacity-40"
+      >
+        <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+        {label}
+        {priceSats != null && <span className="opacity-80">· {priceSats === 0 ? "free" : `~${priceSats} sats`}</span>}
+      </button>
+    </div>
+  );
+}
+
 export function Empty({ children }: { children: ReactNode }) {
   return (
     <div className={`${card} flex items-center gap-2 px-4 py-8 text-sm ${muted}`}>

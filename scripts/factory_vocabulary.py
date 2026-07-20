@@ -588,6 +588,7 @@ READ_VOCABULARY: list[Template] = [
         key="list_issues",
         cypher=(
             "MATCH (i:Issue) "
+            "WHERE $since_ms <= 0 OR coalesce(i.scoped_at, i.triaged_at) >= $since_ms "
             "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(c:Capability) "
             "RETURN i.repo_name AS repo_name, i.number AS number, i.title AS title, "
             "       i.classification AS classification, i.disposition AS disposition, "
@@ -599,7 +600,10 @@ READ_VOCABULARY: list[Template] = [
             "       collect(DISTINCT c.name) AS capabilities "
             "ORDER BY coalesce(i.scoped_at, i.triaged_at) DESC, i.number DESC"
         ),
-        param_schema={},
+        param_schema={
+            "since_ms": {"type": "int", "required": False,
+                         "description": "Epoch-ms lower bound on triage/scope time; 0 (default) = any time."},
+        },
         description="The compact issue catalog (repo, number, title, classification, disposition, "
                     "resolved_via, capabilities) — the Issues index, peer to list_capabilities.",
         intent="List every triaged issue for the Issues register.",
@@ -613,13 +617,18 @@ READ_VOCABULARY: list[Template] = [
         key="list_capabilities",
         cypher=(
             "MATCH (c:Capability) "
+            "WHERE $since_ms <= 0 "
+            "   OR coalesce(c.updated_at, c.authored_at, c.inferred_at) >= $since_ms "
             "OPTIONAL MATCH (c)-[:OWNED_BY]->(o:Service) "
             "RETURN c.name AS name, collect(DISTINCT o.repo_name) AS owners, "
             "       c.keywords AS keywords, "
             "       coalesce(c.updated_at, c.authored_at, c.inferred_at) AS updated_at "
             "ORDER BY name"
         ),
-        param_schema={},
+        param_schema={
+            "since_ms": {"type": "int", "required": False,
+                         "description": "Epoch-ms lower bound on change time; 0 (default) = any time."},
+        },
         description="The compact capability catalog (name, owners, keywords) for semantic triage "
                     "— retrieve all, match the issue's intent in-context, then explain_capability.",
         intent="List every capability for semantic intent-matching.",

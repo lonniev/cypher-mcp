@@ -40,7 +40,7 @@ export default function IssueDetail() {
 
   // Swipe / arrow between issues in the register's (cached) order.
   const siblings = useMemo(() => {
-    const cached = readCache<IssueSummary[]>("issues:list")?.data ?? [];
+    const cached = readCache<IssueSummary[]>("issues:list:since=0")?.data ?? [];
     return cached
       .filter((i) => i.repo_name && i.number != null)
       .map((i) => ({ repo: String(i.repo_name), number: Number(i.number) }));

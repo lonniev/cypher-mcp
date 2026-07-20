@@ -7,8 +7,8 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { asStrList, listCapabilities, type CapabilitySummary, type SortDir } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
-import { toMillis, relTime, withinDays } from "../../lib/time";
-import { Page, MeteredBar, Empty, MeteredError, SinceFilter, faint, muted } from "./ui";
+import { toMillis, relTime } from "../../lib/time";
+import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
 import QuoteScroller from "../QuoteScroller";
 import { IssueJump, initialsOf } from "./dossier";
@@ -23,12 +23,19 @@ const SORTS: { col: Col; label: string }[] = [
 ];
 
 export default function Capabilities() {
-  const m = useMetered<CapabilitySummary[]>("capabilities:list", "list_capabilities", listCapabilities);
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("name");
   const [dir, setDir] = useState<SortDir>("asc");
   const [showAllKw, setShowAllKw] = useState(false);
+  // The time window is a SERVER-side query param, so each window is its own
+  // cached read. Register never auto-fetches — the user sets filters, then loads.
   const [since, setSince] = useState(0);
+  const m = useMetered<CapabilitySummary[]>(
+    `capabilities:list:since=${since}`,
+    "list_capabilities",
+    () => listCapabilities({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0 }),
+    { autoFetch: false },
+  );
 
   // Coerce at the render boundary — stale caches / drift can't crash .join.
   const rows = (m.data ?? []).map((c) => ({
@@ -44,12 +51,9 @@ export default function Capabilities() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [rows]);
 
-  const hasTimestamps = rows.some((c) => toMillis(c.updated_at) != null);
-
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const out = rows.filter((c) => {
-      if (!withinDays(toMillis(c.updated_at), since)) return false;
       if (!needle) return true;
       return (
         c.name.toLowerCase().includes(needle) ||
@@ -65,7 +69,7 @@ export default function Capabilities() {
       return sign * ((toMillis(a.updated_at) ?? 0) - (toMillis(b.updated_at) ?? 0));
     });
     return out;
-  }, [rows, q, sortCol, dir, since]);
+  }, [rows, q, sortCol, dir]);
 
   return (
     <Page eyebrow="Register" title="Capabilities" lede="The fleet's abilities. Filter here, run full elastic search in the Concordance, or open a known issue directly.">
@@ -132,8 +136,8 @@ export default function Capabilities() {
           {/* Count · time filter · sort */}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className={`text-xs ${faint}`}>{filtered.length} of {rows.length} capabilities</span>
-              {hasTimestamps && <SinceFilter value={since} onChange={setSince} />}
+              <span className={`text-xs ${faint}`}>{m.data ? `${filtered.length} of ${rows.length} capabilities` : "not loaded"}</span>
+              <SinceFilter value={since} onChange={setSince} />
             </div>
             <div className="flex items-center gap-1">
               {SORTS.map((s) => (
@@ -149,10 +153,12 @@ export default function Capabilities() {
             </div>
           </div>
 
-          {m.cold && m.loading ? (
+          {m.loading ? (
             <QuoteScroller heading="Reading the capability catalog…" className="py-12" />
+          ) : !m.data ? (
+            <LoadPanel label={since > 0 ? "Load recent capabilities" : "Load capabilities"} priceSats={m.priceSats} onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
-            <Empty>{rows.length === 0 ? "No capabilities recorded yet." : "No entries match this filter."}</Empty>
+            <Empty>No entries match this filter.</Empty>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {filtered.map((c) => (

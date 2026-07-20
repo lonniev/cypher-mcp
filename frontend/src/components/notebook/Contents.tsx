@@ -31,7 +31,7 @@ interface Entry {
 export default function Contents() {
   // Opportunistic cached counts — never triggers a paid read, just reflects one
   // if the architect has already visited that register this device.
-  const caps = readCache<CapabilitySummary[]>("capabilities:list")?.data;
+  const caps = readCache<CapabilitySummary[]>("capabilities:list:since=0")?.data;
 
   const registers: Entry[] = [
     {

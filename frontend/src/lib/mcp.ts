@@ -747,9 +747,11 @@ export function asStrList(v: unknown): string[] {
   return [];
 }
 
-/// list_capabilities — the full compact catalog for semantic triage.
-export async function listCapabilities(): Promise<CapabilitySummary[]> {
-  const r = await callTool<unknown>("list_capabilities", {});
+/// list_capabilities — the full compact catalog for semantic triage. `sinceMs`
+/// is a server-side window: only capabilities changed at/after that epoch-ms are
+/// returned (0 = any time).
+export async function listCapabilities(opts: { sinceMs?: number } = {}): Promise<CapabilitySummary[]> {
+  const r = await callTool<unknown>("list_capabilities", { since_ms: opts.sinceMs ?? 0 });
   return asArray<CapabilitySummary>(r).map((c) => ({
     ...c,
     keywords: asStrList(c.keywords),
@@ -851,8 +853,8 @@ export interface IssueSummary {
 
 /// list_issues — the full compact issue catalog (peer of list_capabilities),
 /// published + priced as its own named tool.
-export async function listIssues(): Promise<IssueSummary[]> {
-  const r = await callTool<unknown>("list_issues", {});
+export async function listIssues(opts: { sinceMs?: number } = {}): Promise<IssueSummary[]> {
+  const r = await callTool<unknown>("list_issues", { since_ms: opts.sinceMs ?? 0 });
   return asArray<IssueSummary>(r).map((i) => ({ ...i, capabilities: asStrList(i.capabilities) }));
 }
 

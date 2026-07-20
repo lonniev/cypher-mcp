@@ -142,10 +142,17 @@ export function useMetered<T>(
     };
   }, [toolId]);
 
-  // First load: fetch once if there's no cache to show.
+  // On cacheKey change (e.g. the caller switched the time window), re-hydrate
+  // from that key's cache — show a prior result instantly, or nothing if none.
+  // Only auto-fetch when the caller opts in (registers pass autoFetch:false so a
+  // tab entry never triggers a fetch-all before the user has set their filters).
   useEffect(() => {
-    if (autoFetch && !cached) void doFetch();
-    // Run once per cacheKey.
+    const c = readCache<T>(cacheKey);
+    setData(c?.data ?? null);
+    setCachedAt(c?.at ?? null);
+    setError(null);
+    setCold(!c);
+    if (autoFetch && !c) void doFetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
 

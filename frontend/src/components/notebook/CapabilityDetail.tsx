@@ -61,7 +61,7 @@ export default function CapabilityDetail() {
 
   // Swipe / arrow between capabilities in the register's (cached) A–Z order.
   const siblings = useMemo(() => {
-    const cached = readCache<CapabilitySummary[]>("capabilities:list")?.data ?? [];
+    const cached = readCache<CapabilitySummary[]>("capabilities:list:since=0")?.data ?? [];
     return [...new Set(cached.map((c) => String(c.name ?? "")).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   }, []);
   const idx = siblings.indexOf(decoded);
