@@ -831,8 +831,11 @@ export interface IssueSummary {
 }
 
 /// list_issues — the full compact issue catalog (peer of list_capabilities).
+/// Run via the published `execute_query_by_key` against the seeded `list_issues`
+/// template, so it works whether or not the operator published it as a named
+/// tool (and is billed via the already-priced execute_query_by_key).
 export async function listIssues(): Promise<IssueSummary[]> {
-  const r = await callTool<unknown>("list_issues", {});
+  const r = await callTool<unknown>("execute_query_by_key", { key: "list_issues" });
   return asArray<IssueSummary>(r).map((i) => ({ ...i, capabilities: asStrList(i.capabilities) }));
 }
 

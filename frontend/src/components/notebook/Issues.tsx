@@ -22,7 +22,8 @@ function resolved(disposition?: string): boolean {
 }
 
 export default function Issues() {
-  const m = useMetered<IssueSummary[]>("issues:list", "list_issues", listIssues);
+  // Priced via execute_query_by_key (the tool that runs the list_issues template).
+  const m = useMetered<IssueSummary[]>("issues:list", "execute_query_by_key", listIssues);
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("number");
   const [dir, setDir] = useState<SortDir>("desc");
