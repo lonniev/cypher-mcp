@@ -5,8 +5,47 @@
 // taught with (i) tooltips, and rows carry compact icon actions (copy, open).
 
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Icon, langIcon, type IconName } from "./icons";
+
+/// Parse a GitHub issue/PR reference from a pasted URL or a `repo#123` shorthand.
+export function parseIssueRef(s: string): { repo: string; number: number } | null {
+  const url = s.match(/github\.com\/[^/]+\/([^/]+)\/(?:issues|pull)\/(\d+)/i);
+  if (url) return { repo: url[1], number: Number(url[2]) };
+  const rn = s.trim().match(/^([\w.-]+)\s*[#/ ]\s*(\d+)$/);
+  if (rn) return { repo: rn[1], number: Number(rn[2]) };
+  return null;
+}
+
+/// Start from a known GitHub issue or PR — paste a URL or type `repo#123`.
+export function IssueJump({ compact }: { compact?: boolean }) {
+  const nav = useNavigate();
+  const [v, setV] = useState("");
+  const parsed = parseIssueRef(v);
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (parsed) nav(`/issues/${encodeURIComponent(parsed.repo)}/${parsed.number}`);
+      }}
+      className="flex gap-2"
+    >
+      <div className="relative flex-1">
+        <Icon name="github" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-stone-400 dark:text-zinc-500" />
+        <input
+          value={v}
+          onChange={(e) => setV(e.target.value)}
+          placeholder={compact ? "GitHub issue/PR URL or repo#123" : "Start from a GitHub issue or PR — paste its URL, or type repo#123"}
+          spellCheck={false}
+          className="w-full rounded-lg border border-stone-300 bg-white py-2 pl-9 pr-3 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950"
+        />
+      </div>
+      <button type="submit" disabled={!parsed} className="rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300">
+        Open
+      </button>
+    </form>
+  );
+}
 
 // ─── Micro-affordances ─────────────────────────────────────────────────────
 

@@ -13,6 +13,7 @@ import {
   type WhichServiceEntry,
 } from "../../lib/mcp";
 import { useMetered, readCache, writeCache } from "../../lib/graphCache";
+import { IssueJump } from "./dossier";
 import {
   Page,
   MeteredBar,
@@ -82,6 +83,11 @@ export default function Concordance() {
           Look up
         </button>
       </form>
+
+      <div className="mb-6">
+        <div className={`mb-1.5 text-[11px] uppercase tracking-widest ${faint}`}>Or open a known issue</div>
+        <IssueJump compact />
+      </div>
 
       {recents.length > 0 && !keyword && (
         <div className="mb-6">
