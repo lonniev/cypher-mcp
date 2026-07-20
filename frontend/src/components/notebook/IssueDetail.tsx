@@ -8,8 +8,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { issueProvenance, type IssueProvenance, type IssueSummary } from "../../lib/mcp";
 import { useMetered, readCache } from "../../lib/graphCache";
 import { useSwipeNav } from "../../lib/useSwipeNav";
-import { MeteredBar, Empty, MeteredError, muted } from "./ui";
+import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
+import QuoteScroller from "../QuoteScroller";
 import {
   DossierWrap,
   Dossier,
@@ -59,6 +60,21 @@ export default function IssueDetail() {
   const decisions = d?.decisions ?? [];
   const rejections = d?.rejections ?? [];
   const caps = d?.capabilities ?? [];
+  // A non-existent issue yields an empty match — render "not found", NOT a hollow
+  // dossier that implies the issue exists but is blank.
+  const found = !!(
+    d &&
+    (d.number != null ||
+      d.title ||
+      d.classification ||
+      d.disposition ||
+      d.issue_url ||
+      d.repo_url ||
+      d.actionable_text ||
+      symbols.length ||
+      decisions.length ||
+      rejections.length)
+  );
 
   return (
     <DossierWrap swipe={swipe}>
@@ -70,9 +86,20 @@ export default function IssueDetail() {
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.cold && m.loading && <Empty>Pulling the case file…</Empty>}
+      {!m.error && m.loading && !d && <QuoteScroller heading="Pulling the case file…" className="py-12" />}
 
-      {d && (
+      {!m.error && !m.loading && d && !found && (
+        <div className="mt-4 rounded-xl border border-stone-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
+          <Icon name="close" size={22} className="mx-auto mb-2 text-stone-300 dark:text-zinc-600" />
+          <div className="font-serif text-lg font-semibold">No such issue in the graph</div>
+          <p className={`mx-auto mt-1.5 max-w-md text-sm ${muted}`}>
+            <span className="font-mono text-stone-600 dark:text-zinc-300">{decodedRepo}#{num}</span> hasn't been triaged into the intention graph. Check the number, or start from a real one on the{" "}
+            <Link to="/issues" className="text-amber-700 hover:underline dark:text-amber-300">Issues register</Link>.
+          </p>
+        </div>
+      )}
+
+      {found && (
         <Dossier accent="amber" tab="Issue" tabNo={`Case file №${num}`}>
           <DossierHead
             crest={`#${num}`}

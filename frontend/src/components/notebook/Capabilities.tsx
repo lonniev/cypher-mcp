@@ -7,13 +7,16 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { asStrList, listCapabilities, type CapabilitySummary, type SortDir } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
-import { Page, MeteredBar, Empty, MeteredError, faint, muted } from "./ui";
+import { toMillis, relTime, withinDays } from "../../lib/time";
+import { Page, MeteredBar, Empty, MeteredError, SinceFilter, faint, muted } from "./ui";
 import { Icon } from "./icons";
+import QuoteScroller from "../QuoteScroller";
 import { IssueJump, initialsOf } from "./dossier";
 
-type Col = "name" | "owners" | "keywords";
+type Col = "name" | "owners" | "keywords" | "recent";
 
 const SORTS: { col: Col; label: string }[] = [
+  { col: "recent", label: "Recent" },
   { col: "name", label: "A–Z" },
   { col: "owners", label: "Owners" },
   { col: "keywords", label: "Keywords" },
@@ -25,6 +28,7 @@ export default function Capabilities() {
   const [sortCol, setSortCol] = useState<Col>("name");
   const [dir, setDir] = useState<SortDir>("asc");
   const [showAllKw, setShowAllKw] = useState(false);
+  const [since, setSince] = useState(0);
 
   // Coerce at the render boundary — stale caches / drift can't crash .join.
   const rows = (m.data ?? []).map((c) => ({
@@ -40,9 +44,12 @@ export default function Capabilities() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [rows]);
 
+  const hasTimestamps = rows.some((c) => toMillis(c.updated_at) != null);
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const out = rows.filter((c) => {
+      if (!withinDays(toMillis(c.updated_at), since)) return false;
       if (!needle) return true;
       return (
         c.name.toLowerCase().includes(needle) ||
@@ -54,10 +61,11 @@ export default function Capabilities() {
     out.sort((a, b) => {
       if (sortCol === "name") return sign * a.name.localeCompare(b.name);
       if (sortCol === "owners") return sign * (a.owners.length - b.owners.length);
-      return sign * (a.keywords.length - b.keywords.length);
+      if (sortCol === "keywords") return sign * (a.keywords.length - b.keywords.length);
+      return sign * ((toMillis(a.updated_at) ?? 0) - (toMillis(b.updated_at) ?? 0));
     });
     return out;
-  }, [rows, q, sortCol, dir]);
+  }, [rows, q, sortCol, dir, since]);
 
   return (
     <Page eyebrow="Register" title="Capabilities" lede="The fleet's abilities. Filter here, run full elastic search in the Concordance, or open a known issue directly.">
@@ -121,9 +129,12 @@ export default function Capabilities() {
             </div>
           )}
 
-          {/* Count + sort */}
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <span className={`text-xs ${faint}`}>{filtered.length} of {rows.length} capabilities</span>
+          {/* Count · time filter · sort */}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className={`text-xs ${faint}`}>{filtered.length} of {rows.length} capabilities</span>
+              {hasTimestamps && <SinceFilter value={since} onChange={setSince} />}
+            </div>
             <div className="flex items-center gap-1">
               {SORTS.map((s) => (
                 <button
@@ -139,9 +150,9 @@ export default function Capabilities() {
           </div>
 
           {m.cold && m.loading ? (
-            <Empty>Reading the capability catalog…</Empty>
+            <QuoteScroller heading="Reading the capability catalog…" className="py-12" />
           ) : filtered.length === 0 ? (
-            <Empty>{rows.length === 0 ? "No capabilities recorded yet." : "No entries match that filter."}</Empty>
+            <Empty>{rows.length === 0 ? "No capabilities recorded yet." : "No entries match this filter."}</Empty>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {filtered.map((c) => (
@@ -173,6 +184,11 @@ export default function Capabilities() {
                   </div>
                   {c.keywords.length > 0 && (
                     <div className={`line-clamp-2 text-xs ${muted}`}>{c.keywords.join(" · ")}</div>
+                  )}
+                  {toMillis(c.updated_at) != null && (
+                    <div className={`mt-auto flex items-center gap-1 pt-0.5 text-[10.5px] ${faint}`}>
+                      <Icon name="history" size={11} /> updated {relTime(toMillis(c.updated_at))}
+                    </div>
                   )}
                 </Link>
               ))}

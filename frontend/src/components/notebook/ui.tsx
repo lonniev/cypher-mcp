@@ -6,8 +6,33 @@
 
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ExternalLink, RefreshCw, ShieldCheck, Sparkle, BookOpen } from "lucide-react";
+import { ExternalLink, RefreshCw, ShieldCheck, Sparkle, BookOpen, Clock } from "lucide-react";
 import { ageLabel } from "../../lib/graphCache";
+import { SINCE_PRESETS } from "../../lib/time";
+
+/// "Added since" window filter — segmented presets over the graph timestamps.
+export function SinceFilter({ value, onChange }: { value: number; onChange: (days: number) => void }) {
+  return (
+    <div className="inline-flex items-center gap-1.5">
+      <Clock className="h-3.5 w-3.5 text-stone-400 dark:text-zinc-500" />
+      <div className="inline-flex items-center gap-0.5 rounded-lg border border-stone-200 p-0.5 dark:border-zinc-800">
+        {SINCE_PRESETS.map((p) => (
+          <button
+            key={p.days}
+            onClick={() => onChange(p.days)}
+            className={`rounded-md px-2 py-1 font-mono text-[11px] transition-colors ${
+              value === p.days
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+                : "text-stone-500 hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const card =
   "rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900";

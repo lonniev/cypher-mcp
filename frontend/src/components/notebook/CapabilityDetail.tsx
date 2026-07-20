@@ -19,8 +19,9 @@ import {
 } from "../../lib/mcp";
 import { useMetered, readCache } from "../../lib/graphCache";
 import { useSwipeNav } from "../../lib/useSwipeNav";
-import { MeteredBar, Empty, MeteredError, muted } from "./ui";
+import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
+import QuoteScroller from "../QuoteScroller";
 import {
   DossierWrap,
   Dossier,
@@ -96,7 +97,7 @@ export default function CapabilityDetail() {
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} priceSats={m.priceSats} onRefresh={m.refresh} note="1 dossier = 4 graph queries" />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.cold && m.loading && <Empty>Assembling the case file…</Empty>}
+      {!m.error && m.cold && m.loading && <QuoteScroller heading="Assembling the case file…" className="py-12" />}
 
       {explain && (
         <Dossier accent="blue" tab="Capability" tabNo="Case file">

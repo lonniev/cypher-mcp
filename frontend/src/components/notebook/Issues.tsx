@@ -6,12 +6,15 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { asStrList, listIssues, type IssueSummary, type SortDir } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
-import { Page, MeteredBar, Empty, MeteredError, faint, muted } from "./ui";
+import { toMillis, relTime, withinDays } from "../../lib/time";
+import { Page, MeteredBar, Empty, MeteredError, SinceFilter, faint, muted } from "./ui";
 import { Icon } from "./icons";
+import QuoteScroller from "../QuoteScroller";
 import { IssueJump, ResolvedPill } from "./dossier";
 
-type Col = "number" | "repo" | "disposition";
+type Col = "recent" | "number" | "repo" | "disposition";
 const SORTS: { col: Col; label: string }[] = [
+  { col: "recent", label: "Recent" },
   { col: "number", label: "Number" },
   { col: "repo", label: "Service" },
   { col: "disposition", label: "Status" },
@@ -24,18 +27,22 @@ function resolved(disposition?: string): boolean {
 export default function Issues() {
   const m = useMetered<IssueSummary[]>("issues:list", "list_issues", listIssues);
   const [q, setQ] = useState("");
-  const [sortCol, setSortCol] = useState<Col>("number");
+  const [sortCol, setSortCol] = useState<Col>("recent");
   const [dir, setDir] = useState<SortDir>("desc");
+  const [since, setSince] = useState(0);
 
   const rows = (m.data ?? []).map((i) => ({ ...i, capabilities: asStrList(i.capabilities) }));
+  const hasTimestamps = rows.some((i) => toMillis(i.updated_at) != null);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const out = rows.filter((i) => {
+      if (!withinDays(toMillis(i.updated_at), since)) return false;
       if (!needle) return true;
       return (
         String(i.number ?? "").includes(needle) ||
         (i.title ?? "").toLowerCase().includes(needle) ||
+        (i.actionable_text ?? "").toLowerCase().includes(needle) ||
         (i.repo_name ?? "").toLowerCase().includes(needle) ||
         (i.classification ?? "").toLowerCase().includes(needle) ||
         i.capabilities!.some((c) => c.toLowerCase().includes(needle))
@@ -45,10 +52,11 @@ export default function Issues() {
     out.sort((a, b) => {
       if (sortCol === "number") return sign * ((a.number ?? 0) - (b.number ?? 0));
       if (sortCol === "repo") return sign * (a.repo_name ?? "").localeCompare(b.repo_name ?? "");
-      return sign * (a.disposition ?? "").localeCompare(b.disposition ?? "");
+      if (sortCol === "disposition") return sign * (a.disposition ?? "").localeCompare(b.disposition ?? "");
+      return sign * ((toMillis(a.updated_at) ?? 0) - (toMillis(b.updated_at) ?? 0));
     });
     return out;
-  }, [rows, q, sortCol, dir]);
+  }, [rows, q, sortCol, dir, since]);
 
   return (
     <Page eyebrow="Register" title="Issues" lede="Every issue the Service Desk has triaged. Filter here, open a known issue directly, or run elastic search in the Concordance.">
@@ -78,13 +86,16 @@ export default function Issues() {
             </div>
           </div>
 
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <span className={`text-xs ${faint}`}>{filtered.length} of {rows.length} issues</span>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className={`text-xs ${faint}`}>{filtered.length} of {rows.length} issues</span>
+              {hasTimestamps && <SinceFilter value={since} onChange={setSince} />}
+            </div>
             <div className="flex items-center gap-1">
               {SORTS.map((s) => (
                 <button
                   key={s.col}
-                  onClick={() => (sortCol === s.col ? setDir((d) => (d === "asc" ? "desc" : "asc")) : (setSortCol(s.col), setDir(s.col === "number" ? "desc" : "asc")))}
+                  onClick={() => (sortCol === s.col ? setDir((d) => (d === "asc" ? "desc" : "asc")) : (setSortCol(s.col), setDir(s.col === "recent" || s.col === "number" ? "desc" : "asc")))}
                   className={`rounded-md px-2 py-1 font-mono text-[11px] transition-colors ${sortCol === s.col ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300" : "text-stone-500 hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-zinc-800"}`}
                 >
                   {s.label}
@@ -95,9 +106,9 @@ export default function Issues() {
           </div>
 
           {m.cold && m.loading ? (
-            <Empty>Reading the issue catalog…</Empty>
+            <QuoteScroller heading="Reading the issue catalog…" className="py-12" />
           ) : filtered.length === 0 ? (
-            <Empty>{rows.length === 0 ? "No issues recorded yet." : "No issues match that filter."}</Empty>
+            <Empty>{rows.length === 0 ? "No issues recorded yet." : "No issues match this filter."}</Empty>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {filtered.map((i) => (
@@ -139,6 +150,11 @@ export default function Issues() {
                     <div className={`text-xs ${muted}`}>
                       <Icon name="verified" size={12} className="mr-1 text-stone-400 dark:text-zinc-500" />
                       {i.capabilities!.join(" · ")}
+                    </div>
+                  )}
+                  {toMillis(i.updated_at) != null && (
+                    <div className={`mt-auto flex items-center gap-1 pt-0.5 text-[10.5px] ${faint}`}>
+                      <Icon name="history" size={11} /> triaged {relTime(toMillis(i.updated_at))}
                     </div>
                   )}
                 </Link>

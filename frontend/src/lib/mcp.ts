@@ -612,6 +612,7 @@ export interface CapabilitySummary {
   name: string;
   owners?: string[];
   keywords?: string[];
+  updated_at?: number;
 }
 
 export interface CapabilityExplain {
@@ -828,6 +829,8 @@ export interface IssueSummary {
   resolved_via?: string;
   url?: string;
   pr_url?: string;
+  updated_at?: number;
+  triaged_at?: number;
   capabilities?: string[];
 }
 

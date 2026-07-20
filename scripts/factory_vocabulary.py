@@ -594,8 +594,10 @@ READ_VOCABULARY: list[Template] = [
             "       coalesce(i.resolved_via, '') AS resolved_via, "
             "       coalesce(i.actionable_text, '') AS actionable_text, "
             "       i.url AS url, coalesce(i.pr_url, '') AS pr_url, "
+            "       coalesce(i.scoped_at, i.triaged_at) AS updated_at, "
+            "       i.triaged_at AS triaged_at, "
             "       collect(DISTINCT c.name) AS capabilities "
-            "ORDER BY i.number DESC"
+            "ORDER BY coalesce(i.scoped_at, i.triaged_at) DESC, i.number DESC"
         ),
         param_schema={},
         description="The compact issue catalog (repo, number, title, classification, disposition, "
@@ -613,7 +615,8 @@ READ_VOCABULARY: list[Template] = [
             "MATCH (c:Capability) "
             "OPTIONAL MATCH (c)-[:OWNED_BY]->(o:Service) "
             "RETURN c.name AS name, collect(DISTINCT o.repo_name) AS owners, "
-            "       c.keywords AS keywords "
+            "       c.keywords AS keywords, "
+            "       coalesce(c.updated_at, c.authored_at, c.inferred_at) AS updated_at "
             "ORDER BY name"
         ),
         param_schema={},
