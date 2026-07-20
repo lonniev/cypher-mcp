@@ -373,7 +373,9 @@ export interface ServiceStatus {
   process_id?: number;
   vault_ok?: boolean;
   courier_ok?: boolean;
-  patron_auth?: string;
+  // The wheel returns this as an object ({mode, patron_credentials_required}),
+  // not a bare string — render its `mode`, never the object itself.
+  patron_auth?: string | { mode?: string; patron_credentials_required?: boolean };
   durable_jobs?: DurableJobs;
   lifecycle?: string;
   message?: string;

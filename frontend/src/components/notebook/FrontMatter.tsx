@@ -90,6 +90,11 @@ export default function FrontMatter() {
   const version = svc?.version;
   const sdk = svc?.tollbooth_version ?? svc?.tollbooth_dpyc_version;
   const durable = svc?.durable_jobs?.enabled;
+  // patron_auth is an object ({mode, patron_credentials_required}) — show its mode.
+  const patronAuth =
+    typeof svc?.patron_auth === "object" && svc.patron_auth
+      ? svc.patron_auth.mode ?? "—"
+      : svc?.patron_auth ?? "—";
 
   return (
     <div className={`${card} p-5`}>
@@ -113,7 +118,7 @@ export default function FrontMatter() {
         <Stat icon={<Database className="h-4 w-4" />} label="Priced tools" value={loaded ? pricedCount : undefined} sub={`${tools.length} total`} />
         <Stat icon={<GitBranch className="h-4 w-4" />} label="MCP version" value={version ?? "—"} sub={sdk ? `SDK ${sdk}` : ""} isText />
         <Stat icon={<Radio className="h-4 w-4" />} label="Durable jobs" value={durable == null ? "—" : durable ? "on" : "off"} sub={svc?.durable_jobs?.backend ?? ""} isText />
-        <Stat icon={<ShieldCheck className="h-4 w-4" />} label="Patron auth" value={svc?.patron_auth ?? "—"} isText />
+        <Stat icon={<ShieldCheck className="h-4 w-4" />} label="Patron auth" value={patronAuth} isText />
       </div>
     </div>
   );
@@ -128,10 +133,21 @@ function Stat({
 }: {
   icon: ReactNode;
   label: string;
-  value?: number | string;
+  // `unknown` on purpose: these are wheel-returned fields; a scalar we assumed
+  // could arrive as an object. Coerce defensively so a shape surprise can never
+  // throw React error #31 ("objects are not valid as a React child").
+  value?: unknown;
   sub?: string;
   isText?: boolean;
 }) {
+  const display =
+    value === undefined || value === null
+      ? "…"
+      : typeof value === "number"
+        ? value.toLocaleString()
+        : typeof value === "string"
+          ? value
+          : JSON.stringify(value);
   return (
     <div className="rounded-lg border border-stone-100 bg-stone-50/60 px-3 py-2.5 dark:border-zinc-800/70 dark:bg-zinc-950/40">
       <div className="mb-1 flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
@@ -140,9 +156,7 @@ function Stat({
           {label}
         </span>
       </div>
-      <div className={`${isText ? "text-sm" : "text-xl"} font-semibold tabular-nums`}>
-        {value === undefined ? "…" : typeof value === "number" ? value.toLocaleString() : value}
-      </div>
+      <div className={`${isText ? "text-sm" : "text-xl"} font-semibold tabular-nums`}>{display}</div>
       {sub && <div className={`mt-0.5 text-[11px] ${faint}`}>{sub}</div>}
     </div>
   );
