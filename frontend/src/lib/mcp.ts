@@ -881,6 +881,29 @@ export async function issueProvenance(repoName: string, issueNumber: number): Pr
   };
 }
 
+/// The anti-ping-pong routing trail for an issue — which repos declined it, why.
+export interface RoutingHistory {
+  repo_name?: string;
+  number?: number;
+  rejections?: { reason?: string; from_repo?: string; at?: number }[];
+  passed_repos?: string[];
+}
+
+/// routing_history — the repos that declined this issue's escalation and their
+/// reasons. Run via execute_query_by_key against the seeded template.
+export async function routingHistory(repoName: string, issueNumber: number): Promise<RoutingHistory> {
+  const raw = await callTool<unknown>("execute_query_by_key", {
+    key: "routing_history",
+    params: { repo_name: repoName, issue_number: issueNumber },
+  });
+  const r = firstRow<RoutingHistory>(raw);
+  return {
+    ...r,
+    passed_repos: asStrList(r.passed_repos),
+    rejections: Array.isArray(r.rejections) ? r.rejections : [],
+  };
+}
+
 /// A compact issue for the Issues register (peer of CapabilitySummary).
 export interface IssueSummary {
   repo_name?: string;

@@ -5,7 +5,7 @@
 
 import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { issueProvenance, type IssueProvenance, type IssueSummary } from "../../lib/mcp";
+import { issueProvenance, routingHistory, type IssueProvenance, type IssueSummary, type RoutingHistory } from "../../lib/mcp";
 import { useMetered, readCache } from "../../lib/graphCache";
 import { useSwipeNav } from "../../lib/useSwipeNav";
 import { MeteredBar, MeteredError, muted } from "./ui";
@@ -51,15 +51,28 @@ export default function IssueDetail() {
   const goNext = idx >= 0 && idx < siblings.length - 1 ? () => toIssue(siblings[idx + 1]) : undefined;
   const swipe = useSwipeNav({ prev: goPrev, next: goNext });
 
-  const m = useMetered<IssueProvenance>(`issue:${decodedRepo}#${num}`, () =>
-    issueProvenance(decodedRepo, num),
+  const m = useMetered<{ prov: IssueProvenance; routing: RoutingHistory }>(
+    `issue:${decodedRepo}#${num}`,
+    async () => {
+      const [prov, routing] = await Promise.all([
+        issueProvenance(decodedRepo, num),
+        routingHistory(decodedRepo, num),
+      ]);
+      return { prov, routing };
+    },
   );
 
-  const d = m.data;
+  const d = m.data?.prov;
+  const routing = m.data?.routing;
   const symbols = d?.root_cause_symbols ?? [];
   const decisions = d?.decisions ?? [];
   const rejections = d?.rejections ?? [];
   const caps = d?.capabilities ?? [];
+  // Routing trail (anti-ping-pong): repos that declined this issue, and why. A
+  // standoff (3+ bounces) means it's escalated to a human for arbitration.
+  const routeRej = routing?.rejections ?? [];
+  const passedRepos = routing?.passed_repos ?? [];
+  const standoff = routeRej.length >= 3;
   // A non-existent issue yields an empty match — render "not found", NOT a hollow
   // dossier that implies the issue exists but is blank.
   const found = !!(
@@ -218,6 +231,30 @@ export default function IssueDetail() {
                 <p className={`text-sm ${muted}`}>No rejections — accepted on first triage.</p>
               )}
             </Cell>
+
+            {(routeRej.length > 0 || passedRepos.length > 0) && (
+              <Cell id="issue-routing" span>
+                <Eyebrow icon="swap" count={passedRepos.length || undefined} info="Repos that declined an escalation of this issue, and why. The Porter re-routes to a repo NOT in this set — never back to one that already passed.">Routing</Eyebrow>
+                {standoff && (
+                  <div className="mb-3 flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-medium text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
+                    <Icon name="close" size={16} /> Routing standoff — escalated to a human for arbitration.
+                  </div>
+                )}
+                <ul className="flex flex-col gap-2">
+                  {routeRej.map((r, i) => (
+                    <li key={i} className="flex items-baseline gap-2 text-[13px]">
+                      <Icon name="swap" size={14} className="text-stone-500 dark:text-zinc-400" />
+                      {r.from_repo ? (
+                        <Link to={`/services/${encodeURIComponent(r.from_repo)}`} className="shrink-0 font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">{r.from_repo}</Link>
+                      ) : (
+                        <span className="shrink-0 font-mono text-[12.5px] text-stone-500">a repo</span>
+                      )}
+                      <span className={muted}>declined — {r.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Cell>
+            )}
 
             <Cell id="issue-record" span>
               <Eyebrow icon="open" info="Open the live GitHub issue, its pull request, or the repository.">Record</Eyebrow>

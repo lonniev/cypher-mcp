@@ -198,6 +198,31 @@ VOCABULARY: list[Template] = [
         allow_roles=(PORTER, JOURNEYMAN),
     ),
     Template(
+        # Anti-ping-pong: when a TARGET repo declines an escalation, record the reason on the
+        # ORIGIN issue (with the declining repo) so the origin's Porter re-triages knowing the
+        # passed-repos set — instead of the two repos battling. History-preserving.
+        key="route_rejection",
+        cypher=(
+            "MERGE (o:Issue {repo_name: $origin_repo, number: $origin_issue}) "
+            "CREATE (r:Rejection {reason: $reason, from_repo: $by_repo, at: timestamp()}) "
+            "MERGE (o)-[:HAS_REJECTION]->(r) "
+            "RETURN r.reason AS reason, r.from_repo AS from_repo"
+        ),
+        param_schema={
+            "origin_repo": {"type": "string", "required": True,
+                            "description": "The ORIGIN repository the escalation routes back to."},
+            "origin_issue": {"type": "int", "required": True, "description": "The origin issue number."},
+            "by_repo": {"type": "string", "required": True,
+                        "description": "The repo that declined the escalation."},
+            "reason": {"type": "string", "required": True,
+                       "description": "Why the target declined (which DRY boundary / repo actually owns it)."},
+        },
+        description="Record on the ORIGIN issue that a target repo declined its escalation, with the "
+                    "reason — the passed-repos memory that stops issue ping-pong.",
+        intent="Route a target's rejection reason back to the origin issue.",
+        allow_roles=(PORTER, JOURNEYMAN),
+    ),
+    Template(
         key="link_root_cause",
         cypher=(
             "MATCH (i:Issue {repo_name: $repo_name, number: $issue_number}) "
@@ -830,6 +855,29 @@ READ_VOCABULARY: list[Template] = [
         description="Grep-fallback metric: how issues were located (graph | scoped-grep | wide-grep). "
                     "Watch wide-grep trend to zero as the intention graph learns.",
         intent="Report how issues were located, to measure grep-scope shrinkage.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        # The anti-ping-pong guard's memory: every repo that has declined this issue's escalation,
+        # and why. The Porter reads passed_repos before re-routing so it never re-targets a repo
+        # that already passed; the FE surfaces the routing trail on the Issue dossier.
+        key="routing_history",
+        cypher=(
+            "MATCH (o:Issue {repo_name: $repo_name, number: $issue_number}) "
+            "OPTIONAL MATCH (o)-[:HAS_REJECTION]->(r:Rejection) "
+            "RETURN o.repo_name AS repo_name, o.number AS number, "
+            "       [x IN collect(DISTINCT r) WHERE x IS NOT NULL | "
+            "           {reason: x.reason, from_repo: coalesce(x.from_repo, ''), at: x.at}] AS rejections, "
+            "       [x IN collect(DISTINCT r.from_repo) WHERE x IS NOT NULL AND x <> ''] AS passed_repos"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "issue_number": {"type": "int", "required": True, "description": "GitHub issue number."},
+        },
+        description="The routing trail for an issue: every repo that declined an escalation and why "
+                    "(the passed-repos set) — the anti-ping-pong guard's memory.",
+        intent="Show which repos have declined an issue and why.",
         allow_roles=(),
         access_mode="read",
     ),
