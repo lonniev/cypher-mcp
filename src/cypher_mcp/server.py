@@ -1,3 +1,5 @@
+# deploy-nudge: force a clean Horizon rebuild onto tollbooth-dpyc 0.66.0
+# (signed `reason` on proof requests) — busts the cached wheel layer.
 """cypher-mcp — Monetized Graph Answers MCP Server.
 
 A conventional Tollbooth-DPYC Operator (sibling of tollbooth-sample /
