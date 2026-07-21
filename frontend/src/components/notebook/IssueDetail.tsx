@@ -54,10 +54,16 @@ export default function IssueDetail() {
   const m = useMetered<{ prov: IssueProvenance; routing: RoutingHistory }>(
     `issue:${decodedRepo}#${num}`,
     async () => {
-      const [prov, routing] = await Promise.all([
-        issueProvenance(decodedRepo, num),
-        routingHistory(decodedRepo, num),
-      ]);
+      // issue_provenance is the core case-file; routing_history is a supplementary
+      // trail. They must NOT fail atomically — a routing hiccup (a cold/just-priced
+      // query, an expired proof) should degrade to "no routing data", never blank
+      // the whole dossier. So the core read can throw (and surface a page error),
+      // but the routing read is caught and defaulted to empty.
+      const prov = await issueProvenance(decodedRepo, num);
+      const routing = await routingHistory(decodedRepo, num).catch(() => ({
+        passed_repos: [],
+        rejections: [],
+      }));
       return { prov, routing };
     },
   );
