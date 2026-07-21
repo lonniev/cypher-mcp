@@ -1,5 +1,5 @@
 # deploy-nudge: force a clean Horizon rebuild onto tollbooth-dpyc 0.66.0
-# (request origin observed-only) — busts the cached wheel layer.
+# (Device-Grant verify_at) — busts the cached wheel layer.
 """cypher-mcp — Monetized Graph Answers MCP Server.
 
 A conventional Tollbooth-DPYC Operator (sibling of tollbooth-sample /
@@ -679,3 +679,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# deploy-nudge: tollbooth-dpyc 0.68.0 (Device-Grant verify_at on proof requests)
