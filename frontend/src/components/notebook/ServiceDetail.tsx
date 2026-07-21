@@ -76,9 +76,12 @@ export default function ServiceDetail() {
                   {syms.map((s, i) => (
                     <div key={i} className="flex items-center gap-3 px-4 py-2">
                       <FileCode2 className="h-4 w-4 shrink-0 text-stone-400 dark:text-zinc-500" />
-                      <span className="min-w-0 flex-1 truncate font-mono text-[13px]">
+                      <Link
+                        to={`/symbol?fqn=${encodeURIComponent(s.symbol ?? s.fqn ?? "")}`}
+                        className="min-w-0 flex-1 truncate font-mono text-[13px] hover:text-amber-700 hover:underline dark:hover:text-amber-300"
+                      >
                         {s.symbol ?? s.fqn}
-                      </span>
+                      </Link>
                       {s.lang && <span className={`text-[11px] ${faint}`}>{s.lang}</span>}
                     </div>
                   ))}

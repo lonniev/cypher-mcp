@@ -793,6 +793,34 @@ export async function symbolsInService(repoName: string): Promise<GraphSymbol[]>
   return asArray<GraphSymbol>(r);
 }
 
+/// A code symbol's full provenance — the pivot for the Symbol dossier.
+export interface SymbolProvenance {
+  fqn?: string;
+  file?: string;
+  lang?: string;
+  verified_at_sha?: string;
+  services?: string[];
+  capabilities?: string[];
+  issues?: { number?: number; repo_name?: string; title?: string; url?: string }[];
+  decisions?: IssueDecision[];
+  invariants?: string[];
+  error?: string;
+}
+
+/// symbol_provenance — everything the graph knows about one code symbol. Run via
+/// execute_query_by_key against the seeded template (works with no named-tool
+/// publish/pricing step).
+export async function symbolProvenance(fqn: string): Promise<SymbolProvenance> {
+  const raw = await callTool<unknown>("execute_query_by_key", { key: "symbol_provenance", params: { fqn } });
+  const r = firstRow<SymbolProvenance>(raw);
+  return {
+    ...r,
+    services: asStrList(r.services),
+    capabilities: asStrList(r.capabilities),
+    invariants: asStrList(r.invariants),
+  };
+}
+
 /// capability_patents — the patent numerals grounding a capability's "why".
 export async function capabilityPatents(name: string): Promise<PatentRef[]> {
   const r = await callTool<unknown>("capability_patents", { name });

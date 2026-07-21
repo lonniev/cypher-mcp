@@ -25,6 +25,7 @@ import QueryCatalog from "./components/notebook/QueryCatalog";
 import ServiceDetail from "./components/notebook/ServiceDetail";
 import PatentDetail from "./components/notebook/PatentDetail";
 import IssueDetail from "./components/notebook/IssueDetail";
+import SymbolDetail from "./components/notebook/SymbolDetail";
 
 interface SessionCtx {
   npub: string;
@@ -100,6 +101,7 @@ export default function App() {
                 <Route path="services/:repo" element={<ServiceDetail />} />
                 <Route path="patent/:ref" element={<PatentDetail />} />
                 <Route path="issues/:repo/:number" element={<IssueDetail />} />
+                <Route path="symbol" element={<SymbolDetail />} />
                 <Route path="wallet" element={<WalletPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

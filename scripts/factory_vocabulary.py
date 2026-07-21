@@ -727,6 +727,36 @@ READ_VOCABULARY: list[Template] = [
         access_mode="read",
     ),
     Template(
+        # Pivot to a code symbol: everything the graph knows about it, so the FE can
+        # render a Symbol dossier that mirrors the Capability/Issue ones (bi-directional).
+        key="symbol_provenance",
+        cypher=(
+            "MATCH (sym:Symbol {fqn: $fqn}) "
+            "OPTIONAL MATCH (sym)-[:IN_SERVICE]->(svc:Service) "
+            "OPTIONAL MATCH (cap:Capability)-[:REALIZED_BY]->(sym) "
+            "OPTIONAL MATCH (i:Issue)-[:ROOT_CAUSE]->(sym) "
+            "OPTIONAL MATCH (d:Decision)-[:ABOUT]->(sym) "
+            "OPTIONAL MATCH (inv:Invariant)-[:GUARDS]->(sym) "
+            "RETURN sym.fqn AS fqn, sym.file_path AS file, sym.lang AS lang, "
+            "       sym.verified_at_sha AS verified_at_sha, "
+            "       collect(DISTINCT svc.repo_name) AS services, "
+            "       collect(DISTINCT cap.name) AS capabilities, "
+            "       [x IN collect(DISTINCT i) WHERE x IS NOT NULL | "
+            "           {number: x.number, repo_name: x.repo_name, title: x.title, url: x.url}] AS issues, "
+            "       [x IN collect(DISTINCT d) WHERE x IS NOT NULL | "
+            "           {statement: x.statement, reason: x.reason, provenance: x.provenance}] AS decisions, "
+            "       collect(DISTINCT inv.name) AS invariants"
+        ),
+        param_schema={
+            "fqn": {"type": "string", "required": True, "description": "The symbol's fully-qualified name."},
+        },
+        description="A code symbol's provenance: the service it belongs to, the capabilities it "
+                    "realizes, the issues it root-caused, decisions attached to it, and guarding invariants.",
+        intent="Pivot to a code symbol — its service, capabilities, issues, decisions, invariants.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
         key="explain_patent_element",
         cypher=(
             "MATCH (p:PatentElement {ref: $ref}) "

@@ -154,7 +154,7 @@ export default function CapabilityDetail() {
                 <div className="flex flex-col gap-2.5">
                   {b.symbols.map((s, i) => {
                     const fqn = s.symbol ?? s.fqn ?? "(unnamed)";
-                    return <SymbolRow key={fqn + i} fqn={fqn} file={s.file ?? s.file_path} lang={s.lang} sha={s.verified_at_sha} owner={s.owner} copyValue={fqn} />;
+                    return <SymbolRow key={fqn + i} fqn={fqn} file={s.file ?? s.file_path} lang={s.lang} sha={s.verified_at_sha} copyValue={fqn} />;
                   })}
                 </div>
               ) : (

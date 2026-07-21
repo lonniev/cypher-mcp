@@ -347,7 +347,6 @@ export function SymbolRow({
   file,
   lang,
   sha,
-  owner,
   ghHref,
   copyValue,
 }: {
@@ -355,22 +354,16 @@ export function SymbolRow({
   file?: string;
   lang?: string;
   sha?: string;
-  /// Owning service/repo — makes the symbol name a drilldown to that service.
-  owner?: string;
   ghHref?: string;
   copyValue?: string;
 }) {
   const nameCls = "min-w-0 truncate font-mono text-[13px]";
   return (
     <div className="flex items-center gap-2.5">
-      <Icon name={langIcon(lang, file)} className="text-[15px] text-[#35618e] dark:text-[#6e9bc9]" />
-      {owner ? (
-        <Link to={`/services/${encodeURIComponent(owner)}`} title={`In ${owner} — open its symbol index`} className={`${nameCls} hover:text-amber-700 hover:underline dark:hover:text-amber-300`}>
-          {fqn}
-        </Link>
-      ) : (
-        <span className={nameCls}>{fqn}</span>
-      )}
+      <Icon name={langIcon(lang, file)} size={15} className="text-[#35618e] dark:text-[#6e9bc9]" />
+      <Link to={`/symbol?fqn=${encodeURIComponent(fqn)}`} title="Open the symbol's dossier" className={`${nameCls} hover:text-amber-700 hover:underline dark:hover:text-amber-300`}>
+        {fqn}
+      </Link>
       {(file || sha) && (
         <span className="shrink-0 font-mono text-[11px] text-stone-400 dark:text-zinc-500">
           {file}
