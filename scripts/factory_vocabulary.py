@@ -136,6 +136,44 @@ VOCABULARY: list[Template] = [
         allow_roles=(PORTER, JOURNEYMAN),
     ),
     Template(
+        key="claim_issue",
+        # Turn-START heartbeat: the FIRST thing an agent does when it picks up an issue,
+        # BEFORE the (possibly long) work. It ensures the Issue node exists and marks it
+        # as actively worked, so the graph — and the dashboard — reflect work IN PROGRESS
+        # instead of appearing only after the saga ends. Idempotent; enriched later by
+        # record_triage / record_scope / link_pr. `triaged_at` is coalesced so the issue
+        # shows in the register immediately without clobbering a real triage timestamp.
+        cypher=(
+            "MERGE (s:Service {repo_name: $repo_name}) "
+            "MERGE (i:Issue {repo_name: $repo_name, number: $issue_number}) "
+            "SET i.title = coalesce($title, i.title), "
+            "    i.url = coalesce($issue_url, i.url), "
+            "    i.activity = $activity, "
+            "    i.worked_by = $worked_by, "
+            "    i.activity_since = timestamp(), "
+            "    i.triaged_at = coalesce(i.triaged_at, timestamp()) "
+            "MERGE (i)-[:FILED_AGAINST]->(s) "
+            "RETURN i.number AS number, i.activity AS activity, i.worked_by AS worked_by"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "issue_number": {"type": "int", "required": True, "description": "GitHub issue number."},
+            "activity": {"type": "string", "required": True,
+                         "description": "What the agent is doing this turn: 'triaging' | 'fixing' | 'reviewing'."},
+            "worked_by": {"type": "string", "required": True,
+                          "description": "The agent role picking it up: 'porter' | 'journeyman' | 'qa'."},
+            "title": {"type": "string", "required": False,
+                      "description": "Issue title (sets it if the node is new; omit to leave as-is)."},
+            "issue_url": {"type": "string", "required": False,
+                          "description": "The issue's GitHub URL (gh issue view <n> --json url), for click-through."},
+        },
+        description="Turn-start claim: ensure the Issue node exists and mark it actively worked "
+                    "(activity + worked_by + activity_since), so the graph shows work in progress.",
+        intent="Mark an issue as actively being worked at the start of an agent's turn.",
+        allow_roles=(PORTER, JOURNEYMAN),
+        access_mode="write",
+    ),
+    Template(
         key="record_scope",
         # The Porter's rough-English -> actionable spec, plus HOW it resolved the code
         # (graph = context_pack alone; scoped-grep = graph narrowed a grep; wide-grep = the
@@ -588,6 +626,8 @@ READ_VOCABULARY: list[Template] = [
             "       i.url AS issue_url, i.repo_url AS repo_url, i.pr_url AS pr_url, "
             "       i.title AS title, i.classification AS classification, i.disposition AS disposition, "
             "       i.actionable_text AS actionable_text, coalesce(i.resolved_via, '') AS resolved_via, "
+            "       coalesce(i.activity, '') AS activity, coalesce(i.worked_by, '') AS worked_by, "
+            "       i.activity_since AS activity_since, "
             "       collect(DISTINCT cap.name) AS capabilities, "
             "       [x IN collect(DISTINCT sym) WHERE x IS NOT NULL | "
             "           {fqn: x.fqn, file: x.file_path, lang: x.lang, verified_at_sha: x.verified_at_sha}] AS root_cause_symbols, "
@@ -622,6 +662,9 @@ READ_VOCABULARY: list[Template] = [
             "       i.url AS url, coalesce(i.pr_url, '') AS pr_url, "
             "       coalesce(i.scoped_at, i.triaged_at) AS updated_at, "
             "       i.triaged_at AS triaged_at, "
+            "       coalesce(i.activity, '') AS activity, "
+            "       coalesce(i.worked_by, '') AS worked_by, "
+            "       i.activity_since AS activity_since, "
             "       collect(DISTINCT c.name) AS capabilities "
             "ORDER BY coalesce(i.scoped_at, i.triaged_at) DESC, i.number DESC"
         ),
