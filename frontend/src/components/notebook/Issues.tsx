@@ -10,7 +10,7 @@ import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
 import QuoteScroller from "../QuoteScroller";
-import { IssueJump, ResolvedPill } from "./dossier";
+import { IssueJump, ResolvedPill, WorkingPulse } from "./dossier";
 
 type Col = "recent" | "number" | "repo" | "disposition";
 const SORTS: { col: Col; label: string }[] = [
@@ -143,6 +143,7 @@ export default function Issues() {
                     <div className={`line-clamp-2 text-[12.5px] leading-snug ${muted}`}>{i.actionable_text}</div>
                   )}
                   <div className="flex flex-wrap items-center gap-1.5">
+                    <WorkingPulse a={i} />
                     {i.classification && <span className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">{i.classification}</span>}
                     {i.disposition && (
                       <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10.5px] ${resolved(i.disposition) ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>

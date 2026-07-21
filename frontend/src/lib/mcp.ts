@@ -679,6 +679,9 @@ export interface IssueProvenance {
   disposition?: string;
   actionable_text?: string;
   resolved_via?: string;
+  activity?: string;
+  worked_by?: string;
+  activity_since?: number;
   capabilities?: string[];
   root_cause_symbols?: GraphSymbol[];
   decisions?: IssueDecision[];
@@ -917,6 +920,10 @@ export interface IssueSummary {
   pr_url?: string;
   updated_at?: number;
   triaged_at?: number;
+  /// Live turn heartbeat: what an agent is doing RIGHT NOW on this issue.
+  activity?: string; // 'triaging' | 'fixing' | 'reviewing'
+  worked_by?: string; // 'porter' | 'journeyman' | 'qa'
+  activity_since?: number; // epoch ms the current turn began
   capabilities?: string[];
 }
 

@@ -7,7 +7,45 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Icon, langIcon, type IconName } from "./icons";
+import { relTime } from "../../lib/time";
 import type { SwipeNav } from "../../lib/useSwipeNav";
+
+// ─── Live work heartbeat ─────────────────────────────────────────────────────
+// An agent stamps `activity`/`worked_by`/`activity_since` at the START of its
+// turn (cypher_claim_issue), so the graph shows work IN PROGRESS. A single turn
+// rarely runs longer than this window; past it (or once a PR is open) the pulse
+// is stale and we stop showing it as live.
+const ACTIVE_WINDOW_MS = 45 * 60 * 1000;
+
+export interface Activity {
+  activity?: string; // 'triaging' | 'fixing' | 'reviewing'
+  worked_by?: string; // 'porter' | 'journeyman' | 'qa'
+  activity_since?: number; // epoch ms the current turn began
+  pr_url?: string;
+}
+
+/// Is an agent actively working this issue right now?
+export function isWorking(a?: Activity): boolean {
+  if (!a?.activity || !a.activity_since) return false;
+  if (a.pr_url) return false; // a PR is open — past the working phase
+  return Date.now() - a.activity_since < ACTIVE_WINDOW_MS;
+}
+
+/// A live "🔧 Journeyman fixing · 3m ago" pill. Renders nothing when idle.
+export function WorkingPulse({ a, className = "" }: { a?: Activity; className?: string }) {
+  if (!isWorking(a)) return null;
+  const who = a!.worked_by ? a!.worked_by.charAt(0).toUpperCase() + a!.worked_by.slice(1) : "An agent";
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 ${className}`}
+      title={`${who} is ${a!.activity} this issue`}
+    >
+      <Icon name="working" size={12} className="animate-spin" />
+      {who} {a!.activity}
+      {a!.activity_since ? <span className="font-normal opacity-70">· {relTime(a!.activity_since)}</span> : null}
+    </span>
+  );
+}
 
 /// Parse a GitHub issue/PR reference from a pasted URL or a `repo#123` shorthand.
 export function parseIssueRef(s: string): { repo: string; number: number } | null {

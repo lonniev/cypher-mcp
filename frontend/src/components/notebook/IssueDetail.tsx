@@ -26,6 +26,8 @@ import {
   IconLink,
   Annotate,
   Pager,
+  WorkingPulse,
+  isWorking,
 } from "./dossier";
 
 function resolved(disposition?: string): boolean {
@@ -143,6 +145,12 @@ export default function IssueDetail() {
               ) : undefined
             }
           />
+
+          {isWorking(d) && (
+            <div className="flex items-center gap-2 border-b border-stone-200 px-6 py-3 dark:border-zinc-800">
+              <WorkingPulse a={d} />
+            </div>
+          )}
 
           <BoxScore>
             <Stat icon="symbol" num={symbols.length} label="Root cause" accent drill="issue-rootcause" tip="The code symbol found at fault." />
