@@ -757,6 +757,33 @@ READ_VOCABULARY: list[Template] = [
         access_mode="read",
     ),
     Template(
+        # Pivot to a service: the capabilities it owns/consumes, its indexed symbols, and the
+        # issues filed against it — so the FE renders a Service dossier like the others.
+        key="service_provenance",
+        cypher=(
+            "MATCH (svc:Service {repo_name: $repo_name}) "
+            "OPTIONAL MATCH (own:Capability)-[:OWNED_BY]->(svc) "
+            "OPTIONAL MATCH (con:Capability)-[:CONSUMED_BY]->(svc) "
+            "OPTIONAL MATCH (sym:Symbol)-[:IN_SERVICE]->(svc) "
+            "OPTIONAL MATCH (i:Issue)-[:FILED_AGAINST]->(svc) "
+            "RETURN svc.repo_name AS repo_name, "
+            "       collect(DISTINCT own.name) AS owns, "
+            "       collect(DISTINCT con.name) AS consumes, "
+            "       [x IN collect(DISTINCT sym) WHERE x IS NOT NULL | "
+            "           {fqn: x.fqn, file: x.file_path, lang: x.lang}] AS symbols, "
+            "       [x IN collect(DISTINCT i) WHERE x IS NOT NULL | "
+            "           {number: x.number, repo_name: x.repo_name, title: x.title, disposition: x.disposition}] AS issues"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+        },
+        description="A service's provenance: the capabilities it owns and consumes, its indexed "
+                    "symbols, and the issues filed against it.",
+        intent="Pivot to a service — its capabilities, symbols, and issues.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
         key="explain_patent_element",
         cypher=(
             "MATCH (p:PatentElement {ref: $ref}) "

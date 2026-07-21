@@ -821,6 +821,24 @@ export async function symbolProvenance(fqn: string): Promise<SymbolProvenance> {
   };
 }
 
+/// A service's full provenance — the pivot for the Service dossier.
+export interface ServiceProvenance {
+  repo_name?: string;
+  owns?: string[];
+  consumes?: string[];
+  symbols?: GraphSymbol[];
+  issues?: { number?: number; repo_name?: string; title?: string; disposition?: string }[];
+  error?: string;
+}
+
+/// service_provenance — a service's capabilities, symbols, and issues. Run via
+/// execute_query_by_key against the seeded template.
+export async function serviceProvenance(repoName: string): Promise<ServiceProvenance> {
+  const raw = await callTool<unknown>("execute_query_by_key", { key: "service_provenance", params: { repo_name: repoName } });
+  const r = firstRow<ServiceProvenance>(raw);
+  return { ...r, owns: asStrList(r.owns), consumes: asStrList(r.consumes) };
+}
+
 /// capability_patents — the patent numerals grounding a capability's "why".
 export async function capabilityPatents(name: string): Promise<PatentRef[]> {
   const r = await callTool<unknown>("capability_patents", { name });
