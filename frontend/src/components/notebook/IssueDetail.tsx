@@ -23,7 +23,6 @@ import {
   Eyebrow,
   SymbolRow,
   ResolvedPill,
-  IconLink,
   Annotate,
   Pager,
   WorkingPulse,
@@ -285,9 +284,11 @@ export default function IssueDetail() {
                     <Icon name="github" className="text-[14px]" /> Pull request <Icon name="open" className="text-[13px]" />
                   </a>
                 )}
-                <span className="ml-auto">
-                  <IconLink href={d.repo_url} name="github" label="Open repository" />
-                </span>
+                {d.repo_url && (
+                  <a href={d.repo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
+                    <Icon name="github" className="text-[14px]" /> Repository <Icon name="open" className="text-[13px]" />
+                  </a>
+                )}
               </div>
             </Cell>
           </Cells>
