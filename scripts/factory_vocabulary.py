@@ -433,7 +433,8 @@ VOCABULARY: list[Template] = [
         cypher=(
             "MERGE (s:Service {repo_name: $repo_name}) "
             "MERGE (sym:Symbol {fqn: $symbol_fqn}) "
-            "SET sym.lang = $lang "
+            "  ON CREATE SET sym.indexed_at = timestamp() "
+            "SET sym.lang = $lang, sym.updated_at = timestamp() "
             "MERGE (sym)-[:IN_SERVICE]->(s) "
             "RETURN sym.fqn AS symbol"
         ),
@@ -537,7 +538,8 @@ VOCABULARY: list[Template] = [
         key="upsert_patent_element",
         cypher=(
             "MERGE (p:PatentElement {ref: $ref}) "
-            "SET p.name = $name, p.figures = $figures, p.claim_family = $claim_family "
+            "SET p.name = $name, p.figures = $figures, p.claim_family = $claim_family, "
+            "    p.updated_at = timestamp() "
             "RETURN p.ref AS ref"
         ),
         param_schema={
@@ -559,6 +561,7 @@ VOCABULARY: list[Template] = [
         cypher=(
             "MATCH (c:Capability {name: $name}) "
             "MERGE (p:PatentElement {ref: $patent_ref}) "
+            "  ON CREATE SET p.updated_at = timestamp() "
             "MERGE (c)-[:DESCRIBED_IN]->(p) "
             "RETURN p.ref AS ref"
         ),
@@ -576,6 +579,7 @@ VOCABULARY: list[Template] = [
         cypher=(
             "MATCH (inv:Invariant {name: $name}) "
             "MERGE (p:PatentElement {ref: $patent_ref}) "
+            "  ON CREATE SET p.updated_at = timestamp() "
             "MERGE (inv)-[:DESCRIBED_IN]->(p) "
             "RETURN p.ref AS ref"
         ),
@@ -921,6 +925,70 @@ READ_VOCABULARY: list[Template] = [
         description="The routing trail for an issue: every repo that declined an escalation and why "
                     "(the passed-repos set) — the anti-ping-pong guard's memory.",
         intent="Show which repos have declined an issue and why.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        # The "What's New" feed backing the Recently Changed register: one union over every
+        # first-class node type, normalized to a uniform (kind, label, key, repo, updated_at)
+        # row so the FE renders a single time-descending stream and click-throughs into each
+        # type's existing dossier. Bounded by BOTH $since_ms (lower) and $until_ms (upper, 0 =
+        # open) so calendar windows like "yesterday" and "last month" are exact ranges, not just
+        # a lower bound. Each branch's updated_at coalesces that node's own write timestamps.
+        # NOTE: a node only appears once the factory has stamped it — Symbols predating the
+        # index_symbol/anchor timestamp and PatentElements predating upsert's updated_at surface
+        # as the factory next touches them; Capability/Issue/Service/Invariant history is complete.
+        key="recent_activity",
+        cypher=(
+            "CALL { "
+            "  MATCH (c:Capability) "
+            "  WITH 'Capability' AS kind, c.name AS label, c.name AS key, '' AS repo, "
+            "       coalesce(c.updated_at, c.authored_at, c.inferred_at) AS updated_at "
+            "  RETURN kind, label, key, repo, updated_at "
+            "  UNION "
+            "  MATCH (i:Issue) "
+            "  WITH 'Issue' AS kind, coalesce(i.title, i.actionable_text, '') AS label, "
+            "       toString(i.number) AS key, i.repo_name AS repo, "
+            "       coalesce(i.scoped_at, i.triaged_at) AS updated_at "
+            "  RETURN kind, label, key, repo, updated_at "
+            "  UNION "
+            "  MATCH (sym:Symbol) "
+            "  WITH 'Symbol' AS kind, sym.fqn AS label, sym.fqn AS key, '' AS repo, "
+            "       coalesce(sym.anchored_at, sym.indexed_at, sym.updated_at) AS updated_at "
+            "  RETURN kind, label, key, repo, updated_at "
+            "  UNION "
+            "  MATCH (inv:Invariant) "
+            "  WITH 'Invariant' AS kind, coalesce(inv.rule, inv.name) AS label, "
+            "       inv.name AS key, '' AS repo, inv.at AS updated_at "
+            "  RETURN kind, label, key, repo, updated_at "
+            "  UNION "
+            "  MATCH (p:PatentElement) "
+            "  WITH 'PatentElement' AS kind, coalesce(p.name, toString(p.ref)) AS label, "
+            "       toString(p.ref) AS key, '' AS repo, p.updated_at AS updated_at "
+            "  RETURN kind, label, key, repo, updated_at "
+            "  UNION "
+            "  MATCH (s:Service) "
+            "  WITH 'Service' AS kind, s.repo_name AS label, s.repo_name AS key, "
+            "       s.repo_name AS repo, s.created_at AS updated_at "
+            "  RETURN kind, label, key, repo, updated_at "
+            "} "
+            "WITH kind, label, key, repo, updated_at "
+            "WHERE updated_at IS NOT NULL AND updated_at >= $since_ms "
+            "  AND ($until_ms <= 0 OR updated_at < $until_ms) "
+            "RETURN kind, label, key, repo, updated_at "
+            "ORDER BY updated_at DESC"
+        ),
+        param_schema={
+            "since_ms": {"type": "int", "required": False,
+                         "description": "Epoch-ms lower bound on change time (inclusive); 0 = from the beginning."},
+            "until_ms": {"type": "int", "required": False,
+                         "description": "Epoch-ms upper bound on change time (exclusive); 0 (default) = open (now)."},
+        },
+        description="The cross-type activity feed: every Capability, Issue, Symbol, Invariant, "
+                    "PatentElement, and Service created or modified within [since_ms, until_ms), "
+                    "normalized to (kind, label, key, repo, updated_at) and ordered newest-first — "
+                    "the Recently Changed register's one query.",
+        intent="List every domain object changed within a date window, across all node types.",
         allow_roles=(),
         access_mode="read",
     ),

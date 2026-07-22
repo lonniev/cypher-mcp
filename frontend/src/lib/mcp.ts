@@ -940,6 +940,40 @@ export async function factoryResolutionStats(): Promise<ResolutionStat[]> {
   return asArray<ResolutionStat>(r);
 }
 
+// ─── Recently Changed — the cross-type activity feed ───────────────────────
+// One union over every first-class node type, normalized to a uniform row so
+// the register renders a single time-descending stream and each row clicks
+// through to that type's dossier. Runs via execute_query_by_key against the
+// seeded `recent_activity` template — no named-tool publish/pricing step; it is
+// metered under execute_query_by_key, exactly like symbol/service provenance.
+
+export type ActivityKind =
+  | "Capability" | "Issue" | "Symbol" | "Invariant" | "PatentElement" | "Service";
+
+/// A normalized activity row: `key` is the type's dossier identifier (capability
+/// name, issue number, symbol fqn, patent ref, service/invariant name); `repo`
+/// scopes the ones that need it (Issue, Service). `updated_at` is epoch-ms.
+export interface RecentActivity {
+  kind: ActivityKind | string;
+  label?: string;
+  key?: string;
+  repo?: string;
+  updated_at?: number;
+}
+
+/// recent_activity — every domain object changed within [sinceMs, untilMs).
+/// `untilMs = 0` (default) means open (up to now); a nonzero upper bound makes
+/// calendar windows like "yesterday" exact. `sinceMs = 0` means from the start.
+export async function recentActivity(
+  opts: { sinceMs?: number; untilMs?: number } = {},
+): Promise<RecentActivity[]> {
+  const raw = await callTool<unknown>("execute_query_by_key", {
+    key: "recent_activity",
+    params: { since_ms: opts.sinceMs ?? 0, until_ms: opts.untilMs ?? 0 },
+  });
+  return asArray<RecentActivity>(raw);
+}
+
 // ─── Nostr kind-0 profile (served by the wheel; no relay I/O in the FE) ────
 
 export interface Kind0 {

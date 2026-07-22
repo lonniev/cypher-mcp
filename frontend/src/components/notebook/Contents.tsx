@@ -11,6 +11,7 @@ import {
   Gauge,
   ScrollText,
   Landmark,
+  CalendarClock,
   ArrowRight,
 } from "lucide-react";
 import FrontMatter from "./FrontMatter";
@@ -32,6 +33,13 @@ export default function Contents() {
   const caps = readCache<CapabilitySummary[]>("capabilities:list:since=0")?.data;
 
   const registers: Entry[] = [
+    {
+      to: "/recent",
+      title: "Recently Changed",
+      blurb:
+        "What the knowledge base learned lately — every capability, issue, symbol, invariant, patent element, and service created or modified in a date window, newest first. Pick Today, Yesterday, Last 7 days, or Last 30 days, then open any entry.",
+      icon: <CalendarClock className="h-5 w-5" />,
+    },
     {
       to: "/capabilities",
       title: "Capabilities",
