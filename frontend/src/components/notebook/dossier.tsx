@@ -221,16 +221,20 @@ export function Dossier({
   );
 }
 
-export function Crest({ initials }: { initials: string }) {
+export function Crest({ initials, badge }: { initials: string; badge?: ReactNode }) {
   return (
-    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[10px] border-[1.5px] border-amber-500/45 bg-amber-500/[0.14] font-serif text-lg font-bold text-amber-700 dark:text-amber-300">
-      {initials}
+    <div className="relative shrink-0">
+      <div className="grid h-14 w-14 place-items-center rounded-[10px] border-[1.5px] border-amber-500/45 bg-amber-500/[0.14] font-serif text-lg font-bold text-amber-700 dark:text-amber-300">
+        {initials}
+      </div>
+      {badge}
     </div>
   );
 }
 
 export function DossierHead({
   crest,
+  crestBadge,
   role,
   roleIcon,
   title,
@@ -239,6 +243,8 @@ export function DossierHead({
   stamp,
 }: {
   crest: string;
+  /// A small decorator pinned to the crest corner — e.g. a live GitHub status dot.
+  crestBadge?: ReactNode;
   role: ReactNode;
   roleIcon?: IconName;
   title: string;
@@ -251,7 +257,7 @@ export function DossierHead({
     "inline-flex items-center gap-1 rounded border border-stone-200 bg-stone-50 px-2 py-0.5 font-mono text-[11px] text-stone-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400";
   return (
     <div className="relative flex gap-4 border-b border-stone-200 px-6 pb-5 pt-7 dark:border-zinc-800">
-      <Crest initials={crest} />
+      <Crest initials={crest} badge={crestBadge} />
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500">
           {roleIcon && <Icon name={roleIcon} className="text-[13px]" />}

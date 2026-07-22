@@ -8,6 +8,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { issueProvenance, routingHistory, type IssueProvenance, type IssueSummary, type RoutingHistory } from "../../lib/mcp";
 import { useMetered, readCache } from "../../lib/graphCache";
 import { useSwipeNav } from "../../lib/useSwipeNav";
+import { useLiveIssueStatus, ghStatusLook } from "../../lib/githubStatus";
 import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import QuoteScroller from "../QuoteScroller";
@@ -27,6 +28,7 @@ import {
   Pager,
   WorkingPulse,
   isWorking,
+  Tip,
 } from "./dossier";
 
 function resolved(disposition?: string): boolean {
@@ -71,6 +73,12 @@ export default function IssueDetail() {
 
   const d = m.data?.prov;
   const routing = m.data?.routing;
+  // Live GitHub state (green=open, purple=done, gray=not-planned) — a free read
+  // off the issue_url the graph already carries, so the crest shows what GitHub
+  // says now, not only the remembered triage disposition. Null while loading or
+  // if the read fails; the dossier is unchanged in that case.
+  const live = useLiveIssueStatus(d?.issue_url);
+  const liveLook = live ? ghStatusLook(live) : null;
   const symbols = d?.root_cause_symbols ?? [];
   const decisions = d?.decisions ?? [];
   const rejections = d?.rejections ?? [];
@@ -123,6 +131,19 @@ export default function IssueDetail() {
         <Dossier accent="amber" tab="Issue" tabNo={`Case file №${num}`}>
           <DossierHead
             crest={`#${num}`}
+            crestBadge={
+              liveLook && (
+                <span className="absolute -bottom-1 -right-1">
+                  <Tip text={`GitHub: ${liveLook.label}`}>
+                    <span
+                      tabIndex={0}
+                      aria-label={`GitHub status: ${liveLook.label}`}
+                      className={`block h-3.5 w-3.5 cursor-help rounded-full ring-2 ring-white dark:ring-zinc-900 ${liveLook.dot}`}
+                    />
+                  </Tip>
+                </span>
+              )
+            }
             role={
               <>
                 <Link to={`/services/${encodeURIComponent(decodedRepo)}`} className="hover:text-amber-700 hover:underline dark:hover:text-amber-300">
