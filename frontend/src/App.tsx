@@ -16,6 +16,7 @@ import DebugPanel from "./components/DebugPanel";
 import WalletPage from "./components/WalletPage";
 import ProfilePage from "./components/ProfilePage";
 import Contents from "./components/notebook/Contents";
+import RecentActivity from "./components/notebook/RecentActivity";
 import Capabilities from "./components/notebook/Capabilities";
 import CapabilityDetail from "./components/notebook/CapabilityDetail";
 import Issues from "./components/notebook/Issues";
@@ -92,6 +93,7 @@ export default function App() {
             <Routes>
               <Route element={<Layout />}>
                 <Route index element={<Contents />} />
+                <Route path="recent" element={<RecentActivity />} />
                 <Route path="capabilities" element={<Capabilities />} />
                 <Route path="capabilities/:name" element={<CapabilityDetail />} />
                 <Route path="issues" element={<Issues />} />
