@@ -84,6 +84,19 @@ class TestVocabulary:
             if PORTER in t.allow_roles or JOURNEYMAN in t.allow_roles:
                 assert "'human-authored'" not in t.cypher, t.key
 
+    def test_time_bearing_writes_stamp_a_timestamp(self):
+        # The Recently Changed feed can only see a node once a write has stamped it.
+        # index_symbol must stamp both first-index and every touch; the patent writes
+        # must stamp updated_at (upsert always; the link writes at least on create).
+        idx = next(t for t in VOCABULARY if t.key == "index_symbol")
+        assert "sym.indexed_at = timestamp()" in idx.cypher
+        assert "sym.updated_at = timestamp()" in idx.cypher
+        upsert = next(t for t in VOCABULARY if t.key == "upsert_patent_element")
+        assert "p.updated_at = timestamp()" in upsert.cypher
+        for key in ("link_capability_to_patent", "link_invariant_to_patent"):
+            t = next(t for t in VOCABULARY if t.key == key)
+            assert "p.updated_at = timestamp()" in t.cypher
+
     def test_record_triage_stores_actual_issue_and_repo_urls(self):
         t = next(t for t in VOCABULARY if t.key == "record_triage")
         # URLs are caller-supplied params (the real GitHub URLs), bound in the SET — never derived.
@@ -128,6 +141,20 @@ class TestReadVocabulary:
         # The click-through surface returns the issue, repo, and PR URLs.
         for field in ("issue_url", "repo_url", "pr_url"):
             assert field in t.cypher, field
+
+    def test_recent_activity_is_a_bounded_cross_type_feed(self):
+        t = next(t for t in READ_VOCABULARY if t.key == "recent_activity")
+        # Bounded by BOTH ends so calendar windows (yesterday / last month) are exact.
+        assert "$since_ms" in t.cypher and "$until_ms" in t.cypher
+        assert "updated_at >= $since_ms" in t.cypher
+        assert "$until_ms <= 0 OR updated_at < $until_ms" in t.cypher
+        # Unions every first-class node type into one normalized stream.
+        for label in ("Capability", "Issue", "Symbol", "Invariant", "PatentElement", "Service"):
+            assert f":{label})" in t.cypher, label
+        # The uniform row shape the FE renders + routes on, newest-first.
+        for col in ("kind", "label", "key", "repo", "updated_at"):
+            assert col in t.cypher, col
+        assert "ORDER BY updated_at DESC" in t.cypher
 
 
 class TestSeedBuilders:
