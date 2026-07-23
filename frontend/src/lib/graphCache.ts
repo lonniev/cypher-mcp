@@ -17,6 +17,31 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// A browser RELOAD (F5 / ⌘R) is a deliberate "give me fresh" gesture, so the
+// metered queries on the page the user reloaded refetch instead of re-rendering
+// a stale localStorage snapshot. A first visit ("navigate") or a back/forward
+// restore stays cache-first. The flag is consumed once the reloaded page has
+// mounted — the app shell calls consumeReloadRefresh() in a mount effect, which
+// (React runs child effects before parent effects) fires AFTER the page's own
+// queries have kicked off — so later client-side navigations don't force
+// refreshes and re-spend sats.
+function wasReloadNavigation(): boolean {
+  try {
+    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return nav?.type === "reload";
+  } catch {
+    return false;
+  }
+}
+let reloadPending = wasReloadNavigation();
+
+/// Called once by the app shell after the initial page mounts, so a reload's
+/// forced refresh applies only to the reloaded page — not to every register the
+/// user later navigates to.
+export function consumeReloadRefresh(): void {
+  reloadPending = false;
+}
+
 // v3: bumped when the single-object wrappers began unwrapping the {success,rows}
 // envelope's first row (explain_capability / explain_patent_element /
 // issue_provenance). Abandoning older caches forces fresh, correctly-shaped
@@ -133,7 +158,9 @@ export function useMetered<T>(
     setCachedAt(c?.at ?? null);
     setError(null);
     setCold(!c);
-    if (autoFetch && !c) void doFetch();
+    // A browser reload is an explicit refresh: refetch the reloaded page's
+    // queries even for cache-first (autoFetch:false) views and even when cached.
+    if (reloadPending || (autoFetch && !c)) void doFetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
 
