@@ -258,7 +258,8 @@ export function DossierHead({
   return (
     <div className="relative flex gap-4 border-b border-stone-200 px-6 pb-5 pt-7 dark:border-zinc-800">
       <Crest initials={crest} badge={crestBadge} />
-      <div className="min-w-0 flex-1">
+      {/* Reserve a right gutter for the floating stamp so the title never spills under it. */}
+      <div className={`min-w-0 flex-1 ${stamp ? "pr-32" : ""}`}>
         <div className="mb-1 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500">
           {roleIcon && <Icon name={roleIcon} className="text-[13px]" />}
           {role}
@@ -307,7 +308,7 @@ export function Stamp({
     <Tip text={tip}>
       <span
         tabIndex={0}
-        className={`animate-stamp absolute right-5 top-5 flex -rotate-[7deg] cursor-help flex-col items-center gap-0.5 rounded-md border-[2.5px] px-3 pb-1.5 pt-[7px] font-mono text-[11px] font-bold uppercase tracking-[0.1em] ${c}`}
+        className={`animate-stamp absolute right-5 top-5 flex max-w-[6.5rem] -rotate-[7deg] cursor-help flex-col items-center gap-0.5 rounded-md border-[2.5px] px-3 pb-1.5 pt-[7px] text-center font-mono text-[11px] font-bold uppercase leading-[1.15] tracking-[0.1em] ${c}`}
       >
         <Icon name={icon} className="text-[15px]" />
         {label}
