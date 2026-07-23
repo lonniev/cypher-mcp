@@ -43,7 +43,6 @@ from pathlib import Path
 from typing import Any
 
 SLUG = "cypher"
-FIND_KEY = "_backfill_find_urlless_issues"
 SET_KEY = "_backfill_set_issue_url"
 
 
@@ -127,23 +126,28 @@ async def _run(url: str, operator_npub: str, operator_nsec: str,
                 return data
             return data
 
-        # 1. Find the URL-less issues via a one-shot read query.
-        await call("create_query", {
-            "key": FIND_KEY,
-            "cypher_template": (
-                "MATCH (i:Issue) WHERE i.url IS NULL OR i.url = '' "
-                "RETURN i.repo_name AS repo_name, i.number AS number "
-                "ORDER BY i.repo_name, i.number"
-            ),
-            "param_schema": {},
-            "description": "Backfill: issues with no GitHub URL.",
-            "access_mode": "read",
-        })
-        found = await call("execute_query_by_key", {"key": FIND_KEY, "params": {}})
-        rows = found.get("rows") or []
+        # 1. Enumerate every issue via the PUBLISHED, priced list_issues tool — it
+        #    returns each issue's url, so we filter for the empty ones. Using the real
+        #    tool (NOT a freshly-created, unpriced temp query — those hit the same
+        #    tool_not_priced gate as any new tool) means an auth / pricing / balance
+        #    failure SURFACES here instead of masquerading as "nothing to do".
+        listed = await call("list_issues", {"since_ms": 0})
+        if listed.get("error") or listed.get("error_code"):
+            print(f"list_issues failed — cannot enumerate: "
+                  f"{listed.get('error') or listed.get('error_code')}", file=sys.stderr)
+            print("Fix the cause (fund/authorize the operator npub, or ensure list_issues "
+                  "is priced), then re-run.", file=sys.stderr)
+            return 2
+        all_issues = (listed.get("rows") or listed.get("issues")
+                      or listed.get("results") or listed.get("data") or [])
+        if not isinstance(all_issues, list) or not all_issues:
+            print(f"list_issues returned no issues (shape: {str(listed)[:160]}).", file=sys.stderr)
+            return 2
+        rows = [{"repo_name": r.get("repo_name"), "number": r.get("number")}
+                for r in all_issues if not str(r.get("url") or "").strip()]
+        print(f"{len(all_issues)} issues total; {len(rows)} without a URL.")
         if not rows:
-            print("No URL-less issues in the graph — nothing to backfill.")
-            await call("delete_query", {"key": FIND_KEY})
+            print("Every issue already has a URL — nothing to backfill.")
             return 0
 
         # 2. Resolve each issue's real URL from its repo's git remote.
@@ -168,15 +172,13 @@ async def _run(url: str, operator_npub: str, operator_nsec: str,
 
         if dry_run:
             print("\n--dry-run: no writes performed.")
-            await call("delete_query", {"key": FIND_KEY})
             return 0
 
         if not plan:
-            await call("delete_query", {"key": FIND_KEY})
             return 0
 
         # 3. Fill via a one-shot write query — coalesce so we never clobber a real URL.
-        await call("create_query", {
+        created = await call("create_query", {
             "key": SET_KEY,
             "cypher_template": (
                 "MATCH (i:Issue {repo_name: $repo_name, number: $number}) "
@@ -193,18 +195,23 @@ async def _run(url: str, operator_npub: str, operator_nsec: str,
             "description": "Backfill: set an issue's GitHub URL where missing.",
             "access_mode": "write",
         })
+        # "already exists" from a prior aborted run is fine; any other error is fatal.
+        if created.get("error") and "exist" not in str(created.get("error")).lower():
+            print(f"create_query({SET_KEY}) failed: {created.get('error')}", file=sys.stderr)
+            return 2
         filled = 0
         for p in plan:
             res = await call("execute_query_by_key", {"key": SET_KEY, "params": p})
             if res.get("rows"):
                 filled += 1
             else:
-                print(f"  ! {p['repo_name']}#{p['number']}: {res.get('error') or res}")
+                print(f"  ! {p['repo_name']}#{p['number']}: {res.get('error') or res}", file=sys.stderr)
 
-        # 4. Clean up the temporary queries.
         await call("delete_query", {"key": SET_KEY})
-        await call("delete_query", {"key": FIND_KEY})
         print(f"\nBackfilled {filled}/{len(plan)} issues.")
+        if filled < len(plan):
+            print(f"WARNING: {len(plan) - filled} write(s) did not confirm — see the ! lines above.",
+                  file=sys.stderr)
         return 0
 
 
