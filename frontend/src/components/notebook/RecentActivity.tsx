@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { recentActivity, type RecentActivity, type ActivityKind } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
-import { RANGE_PRESETS, rangeFor, relTime, toMillis, type RangeKey } from "../../lib/time";
+import { SINCE_PRESETS, sinceLabel, relTime, toMillis } from "../../lib/time";
 import { Page, MeteredBar, MeteredError, LoadPanel, Empty, muted, faint } from "./ui";
 import { Icon, type IconName } from "./icons";
 import QuoteScroller from "../QuoteScroller";
@@ -111,16 +111,17 @@ function Row({ r }: { r: RecentActivity }) {
 }
 
 export default function RecentActivity() {
-  const [rangeKey, setRangeKey] = useState<RangeKey>("7d");
+  // Same rolling-window vocabulary as every other filter (24h · 7d · 30d · 90d ·
+  // Any time). `since` is a day count; 0 = any time.
+  const [since, setSince] = useState(7);
   const [kindFilter, setKindFilter] = useState<ActivityKind | "all">("all");
   const [q, setQ] = useState("");
 
-  const range = rangeFor(rangeKey);
-  // Each window is its own cached read (keyed by both bounds); no auto-fetch so a
-  // tab entry never spends sats before the architect has chosen a window.
+  // Each window is its own cached read; no auto-fetch so a tab entry never spends
+  // sats before the architect has chosen a window.
   const m = useMetered<RecentActivity[]>(
-    `recent:${range.sinceMs}-${range.untilMs}`,
-    () => recentActivity({ sinceMs: range.sinceMs, untilMs: range.untilMs }),
+    `recent:since=${since}`,
+    () => recentActivity({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0, untilMs: 0 }),
     { autoFetch: false },
   );
 
@@ -160,25 +161,23 @@ export default function RecentActivity() {
 
       {!m.error && (
         <>
-          {/* Date-range chiclets — the primary control. */}
+          {/* Rolling-window chiclets — the primary control. Same vocabulary and
+              order as every other filter: shortest first, "Any time" far right. */}
           <div className="mb-4 inline-flex flex-wrap items-center gap-1">
             <Icon name="history" size={15} className="mr-1 text-stone-400 dark:text-zinc-500" />
-            {RANGE_PRESETS.map((k) => {
-              const r = rangeFor(k);
-              return (
-                <button
-                  key={k}
-                  onClick={() => setRangeKey(k)}
-                  className={`rounded-md px-2.5 py-1 font-mono text-[11px] transition-colors ${
-                    rangeKey === k
-                      ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
-                      : "text-stone-500 hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                  }`}
-                >
-                  {r.label}
-                </button>
-              );
-            })}
+            {SINCE_PRESETS.map((p) => (
+              <button
+                key={p.days}
+                onClick={() => setSince(p.days)}
+                className={`rounded-md px-2.5 py-1 font-mono text-[11px] transition-colors ${
+                  since === p.days
+                    ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+                    : "text-stone-500 hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
 
           <div className="mb-4">
@@ -218,7 +217,7 @@ export default function RecentActivity() {
           )}
 
           <div className="mb-3 text-xs">
-            <span className={faint}>{m.data ? `${filtered.length} of ${rows.length} in ${range.label.toLowerCase()}` : "not loaded"}</span>
+            <span className={faint}>{m.data ? `${filtered.length} of ${rows.length} in ${sinceLabel(since).toLowerCase()}` : "not loaded"}</span>
           </div>
 
           {m.loading ? (
