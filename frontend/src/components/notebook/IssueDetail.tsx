@@ -157,7 +157,7 @@ export default function IssueDetail() {
             <Stat icon="symbol" num={symbols.length} label="Root cause" accent drill="issue-rootcause" tip="The code symbol found at fault." />
             <Stat icon="quote" num={decisions.length} label="Decisions" drill="issue-decisions" tip="Recorded rationale for the fix." />
             <Stat icon="close" num={rejections.length} label="Rejections" drill="issue-rejections" tip="Triage paths that were ruled out." />
-            <Stat icon="verified" num={caps.length} label="Capability" drill="issue-capability" tip="The capability this issue touched." />
+            <Stat icon="verified" num={caps.length} label="Capabilities" drill="issue-capability" tip="The capabilities this issue was raised against." />
             <Stat icon="github" num={(d.issue_url ? 1 : 0) + (d.pr_url ? 1 : 0) + (d.repo_url ? 1 : 0)} label="Record" drill="issue-record" tip="Links to the live GitHub issue, its pull request, and the repository." />
             {d.resolved_via && (
               <div className="min-w-[92px] flex-1 border-r border-stone-200 px-3.5 py-3 text-center last:border-r-0 dark:border-zinc-800">
@@ -177,9 +177,9 @@ export default function IssueDetail() {
           )}
 
           <Cells>
-            {caps.length > 0 && (
-              <Cell id="issue-capability">
-                <Eyebrow icon="swap" count={caps.length} info="Center the capability instead and this issue becomes one of its cells — the grammar inverts.">Capability</Eyebrow>
+            <Cell id="issue-capability">
+              <Eyebrow icon="swap" count={caps.length || undefined} info="The capabilities this issue was raised against. Center a capability instead and this issue becomes one of its cells — the grammar inverts.">Capabilities</Eyebrow>
+              {caps.length ? (
                 <div className="flex flex-wrap gap-2">
                   {caps.map((c) => (
                     <Link
@@ -192,8 +192,10 @@ export default function IssueDetail() {
                     </Link>
                   ))}
                 </div>
-              </Cell>
-            )}
+              ) : (
+                <p className={`text-sm ${muted}`}>No capability linked to this issue yet.</p>
+              )}
+            </Cell>
 
             <Cell id="issue-rootcause">
               <Eyebrow icon="symbol" count={`${symbols.length} symbol${symbols.length === 1 ? "" : "s"}`} info="The symbol the Service Desk pinned as the fault. Links to its owning service.">Root cause</Eyebrow>

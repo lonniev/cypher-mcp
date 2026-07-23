@@ -603,6 +603,7 @@ export interface GraphSymbol {
 export interface GraphPrecedent {
   number?: number;
   url?: string;
+  title?: string;
   actionable_text?: string;
 }
 
