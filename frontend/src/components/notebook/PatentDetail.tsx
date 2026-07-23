@@ -60,7 +60,7 @@ export default function PatentDetail() {
 
           <BoxScore>
             <Stat icon="verified" num={caps.length} label="Capabilities" accent drill="pat-caps" tip="Capabilities traced to this patent element." />
-            <Stat icon="bookmark" num={invariants.length} label="Invariants" drill="pat-invariants" tip="Invariants traced to this patent element." />
+            <Stat icon="verified" num={invariants.length} label="Invariants" drill="pat-invariants" tip="Invariants traced to this patent element." />
           </BoxScore>
 
           <Cells>
@@ -80,7 +80,7 @@ export default function PatentDetail() {
             </Cell>
 
             <Cell id="pat-invariants" span>
-              <Eyebrow icon="bookmark" count={invariants.length} info="Invariants grounded in this reference numeral.">Guards</Eyebrow>
+              <Eyebrow icon="verified" count={invariants.length} info="Invariants (business logic) grounded in this reference numeral.">Invariants</Eyebrow>
               {invariants.length ? (
                 <ul className="flex flex-col gap-2">
                   {invariants.map((inv, k) => (
