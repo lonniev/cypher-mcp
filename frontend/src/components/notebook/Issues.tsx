@@ -11,7 +11,7 @@ import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, m
 import { Icon } from "./icons";
 import QuoteScroller from "../QuoteScroller";
 import { parseIssueRef, ResolvedPill, WorkingPulse } from "./dossier";
-import { GhStatusDot } from "./GhStatusDot";
+import { IssueStatusGlyph, IssueStatusPill } from "./IssueStatusGlyph";
 
 type Col = "recent" | "number" | "repo" | "disposition";
 const SORTS: { col: Col; label: string }[] = [
@@ -20,10 +20,6 @@ const SORTS: { col: Col; label: string }[] = [
   { col: "repo", label: "Service" },
   { col: "disposition", label: "Status" },
 ];
-
-function resolved(disposition?: string): boolean {
-  return /resolv|merg|fixed|closed|done|shipped/i.test(disposition ?? "");
-}
 
 export default function Issues() {
   const nav = useNavigate();
@@ -146,8 +142,8 @@ export default function Issues() {
                       <div className="grid h-10 w-14 place-items-center rounded-lg border-[1.5px] border-amber-500/40 bg-amber-500/[0.12] font-mono text-[13px] font-bold text-amber-700 dark:text-amber-300">
                         #{i.number}
                       </div>
-                      {/* Live GitHub open/closed status — green/purple/gray dot in the corner. */}
-                      <GhStatusDot url={i.url} className="-right-1.5 -top-1.5" size={12} />
+                      {/* Fused live-GitHub + disposition status glyph in the corner. */}
+                      <IssueStatusGlyph url={i.url} disposition={i.disposition} className="-right-2 -top-2" size={17} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
@@ -168,11 +164,7 @@ export default function Issues() {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <WorkingPulse a={i} />
                     {i.classification && <span className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">{i.classification}</span>}
-                    {i.disposition && (
-                      <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10.5px] ${resolved(i.disposition) ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
-                        <Icon name={resolved(i.disposition) ? "check" : "history"} size={11} /> {i.disposition}
-                      </span>
-                    )}
+                    {i.disposition && <IssueStatusPill url={i.url} disposition={i.disposition} />}
                     {i.resolved_via && <ResolvedPill mode={i.resolved_via} />}
                   </div>
                   {i.capabilities!.length > 0 && (

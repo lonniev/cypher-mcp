@@ -15,10 +15,13 @@ import {
   Copy,
   Database,
   ExternalLink,
+  Handshake,
+  HardHat,
   History,
   Info,
   KeyRound,
   LoaderCircle,
+  PackageCheck,
   Quote,
   Server,
   Tag,
@@ -32,6 +35,7 @@ export type IconName =
   | "info" | "open" | "copy" | "check" | "close" | "symbol" | "verified"
   | "bookmark" | "quote" | "history" | "swap" | "dns" | "database" | "bolt"
   | "key" | "back" | "groups" | "tag" | "working"
+  | "worker" | "delivered" | "handshake"
   | "github" | "python" | "typescript" | "bitcoin";
 
 const LUCIDE: Partial<Record<IconName, LucideIcon>> = {
@@ -54,6 +58,9 @@ const LUCIDE: Partial<Record<IconName, LucideIcon>> = {
   groups: Users,
   tag: Tag,
   working: LoaderCircle,
+  worker: HardHat,
+  delivered: PackageCheck,
+  handshake: Handshake,
 };
 
 // Decorations use a medal rather than a plain bookmark.
