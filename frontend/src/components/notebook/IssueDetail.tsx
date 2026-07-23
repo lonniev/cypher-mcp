@@ -8,7 +8,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { issueProvenance, routingHistory, type IssueProvenance, type IssueSummary, type RoutingHistory } from "../../lib/mcp";
 import { useMetered, readCache } from "../../lib/graphCache";
 import { useSwipeNav } from "../../lib/useSwipeNav";
-import { GhStatusDot } from "./GhStatusDot";
+import { useLiveIssueStatus } from "../../lib/githubStatus";
+import { IssueStatusGlyph, issueLifecycle } from "./IssueStatusGlyph";
 import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import QuoteScroller from "../QuoteScroller";
@@ -29,10 +30,6 @@ import {
   WorkingPulse,
   isWorking,
 } from "./dossier";
-
-function resolved(disposition?: string): boolean {
-  return /resolv|merg|fixed|closed|done|shipped/i.test(disposition ?? "");
-}
 
 export default function IssueDetail() {
   const { repo = "", number = "" } = useParams();
@@ -72,6 +69,10 @@ export default function IssueDetail() {
 
   const d = m.data?.prov;
   const routing = m.data?.routing;
+  // Live GitHub state fused with the graph disposition → one lifecycle status, shared
+  // by the crest glyph and the disposition stamp so they never disagree.
+  const live = useLiveIssueStatus(d?.issue_url);
+  const life = issueLifecycle(live, d?.disposition);
   const symbols = d?.root_cause_symbols ?? [];
   const decisions = d?.decisions ?? [];
   const rejections = d?.rejections ?? [];
@@ -124,7 +125,7 @@ export default function IssueDetail() {
         <Dossier accent="amber" tab="Issue" tabNo={`Case file №${num}`}>
           <DossierHead
             crest={`#${num}`}
-            crestBadge={<GhStatusDot url={d.issue_url} className="-bottom-1 -right-1" />}
+            crestBadge={<IssueStatusGlyph url={d.issue_url} disposition={d.disposition} className="-bottom-1.5 -right-1.5" />}
             role={
               <>
                 <Link to={`/services/${encodeURIComponent(decodedRepo)}`} className="hover:text-amber-700 hover:underline dark:hover:text-amber-300">
@@ -135,14 +136,24 @@ export default function IssueDetail() {
             }
             roleIcon="github"
             title={d.title ?? `Issue #${num}`}
-            tags={[d.classification, d.disposition].filter(Boolean) as string[]}
+            tags={[d.classification].filter(Boolean) as string[]}
             stamp={
               d.disposition ? (
-                resolved(d.disposition) ? (
-                  <Stamp tone="good" icon="check" label={d.disposition} sub="Disposition" tip="Triaged, root-caused, and closed. The dossier records the whole chain." />
-                ) : (
-                  <Stamp tone="warn" icon="history" label={d.disposition} sub="Disposition" tip="Still open in the Service Desk workflow." />
-                )
+                <Stamp
+                  tone={life.kind === "done" ? "good" : "warn"}
+                  icon={life.icon}
+                  label={life.label}
+                  sub="Status"
+                  tip={
+                    life.kind === "done"
+                      ? "Closed and delivered — the dossier records the whole chain."
+                      : life.kind === "delegated"
+                        ? "Handed to a peer service. The Routing cell shows where and why."
+                        : life.kind === "declined"
+                          ? "Closed as not planned."
+                          : "In progress in the Service Desk workflow."
+                  }
+                />
               ) : undefined
             }
           />
