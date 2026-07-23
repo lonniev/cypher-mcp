@@ -1,6 +1,6 @@
 // Recently Changed register — the "what's new in the knowledge base" feed. Pick
-// a date window with the chiclets (Today · Yesterday · Last 7 days · Last 30
-// days · Any time) and see every domain object — Capability, Issue, Symbol,
+// a rolling window with the chiclets (Day · Week · Month · Quarter · Any time —
+// the shared filter vocabulary) and see every domain object — Capability, Issue, Symbol,
 // Invariant, PatentElement, Service — created or modified within it, newest
 // first, each row a click-through into its existing dossier. The one query
 // (recent_activity) that unifies the notebook's registers on a timeline.
@@ -122,7 +122,7 @@ export default function RecentActivity() {
   const m = useMetered<RecentActivity[]>(
     `recent:since=${since}`,
     () => recentActivity({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0, untilMs: 0 }),
-    { autoFetch: false },
+    { autoFetch: false, refetchOnKeyChange: true },
   );
 
   const rows = m.data ?? [];

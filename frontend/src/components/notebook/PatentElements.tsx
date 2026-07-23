@@ -30,7 +30,7 @@ export default function PatentElements() {
   const m = useMetered<PatentElementSummary[]>(
     `patents:list:since=${since}`,
     () => listPatentElements({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0 }),
-    { autoFetch: false },
+    { autoFetch: false, refetchOnKeyChange: true },
   );
 
   const rows = m.data ?? [];

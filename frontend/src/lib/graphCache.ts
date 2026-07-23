@@ -104,11 +104,14 @@ export interface MeteredState<T> {
  * @param cacheKey  stable key (include params, e.g. `capability:pricing`)
  * @param fetcher   the mcp wrapper that performs the call
  * @param opts.autoFetch    fetch once on mount when uncached (default true)
+ * @param opts.refetchOnKeyChange  when the cacheKey CHANGES after mount (e.g. the
+ *   user picked a new time-range window — a backend query parameter, not a
+ *   client-side filter), run the new query instead of just re-reading its cache.
  */
 export function useMetered<T>(
   cacheKey: string,
   fetcher: () => Promise<T>,
-  opts: { autoFetch?: boolean } = {},
+  opts: { autoFetch?: boolean; refetchOnKeyChange?: boolean } = {},
 ): MeteredState<T> {
   const cached = readCache<T>(cacheKey);
   const [data, setData] = useState<T | null>(cached?.data ?? null);
@@ -117,8 +120,10 @@ export function useMetered<T>(
   const [error, setError] = useState<string | null>(null);
   const [cold, setCold] = useState<boolean>(!cached);
   const inFlight = useRef(false);
+  const firstRun = useRef(true);
 
   const autoFetch = opts.autoFetch ?? true;
+  const refetchOnKeyChange = opts.refetchOnKeyChange ?? false;
 
   const doFetch = useCallback(async () => {
     if (inFlight.current) return;
@@ -158,9 +163,17 @@ export function useMetered<T>(
     setCachedAt(c?.at ?? null);
     setError(null);
     setCold(!c);
-    // A browser reload is an explicit refresh: refetch the reloaded page's
-    // queries even for cache-first (autoFetch:false) views and even when cached.
-    if (reloadPending || (autoFetch && !c)) void doFetch();
+    const isFirst = firstRun.current;
+    firstRun.current = false;
+    // First mount: a browser reload forces a refresh (explicit "give me fresh");
+    // otherwise honor autoFetch (cache-first registers wait for the user). A LATER
+    // cacheKey change means the user moved a backend query parameter — e.g. picked
+    // a new time-range window — so run that query when the caller opted into
+    // refetchOnKeyChange, instead of silently re-reading the new key's cache.
+    const shouldFetch = isFirst
+      ? reloadPending || (autoFetch && !c)
+      : refetchOnKeyChange || (autoFetch && !c);
+    if (shouldFetch) void doFetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheKey]);
 
