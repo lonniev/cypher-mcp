@@ -28,7 +28,7 @@ export default function Invariants() {
   const m = useMetered<InvariantSummary[]>(
     `invariants:list:since=${since}`,
     () => listInvariants({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0 }),
-    { autoFetch: false },
+    { autoFetch: false, refetchOnKeyChange: true },
   );
 
   const rows = m.data ?? [];

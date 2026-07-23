@@ -34,7 +34,7 @@ export default function Capabilities() {
   const m = useMetered<CapabilitySummary[]>(
     `capabilities:list:since=${since}`,
     () => listCapabilities({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0 }),
-    { autoFetch: false },
+    { autoFetch: false, refetchOnKeyChange: true },
   );
 
   // Coerce at the render boundary — stale caches / drift can't crash .join.

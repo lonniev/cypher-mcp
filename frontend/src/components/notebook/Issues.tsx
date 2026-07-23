@@ -31,7 +31,7 @@ export default function Issues() {
   const m = useMetered<IssueSummary[]>(
     `issues:list:since=${since}`,
     () => listIssues({ sinceMs: since > 0 ? Date.now() - since * 86_400_000 : 0 }),
-    { autoFetch: false },
+    { autoFetch: false, refetchOnKeyChange: true },
   );
 
   const rows = (m.data ?? []).map((i) => ({ ...i, capabilities: asStrList(i.capabilities) }));
