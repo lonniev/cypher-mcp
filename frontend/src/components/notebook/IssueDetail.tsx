@@ -125,7 +125,7 @@ export default function IssueDetail() {
         <Dossier accent="amber" tab="Issue" tabNo={`Case file №${num}`}>
           <DossierHead
             crest={`#${num}`}
-            crestBadge={<IssueStatusGlyph url={d.issue_url} disposition={d.disposition} className="-bottom-1.5 -right-1.5" />}
+            crestBadge={<IssueStatusGlyph url={d.issue_url} disposition={d.disposition} className="-right-2 -top-2" size={18} />}
             role={
               <>
                 <Link to={`/services/${encodeURIComponent(decodedRepo)}`} className="hover:text-amber-700 hover:underline dark:hover:text-amber-300">
