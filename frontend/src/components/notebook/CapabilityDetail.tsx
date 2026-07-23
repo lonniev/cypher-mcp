@@ -122,7 +122,7 @@ export default function CapabilityDetail() {
             <Stat icon="groups" num={explain.consumers?.length ?? 0} label="Consumers" drill="cap-consumers" tip="Services that depend on this capability." />
             <Stat icon="symbol" num={b?.symbols.length ?? 0} label="Symbols" accent drill="cap-symbols" tip="Code symbols that implement it — the grep scope for a fix." />
             <Stat icon="bookmark" num={b?.patents.length ?? 0} label="Patents" drill="cap-patents" tip="Filed patent elements that ground its rationale." />
-            <Stat icon="history" num={precedents.length} label="Precedents" drill="cap-precedents" tip="Prior issues that touched this capability." />
+            <Stat icon="history" num={precedents.length} label="Issues" drill="cap-precedents" tip="Issues raised against this capability. Each opens its own issue dossier." />
             <Stat icon="verified" num={invariants.length} label="Invariants" drill="cap-invariants" tip="Rules the fleet must not violate." />
           </BoxScore>
 
@@ -203,29 +203,33 @@ export default function CapabilityDetail() {
               )}
             </Cell>
 
-            {precedents.length > 0 && (
-              <Cell id="cap-precedents" span>
-                <Eyebrow icon="history" count={precedents.length} info="Prior issues about this capability. Each opens its own issue dossier.">Precedents</Eyebrow>
+            <Cell id="cap-precedents" span>
+              <Eyebrow icon="history" count={precedents.length || undefined} info="Issues raised against this capability (the ABOUT_CAPABILITY edge). Each opens its own issue dossier.">Issues</Eyebrow>
+              {precedents.length ? (
                 <ul className="flex flex-col gap-2">
                   {precedents.map((pr, i) => {
                     const internal = issueLinkFromUrl(pr.url, pr.number);
                     return (
-                      <li key={i} className="flex items-center gap-2.5">
-                        <Icon name="github" className="text-[15px] text-stone-500 dark:text-zinc-400" />
+                      <li key={i} className="flex items-baseline gap-2.5">
+                        <Icon name="github" className="translate-y-0.5 text-[15px] text-stone-500 dark:text-zinc-400" />
                         {internal ? (
-                          <Link to={internal} className="font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">#{pr.number}</Link>
+                          <Link to={internal} className="shrink-0 font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">#{pr.number}</Link>
                         ) : pr.url ? (
-                          <a href={pr.url} target="_blank" rel="noopener noreferrer" className="font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">#{pr.number}</a>
+                          <a href={pr.url} target="_blank" rel="noopener noreferrer" className="shrink-0 font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">#{pr.number}</a>
                         ) : (
-                          <span className="font-mono text-[12.5px]">#{pr.number}</span>
+                          <span className="shrink-0 font-mono text-[12.5px]">#{pr.number}</span>
                         )}
-                        {pr.actionable_text && <span className={`text-[13px] ${muted}`}>{pr.actionable_text}</span>}
+                        {(pr.title || pr.actionable_text) && (
+                          <span className="text-[13px] text-stone-700 dark:text-zinc-200">{pr.title || pr.actionable_text}</span>
+                        )}
                       </li>
                     );
                   })}
                 </ul>
-              </Cell>
-            )}
+              ) : (
+                <p className={`text-sm ${muted}`}>No issues have been raised against this capability yet.</p>
+              )}
+            </Cell>
           </Cells>
         </Dossier>
       )}

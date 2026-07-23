@@ -745,7 +745,7 @@ READ_VOCABULARY: list[Template] = [
             "           {fqn: x.fqn, file: x.file_path, lang: x.lang, verified_at_sha: x.verified_at_sha}] AS symbols, "
             "       collect(DISTINCT inv.name) AS invariants, "
             "       [x IN collect(DISTINCT i) WHERE x IS NOT NULL | "
-            "           {number: x.number, url: x.url, actionable_text: x.actionable_text}] AS precedents "
+            "           {number: x.number, url: x.url, title: x.title, actionable_text: x.actionable_text}] AS precedents "
             "ORDER BY capability"
         ),
         param_schema={
