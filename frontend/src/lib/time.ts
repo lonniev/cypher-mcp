@@ -45,8 +45,8 @@ export function withinDays(ms: number | null, days: number): boolean {
 export const SINCE_PRESETS: { days: number; label: string }[] = [
   { days: 1, label: "Day" },
   { days: 7, label: "Week" },
-  { days: 30, label: "30d" },
-  { days: 90, label: "90d" },
+  { days: 30, label: "Month" },
+  { days: 90, label: "Quarter" },
   { days: 0, label: "Any time" },
 ];
 
