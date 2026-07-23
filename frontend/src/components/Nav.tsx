@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { useSession } from "../App";
-import { checkBalance } from "../lib/mcp";
 import Avatar from "./Avatar";
 import { avatarFor, AVATAR_EVENT } from "../lib/avatar";
 
 export default function Nav() {
   const { npub, logOut } = useSession();
-  const loc = useLocation();
-  const [balance, setBalance] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatar, setAvatar] = useState(() => avatarFor(npub));
   const menuRef = useRef<HTMLDivElement>(null);
@@ -20,17 +17,6 @@ export default function Nav() {
     window.addEventListener(AVATAR_EVENT, h);
     return () => window.removeEventListener(AVATAR_EVENT, h);
   }, [npub]);
-
-  // Refresh balance on navigation (cheap, free tool).
-  useEffect(() => {
-    let live = true;
-    checkBalance()
-      .then((b) => live && setBalance(b.balance_api_sats ?? null))
-      .catch(() => live && setBalance(null));
-    return () => {
-      live = false;
-    };
-  }, [loc.pathname]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -74,14 +60,6 @@ export default function Nav() {
       {tab("/wallet", "Wallet")}
 
       <div className="ml-auto flex items-center gap-3">
-        <Link
-          to="/wallet"
-          className="text-sm tabular-nums text-stone-500 dark:text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-          title="Credit balance"
-        >
-          {balance === null ? "— sats" : `${balance.toLocaleString()} sats`}
-        </Link>
-
         <div className="relative" ref={menuRef}>
           <button onClick={() => setMenuOpen((o) => !o)} title={npub} className="block rounded-full">
             <Avatar value={avatar} size={32} />
