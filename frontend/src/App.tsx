@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { consumeReloadRefresh } from "./lib/graphCache";
 import {
   getStoredNpub,
   isLoggedIn,
@@ -75,6 +76,14 @@ export default function App() {
   useEffect(() => {
     if (loggedIn && npub) void hydrateAvatarFromNostr(npub);
   }, [loggedIn, npub]);
+
+  // On a browser reload, the reloaded page's metered queries refetch (see
+  // useMetered). Consume that intent here — this shell effect runs after the
+  // page's own effects (child-first), so the reload refreshes the current page
+  // yet later client-side navigations stay cache-first.
+  useEffect(() => {
+    consumeReloadRefresh();
+  }, []);
 
   function onLogin() {
     setReauthNotice("");
