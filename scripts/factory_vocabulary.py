@@ -143,11 +143,17 @@ VOCABULARY: list[Template] = [
         # instead of appearing only after the saga ends. Idempotent; enriched later by
         # record_triage / record_scope / link_pr. `triaged_at` is coalesced so the issue
         # shows in the register immediately without clobbering a real triage timestamp.
+        #
+        # INVARIANT: this and record_triage are the ONLY writers that MERGE (create) an
+        # Issue node, and BOTH require issue_url — so a node can never be born without its
+        # GitHub URL. Every other issue writer MATCHes (enriches an already-claimed node),
+        # so none of them can mint a URL-less Issue. issue_url is set (not coalesced) here:
+        # it is required, and a re-claim carrying the same URL is a harmless no-op.
         cypher=(
             "MERGE (s:Service {repo_name: $repo_name}) "
             "MERGE (i:Issue {repo_name: $repo_name, number: $issue_number}) "
             "SET i.title = coalesce($title, i.title), "
-            "    i.url = coalesce($issue_url, i.url), "
+            "    i.url = $issue_url, "
             "    i.activity = $activity, "
             "    i.worked_by = $worked_by, "
             "    i.activity_since = timestamp(), "
@@ -164,8 +170,9 @@ VOCABULARY: list[Template] = [
                           "description": "The agent role picking it up: 'porter' | 'journeyman' | 'qa'."},
             "title": {"type": "string", "required": False,
                       "description": "Issue title (sets it if the node is new; omit to leave as-is)."},
-            "issue_url": {"type": "string", "required": False,
-                          "description": "The issue's GitHub URL (gh issue view <n> --json url), for click-through."},
+            "issue_url": {"type": "string", "required": True,
+                          "description": "The issue's actual GitHub URL (gh issue view <n> --json url). "
+                                         "Required: an Issue node is never created without its URL."},
         },
         description="Turn-start claim: ensure the Issue node exists and mark it actively worked "
                     "(activity + worked_by + activity_since), so the graph shows work in progress.",
@@ -179,8 +186,10 @@ VOCABULARY: list[Template] = [
         # (graph = context_pack alone; scoped-grep = graph narrowed a grep; wide-grep = the
         # graph missed and a whole-repo grep was needed). resolved_via is the token-savings
         # metric: as the graph learns, wide-grep should trend to zero.
+        # MATCH, not MERGE: an issue is claimed (with its URL) before it is scoped, so this
+        # only ever enriches an existing node — it must never mint a URL-less one.
         cypher=(
-            "MERGE (i:Issue {repo_name: $repo_name, number: $issue_number}) "
+            "MATCH (i:Issue {repo_name: $repo_name, number: $issue_number}) "
             "SET i.actionable_text = $actionable_text, i.resolved_via = $resolved_via, "
             "    i.scoped_at = timestamp() "
             "RETURN i.number AS issue"
@@ -200,8 +209,9 @@ VOCABULARY: list[Template] = [
     ),
     Template(
         key="link_issue_to_capability",
+        # MATCH the issue (it is already claimed with its URL); MERGE only the Capability.
         cypher=(
-            "MERGE (i:Issue {repo_name: $repo_name, number: $issue_number}) "
+            "MATCH (i:Issue {repo_name: $repo_name, number: $issue_number}) "
             "MERGE (c:Capability {name: $capability_name}) "
             "MERGE (i)-[:ABOUT_CAPABILITY]->(c) "
             "RETURN c.name AS capability"
@@ -240,8 +250,12 @@ VOCABULARY: list[Template] = [
         # ORIGIN issue (with the declining repo) so the origin's Porter re-triages knowing the
         # passed-repos set — instead of the two repos battling. History-preserving.
         key="route_rejection",
+        # MATCH the origin issue — it was claimed (with its URL) by its own Porter before it
+        # was ever escalated, so it exists. MATCH (not MERGE) keeps the reverse-route path
+        # from minting a URL-less origin node; if the origin is somehow absent the write
+        # no-ops and the load-bearing route-back GitHub comment still carries the reason.
         cypher=(
-            "MERGE (o:Issue {repo_name: $origin_repo, number: $origin_issue}) "
+            "MATCH (o:Issue {repo_name: $origin_repo, number: $origin_issue}) "
             "CREATE (r:Rejection {reason: $reason, from_repo: $by_repo, at: timestamp()}) "
             "MERGE (o)-[:HAS_REJECTION]->(r) "
             "RETURN r.reason AS reason, r.from_repo AS from_repo"

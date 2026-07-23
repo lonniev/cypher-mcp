@@ -103,6 +103,23 @@ class TestVocabulary:
         assert "issue_url" in t.param_schema and "repo_url" in t.param_schema
         assert "i.url = $issue_url" in t.cypher and "i.repo_url = $repo_url" in t.cypher
 
+    def test_only_entry_writers_create_issues_and_both_require_url(self):
+        # URL-completeness invariant: an Issue node is born ONLY via claim_issue or
+        # record_triage, and BOTH require issue_url — so no write can mint a URL-less
+        # node. Every other issue-touching write MATCHes an already-claimed node, so a
+        # future enrichment/reverse-route path can never re-introduce a URL-less issue.
+        entry = {"claim_issue", "record_triage"}
+        for t in VOCABULARY:
+            if "(i:Issue" not in t.cypher and "(o:Issue" not in t.cypher:
+                continue
+            if t.key in entry:
+                assert "MERGE (i:Issue" in t.cypher, f"{t.key} must create the Issue"
+                assert t.param_schema.get("issue_url", {}).get("required") is True, \
+                    f"{t.key} must REQUIRE issue_url"
+            else:
+                assert "MERGE (i:Issue" not in t.cypher, f"{t.key} must MATCH, not create, an Issue"
+                assert "MERGE (o:Issue" not in t.cypher, f"{t.key} must MATCH, not create, an Issue"
+
     def test_link_pr_is_journeyman_only_and_stores_actual_pr_url(self):
         t = next(t for t in VOCABULARY if t.key == "link_pr")
         assert t.allow_roles == (JOURNEYMAN,)
