@@ -40,8 +40,12 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from factory_vocabulary import (  # noqa: E402
-    VOCABULARY, READ_VOCABULARY, PORTER, JOURNEYMAN, OPERATOR,
+from factory_vocabulary import (
+    JOURNEYMAN,
+    OPERATOR,
+    PORTER,
+    READ_VOCABULARY,
+    VOCABULARY,
 )
 
 # Everything that gets authored + published (writes then reads). Gating (below) applies

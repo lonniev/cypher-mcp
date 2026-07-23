@@ -4,12 +4,12 @@ The live migration needs an operator nsec and the graph; these guard only the
 no-I/O helpers that decide the URLs, so a wrong owner never gets written.
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from backfill_issue_urls import parse_owner_repo, issue_urls  # noqa: E402
+from backfill_issue_urls import issue_urls, parse_owner_repo
 
 
 class TestParseOwnerRepo:
