@@ -855,6 +855,59 @@ export async function explainPatentElement(ref: number): Promise<PatentElementDe
   return { ...r, capabilities: asStrList(r.capabilities), invariants: asStrList(r.invariants) };
 }
 
+// ── Invariants (enforceable business-logic rules) ──────────────────────────
+
+/// A compact invariant for the Invariants register (peer of CapabilitySummary).
+export interface InvariantSummary {
+  name: string;
+  rule?: string;
+  provenance?: string;
+  updated_at?: number;
+  symbol_count?: number;
+  patents?: number[];
+}
+
+/// invariant_provenance — one invariant's rule, guarded symbols, and patent trace.
+export interface InvariantProvenance {
+  name?: string;
+  rule?: string;
+  provenance?: string;
+  updated_at?: number;
+  symbols?: GraphSymbol[];
+  patents?: { ref?: number; name?: string; figures?: string }[];
+  error?: string;
+}
+
+/// list_invariants — the full compact invariant catalog.
+export async function listInvariants(opts: { sinceMs?: number } = {}): Promise<InvariantSummary[]> {
+  const r = await callTool<unknown>("list_invariants", { since_ms: opts.sinceMs ?? 0 });
+  return asArray<InvariantSummary>(r);
+}
+
+/// invariant_provenance — one invariant's case file.
+export async function invariantProvenance(name: string): Promise<InvariantProvenance> {
+  return firstRow<InvariantProvenance>(await callTool<unknown>("invariant_provenance", { name }));
+}
+
+// ── Patent elements (filed reference numerals — "patentable topics") ────────
+
+/// A compact patent element for the Patent Topics register.
+export interface PatentElementSummary {
+  ref: number;
+  name?: string;
+  figures?: string;
+  claim_family?: string;
+  updated_at?: number;
+  capability_count?: number;
+  invariant_count?: number;
+}
+
+/// list_patent_elements — the full compact patent-element catalog.
+export async function listPatentElements(opts: { sinceMs?: number } = {}): Promise<PatentElementSummary[]> {
+  const r = await callTool<unknown>("list_patent_elements", { since_ms: opts.sinceMs ?? 0 });
+  return asArray<PatentElementSummary>(r);
+}
+
 /// which_service_handles — resolve an intent keyword → repo + capability.
 export async function whichServiceHandles(keyword: string): Promise<WhichServiceEntry[]> {
   const r = await callTool<unknown>("which_service_handles", { keyword });

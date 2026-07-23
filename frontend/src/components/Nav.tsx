@@ -54,6 +54,8 @@ export default function Nav() {
       {tab("/recent", "Recent")}
       {tab("/capabilities", "Capabilities")}
       {tab("/issues", "Issues")}
+      {tab("/invariants", "Invariants")}
+      {tab("/patents", "Patents")}
       {tab("/concordance", "Concordance")}
       {tab("/metrics", "Metrics")}
       {tab("/catalog", "Catalog")}

@@ -12,6 +12,8 @@ import {
   ScrollText,
   Landmark,
   CalendarClock,
+  ShieldCheck,
+  Award,
   ArrowRight,
 } from "lucide-react";
 import FrontMatter from "./FrontMatter";
@@ -54,6 +56,20 @@ export default function Contents() {
       blurb:
         "Every issue the Service Desk has triaged — classification, disposition, root cause, and the capability it touched. A peer entry into the graph; open one to see its full case file.",
       icon: <History className="h-5 w-5" />,
+    },
+    {
+      to: "/invariants",
+      title: "Invariants",
+      blurb:
+        "The fleet's enforceable business logic — human-authored rules a change must not violate. Each guards a bounded set of symbols; open one to see the rule, what it guards, and the patent topics it grounds.",
+      icon: <ShieldCheck className="h-5 w-5" />,
+    },
+    {
+      to: "/patents",
+      title: "Patent Topics",
+      blurb:
+        "The filed provisional's reference numerals (US Prov. 64/045,999) — the patentable topics. Each grounds the capabilities and invariants traced to it; open one to see what it describes.",
+      icon: <Award className="h-5 w-5" />,
     },
     {
       to: "/concordance",

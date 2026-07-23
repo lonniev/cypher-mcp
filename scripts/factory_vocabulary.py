@@ -904,6 +904,82 @@ READ_VOCABULARY: list[Template] = [
         access_mode="read",
     ),
     Template(
+        # Peer of list_capabilities/list_issues: the compact Invariant catalog behind the
+        # Invariants register. Each row carries the enforceable rule, its guarded-symbol count,
+        # and the patent numerals it is traced to.
+        key="list_invariants",
+        cypher=(
+            "MATCH (inv:Invariant) "
+            "WHERE $since_ms <= 0 OR inv.at >= $since_ms "
+            "OPTIONAL MATCH (inv)-[:GUARDS]->(sym:Symbol) "
+            "OPTIONAL MATCH (inv)-[:DESCRIBED_IN]->(p:PatentElement) "
+            "RETURN inv.name AS name, inv.rule AS rule, inv.provenance AS provenance, "
+            "       inv.at AS updated_at, "
+            "       count(DISTINCT sym) AS symbol_count, "
+            "       [x IN collect(DISTINCT p.ref) WHERE x IS NOT NULL] AS patents "
+            "ORDER BY name"
+        ),
+        param_schema={
+            "since_ms": {"type": "int", "required": False,
+                         "description": "Epoch-ms lower bound on change time; 0 (default) = any time."},
+        },
+        description="The compact Invariant catalog (name, rule, guarded-symbol count, patent refs) "
+                    "for the Invariants register.",
+        intent="List every enforceable invariant.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        # An Invariant's dossier: its enforceable rule, the Symbols it guards (the bounded
+        # expected set), and the patent elements it is described in — each click-through.
+        key="invariant_provenance",
+        cypher=(
+            "MATCH (inv:Invariant {name: $name}) "
+            "OPTIONAL MATCH (inv)-[:GUARDS]->(sym:Symbol) "
+            "OPTIONAL MATCH (inv)-[:DESCRIBED_IN]->(p:PatentElement) "
+            "RETURN inv.name AS name, inv.rule AS rule, inv.provenance AS provenance, "
+            "       inv.at AS updated_at, "
+            "       [x IN collect(DISTINCT sym) WHERE x IS NOT NULL | "
+            "           {fqn: x.fqn, file: x.file_path, lang: x.lang, verified_at_sha: x.verified_at_sha}] AS symbols, "
+            "       [x IN collect(DISTINCT p) WHERE x IS NOT NULL | "
+            "           {ref: x.ref, name: x.name, figures: x.figures}] AS patents"
+        ),
+        param_schema={
+            "name": {"type": "string", "required": True, "description": "Invariant name."},
+        },
+        description="An Invariant's provenance: its rule, the Symbols it guards, and the patent "
+                    "elements it is traced to.",
+        intent="Explain an invariant and what it guards.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        # Peer of list_capabilities: the compact PatentElement catalog behind the Patent Topics
+        # register. Each row carries the reference numeral, name, figures, claim family, and the
+        # number of capabilities/invariants grounded in it.
+        key="list_patent_elements",
+        cypher=(
+            "MATCH (p:PatentElement) "
+            "WHERE $since_ms <= 0 OR p.updated_at >= $since_ms "
+            "OPTIONAL MATCH (c:Capability)-[:DESCRIBED_IN]->(p) "
+            "OPTIONAL MATCH (inv:Invariant)-[:DESCRIBED_IN]->(p) "
+            "RETURN p.ref AS ref, p.name AS name, p.figures AS figures, "
+            "       p.claim_family AS claim_family, p.updated_at AS updated_at, "
+            "       count(DISTINCT c) AS capability_count, "
+            "       count(DISTINCT inv) AS invariant_count "
+            "ORDER BY ref"
+        ),
+        param_schema={
+            "since_ms": {"type": "int", "required": False,
+                         "description": "Epoch-ms lower bound on change time; 0 (default) = any time."},
+        },
+        description="The compact PatentElement catalog (ref, name, figures, claim family, and how "
+                    "many capabilities/invariants it grounds) for the Patent Topics register.",
+        intent="List every filed patent reference numeral.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
         # The token-savings metric. As the graph accretes anchors, 'wide-grep' (whole-repo
         # re-tokenization) should trend to zero and 'graph'/'scoped-grep' should dominate.
         key="factory_resolution_stats",

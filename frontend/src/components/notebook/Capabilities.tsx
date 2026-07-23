@@ -4,14 +4,14 @@
 // capability's dossier.
 
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { asStrList, listCapabilities, type CapabilitySummary, type SortDir } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
 import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
 import QuoteScroller from "../QuoteScroller";
-import { IssueJump, initialsOf } from "./dossier";
+import { parseIssueRef, initialsOf } from "./dossier";
 
 type Col = "name" | "owners" | "keywords" | "recent";
 
@@ -23,6 +23,7 @@ const SORTS: { col: Col; label: string }[] = [
 ];
 
 export default function Capabilities() {
+  const nav = useNavigate();
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("name");
   const [dir, setDir] = useState<SortDir>("asc");
@@ -44,12 +45,6 @@ export default function Capabilities() {
     owners: asStrList(c.owners),
   }));
 
-  const keywordIndex = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const c of rows) for (const k of c.keywords) counts.set(k, (counts.get(k) ?? 0) + 1);
-    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  }, [rows]);
-
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const out = rows.filter((c) => {
@@ -70,6 +65,19 @@ export default function Capabilities() {
     return out;
   }, [rows, q, sortCol, dir]);
 
+  // Chiclet counts reflect the CURRENT result set, not the max totals: derive the
+  // keyword index from `filtered`, so with no filter it shows the full ("All")
+  // counts and, once a filter narrows the set, each count is what's found now.
+  const keywordIndex = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of filtered) for (const k of c.keywords) counts.set(k, (counts.get(k) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [filtered]);
+
+  // The one search field doubles as a jump (mirrors the Issues register): paste a
+  // GitHub URL / repo#123 and press Enter to open that issue dossier directly.
+  const jumpRef = parseIssueRef(q);
+
   return (
     <Page eyebrow="Register" title="Capabilities" lede="The fleet's abilities. Filter here, run full elastic search in the Concordance, or open a known issue directly.">
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
@@ -77,26 +85,35 @@ export default function Capabilities() {
 
       {!m.error && (
         <>
-          {/* Three ways in */}
-          <div className="mb-5 grid gap-3">
-            <div className="relative">
+          {/* One filter (which also jumps to a pasted issue ref) + elastic search */}
+          <div className="mb-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (jumpRef) nav(`/issues/${encodeURIComponent(jumpRef.repo)}/${jumpRef.number}`);
+              }}
+              className="relative"
+            >
               <Icon name="symbol" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-stone-400 dark:text-zinc-500" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Filter capabilities by name, keyword, or service…"
-                className="w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950"
+                placeholder="Filter by name, keyword, or service — or paste a GitHub URL / repo#123 to open it"
+                spellCheck={false}
+                className={`w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-9 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 ${jumpRef ? "pr-40" : "pr-3"}`}
               />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-              <IssueJump compact />
-              <Link
-                to="/concordance"
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300"
-              >
-                <Icon name="swap" className="text-[15px]" /> Elastic search
-              </Link>
-            </div>
+              {jumpRef && (
+                <button type="submit" className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md bg-amber-100 px-2 py-1 font-mono text-[11px] font-medium text-amber-800 transition-colors hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25">
+                  Open {jumpRef.repo}#{jumpRef.number} <Icon name="open" size={12} />
+                </button>
+              )}
+            </form>
+            <Link
+              to="/concordance"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300"
+            >
+              <Icon name="swap" className="text-[15px]" /> Elastic search
+            </Link>
           </div>
 
           {keywordIndex.length > 0 && (
