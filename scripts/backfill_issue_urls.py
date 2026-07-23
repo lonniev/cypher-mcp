@@ -71,7 +71,7 @@ def _remote_owner(repo_dir: Path) -> str | None:
     try:
         out = subprocess.run(
             ["git", "-C", str(repo_dir), "remote", "get-url", "origin"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True, text=True, timeout=5, check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return None

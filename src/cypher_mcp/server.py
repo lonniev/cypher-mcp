@@ -26,16 +26,14 @@ import logging
 from typing import Annotated, Any
 from urllib.parse import quote
 
-from pydantic import Field
-
 from fastmcp import FastMCP
 from fastmcp.server.middleware import Middleware
-
-from tollbooth.tool_identity import ToolIdentity, STANDARD_IDENTITIES
-from tollbooth.runtime import OperatorRuntime, register_standard_tools
+from pydantic import Field
 from tollbooth.credential_templates import CredentialTemplate, FieldSpec
 from tollbooth.credential_validators import validate_btcpay_creds
 from tollbooth.dynamic_tools import validate_param_schema, validate_params
+from tollbooth.runtime import OperatorRuntime, register_standard_tools
+from tollbooth.tool_identity import STANDARD_IDENTITIES, ToolIdentity
 
 from cypher_mcp import __version__, catalog, graph
 
@@ -513,7 +511,7 @@ async def _browser_edit_url(cypher: str) -> str:
     """
     try:
         creds = await runtime.load_credentials(["neo4j_uri"], service="cypher-operator")
-    except Exception:
+    except Exception:  # noqa: BLE001 - best-effort paste fallback; any failure → no link
         return ""
     return _edit_url((creds or {}).get("neo4j_uri") or "", cypher)
 

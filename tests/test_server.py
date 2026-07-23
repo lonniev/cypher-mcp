@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from cypher_mcp import server
 
-
 _RESTRICTED_CAPS = (
     "create_query", "update_query", "get_query", "list_queries", "delete_query",
     "publish_tool", "unpublish_tool",

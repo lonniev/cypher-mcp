@@ -9,25 +9,29 @@ and open, and pins the Constraint-Engine allow-list contract we rely on for acce
 control (json_expression on patron.npub).
 """
 
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from factory_vocabulary import (  # noqa: E402
-    VOCABULARY, READ_VOCABULARY, PORTER, JOURNEYMAN, OPERATOR,
+from factory_vocabulary import (
+    JOURNEYMAN,
+    OPERATOR,
+    PORTER,
+    READ_VOCABULARY,
+    VOCABULARY,
 )
-from seed_factory_vocabulary import (  # noqa: E402
+from seed_factory_vocabulary import (
     apply_gate_and_price,
     build_gate_step,
     resolve_roles,
 )
+from tollbooth.dynamic_tools import validate_param_schema
 
-from tollbooth.dynamic_tools import validate_param_schema  # noqa: E402
-from cypher_mcp.catalog import assert_parameterized  # noqa: E402
+from cypher_mcp.catalog import assert_parameterized
 
 PORTER_NPUB = "npub1porter_test"
 JOURNEYMAN_NPUB = "npub1journeyman_test"
@@ -237,12 +241,15 @@ class TestAllowListGatingContract:
 
     def _ctx(self, npub):
         from tollbooth.constraints.base import (
-            ConstraintContext, EnvironmentSnapshot, LedgerSnapshot, PatronIdentity,
+            ConstraintContext,
+            EnvironmentSnapshot,
+            LedgerSnapshot,
+            PatronIdentity,
         )
         return ConstraintContext(
             ledger=LedgerSnapshot(balance_api_sats=1000),
             patron=PatronIdentity(npub=npub),
-            env=EnvironmentSnapshot(utc_now=datetime.now(timezone.utc), tool_name="cypher_assert_rationale"),
+            env=EnvironmentSnapshot(utc_now=datetime.now(UTC), tool_name="cypher_assert_rationale"),
         )
 
     def _constraint(self):

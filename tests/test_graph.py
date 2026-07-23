@@ -55,7 +55,7 @@ class FakeSession:
         self._run_calls = run_calls
         self.access_mode: Any = None
 
-    async def __aenter__(self) -> "FakeSession":
+    async def __aenter__(self) -> FakeSession:  # noqa: PYI034 - test fake, not a typing stub
         return self
 
     async def __aexit__(self, *a) -> bool:
