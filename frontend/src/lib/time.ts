@@ -43,8 +43,8 @@ export function withinDays(ms: number | null, days: number): boolean {
 /// the registers' SinceFilter and the Recently Changed page. Shortest window
 /// first (leftmost), "Any time" always last (far right). days=0 means no bound.
 export const SINCE_PRESETS: { days: number; label: string }[] = [
-  { days: 1, label: "24h" },
-  { days: 7, label: "7d" },
+  { days: 1, label: "Day" },
+  { days: 7, label: "Week" },
   { days: 30, label: "30d" },
   { days: 90, label: "90d" },
   { days: 0, label: "Any time" },
