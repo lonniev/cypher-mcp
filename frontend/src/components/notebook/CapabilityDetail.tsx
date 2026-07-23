@@ -194,7 +194,7 @@ export default function CapabilityDetail() {
                   {invariants.map((inv, i) => (
                     <li key={i} className="flex items-start gap-2 text-[13.5px]">
                       <Icon name="check" className="mt-0.5 text-[15px] text-emerald-600 dark:text-emerald-400" />
-                      <span>{inv}</span>
+                      <Link to={`/invariants/${encodeURIComponent(inv)}`} className="text-amber-700 hover:underline dark:text-amber-300">{inv}</Link>
                     </li>
                   ))}
                 </ul>

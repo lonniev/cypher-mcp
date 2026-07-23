@@ -25,6 +25,9 @@ import Metrics from "./components/notebook/Metrics";
 import QueryCatalog from "./components/notebook/QueryCatalog";
 import ServiceDetail from "./components/notebook/ServiceDetail";
 import PatentDetail from "./components/notebook/PatentDetail";
+import PatentElements from "./components/notebook/PatentElements";
+import Invariants from "./components/notebook/Invariants";
+import InvariantDetail from "./components/notebook/InvariantDetail";
 import IssueDetail from "./components/notebook/IssueDetail";
 import SymbolDetail from "./components/notebook/SymbolDetail";
 
@@ -97,6 +100,9 @@ export default function App() {
                 <Route path="capabilities" element={<Capabilities />} />
                 <Route path="capabilities/:name" element={<CapabilityDetail />} />
                 <Route path="issues" element={<Issues />} />
+                <Route path="invariants" element={<Invariants />} />
+                <Route path="invariants/:name" element={<InvariantDetail />} />
+                <Route path="patents" element={<PatentElements />} />
                 <Route path="concordance" element={<Concordance />} />
                 <Route path="metrics" element={<Metrics />} />
                 <Route path="catalog" element={<QueryCatalog />} />
