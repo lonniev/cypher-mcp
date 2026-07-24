@@ -22,6 +22,11 @@ Node model
     (:Capability {name, keywords, why, provenance, inferred_why})  cross-cutting ability, e.g. "Secure Courier"
     (:Invariant  {name, rule, provenance})             an enforceable rule, e.g. "exactly two transaction types"
     (:PatentElement {ref, name, figures, claim_family})  a patent reference numeral, e.g. 610 "Secure Courier channel"
+    (:FundingBlock {repo_name, kind, number, state, at})  an LLM-credit outage deferred this work-item; kind=issue|pr,
+                                                       state=awaiting-funds|clear. Its OWN node (not a property on
+                                                       :Issue) because the funding stamp must key on a PR number too,
+                                                       and PRs are not :Issue nodes — a property-on-Issue stamp would
+                                                       silently no-op for exactly the PR/QA outages that motivate it.
 
     (:Issue)-[:FILED_AGAINST]->(:Service)
     (:Issue)-[:HAS_REJECTION]->(:Rejection)
@@ -35,6 +40,7 @@ Node model
     (:Capability)-[:DESCRIBED_IN]->(:PatentElement)    grounds the why in the filed patent
     (:Invariant)-[:DESCRIBED_IN]->(:PatentElement)
     (:Symbol)-[:IN_SERVICE]->(:Service)
+    (:FundingBlock)-[:BLOCKS]->(:Service)              the deferred work-item's repo — "what is awaiting funds, where"
     (:Issue)-[:ABOUT_CAPABILITY]->(:Capability)        precedent: a future fuzzy issue on the same
                                                        theme matches this issue's actionable_text
 
@@ -272,6 +278,40 @@ VOCABULARY: list[Template] = [
         description="Record on the ORIGIN issue that a target repo declined its escalation, with the "
                     "reason — the passed-repos memory that stops issue ping-pong.",
         intent="Route a target's rejection reason back to the origin issue.",
+        allow_roles=(PORTER, JOURNEYMAN),
+    ),
+    Template(
+        # The funding-outage stamp — set by the deterministic funding-sentinel (catch handler)
+        # when a broke ANTHROPIC_API_KEY defers an agent, cleared by the credit canary on
+        # recovery. Both callers are non-LLM shell steps paying sats, NOT agents — this is how
+        # the graph reflects "awaiting funds" even while every LLM node is dark.
+        #
+        # A dedicated :FundingBlock node (not a property on :Issue) because the QA / PR-dialogue
+        # roles key the stamp on a PR number, and PRs are not :Issue nodes; keying by
+        # (repo_name, kind, number) works uniformly for issues and PRs and never collides.
+        # MERGE keeps it current-state (one node per work-item); `state` carries set vs clear so
+        # the SAME canonical primitive does both — the DRY, no-square-peg representation.
+        key="mark_funding_state",
+        cypher=(
+            "MERGE (s:Service {repo_name: $repo_name}) "
+            "MERGE (f:FundingBlock {repo_name: $repo_name, kind: $kind, number: $number}) "
+            "SET f.state = $state, f.at = timestamp() "
+            "MERGE (f)-[:BLOCKS]->(s) "
+            "RETURN f.state AS state, f.kind AS kind, f.number AS number"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "kind": {"type": "string", "required": True,
+                     "description": "The deferred work-item's kind: 'issue' or 'pr'."},
+            "number": {"type": "int", "required": True,
+                       "description": "The issue or PR number the outage deferred."},
+            "state": {"type": "string", "required": True,
+                      "description": "'awaiting-funds' when a credit outage defers the item; "
+                                     "'clear' when the canary confirms funding is restored."},
+        },
+        description="Set or clear the funding-outage state on a work-item (issue or PR), keyed by "
+                    "(repo_name, kind, number). The graph's 'what is awaiting funds' surface.",
+        intent="Reflect an LLM-credit outage (or its clearance) in the intention graph.",
         allow_roles=(PORTER, JOURNEYMAN),
     ),
     Template(
