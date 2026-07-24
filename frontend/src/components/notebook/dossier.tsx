@@ -293,17 +293,22 @@ export function Stamp({
   label,
   sub,
   tip,
+  ink,
 }: {
   tone: "good" | "warn";
   icon: IconName;
   label: string;
   sub: string;
   tip: string;
+  /// Optional explicit ink (text + border classes). Overrides the tone default so a
+  /// caller can match the stamp to a status decorator's color (e.g. the issue glyph).
+  ink?: string;
 }) {
   const c =
-    tone === "good"
+    ink ??
+    (tone === "good"
       ? "text-emerald-700 border-emerald-600/60 dark:text-emerald-400"
-      : "text-amber-700 border-amber-600/60 dark:text-amber-400";
+      : "text-amber-700 border-amber-600/60 dark:text-amber-400");
   return (
     <Tip text={tip}>
       <span
