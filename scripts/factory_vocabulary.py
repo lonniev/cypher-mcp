@@ -319,6 +319,34 @@ VOCABULARY: list[Template] = [
         allow_roles=(PORTER, JOURNEYMAN),
     ),
     Template(
+        # Retire a block to a historical record when its work-item closes while still awaiting
+        # funds — a merged/closed PR or issue whose deferred agentic pass never ran during an
+        # outage. BREAK the BLOCKS edge (it no longer blocks anything) and mark the node
+        # 'historical', but KEEP the node (and its url): it records that this item shipped
+        # without its agentic pass. Distinct from 'clear' (funds restored, work replayed on a
+        # still-open item). Fired event-driven on close, deterministically, over the sats rail.
+        key="retire_funding_block",
+        cypher=(
+            "MATCH (f:FundingBlock {repo_name: $repo_name, kind: $kind, number: $number}) "
+            "OPTIONAL MATCH (f)-[b:BLOCKS]->(:Service) "
+            "DELETE b "
+            "SET f.state = 'historical', f.at = timestamp() "
+            "RETURN f.state AS state, f.kind AS kind, f.number AS number"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "kind": {"type": "string", "required": True,
+                     "description": "The work-item's kind: 'issue' or 'pr'."},
+            "number": {"type": "int", "required": True,
+                       "description": "The issue or PR number whose block is being retired."},
+        },
+        description="Retire a FundingBlock to a historical record when its work-item closed while "
+                    "still awaiting funds: break the BLOCKS edge and mark it 'historical', keeping "
+                    "the node as the record that the item shipped without its agentic pass.",
+        intent="Retire a stale funding block to a historical record when its item closes.",
+        allow_roles=(PORTER, JOURNEYMAN),
+    ),
+    Template(
         key="link_root_cause",
         cypher=(
             "MATCH (i:Issue {repo_name: $repo_name, number: $issue_number}) "
