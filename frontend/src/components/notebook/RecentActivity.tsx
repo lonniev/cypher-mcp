@@ -72,13 +72,13 @@ function Row({ r }: { r: RecentActivity }) {
         <Icon name={m.icon} size={17} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide ${m.tint}`}>
             {r.kind}
           </span>
           {r.repo && r.kind !== "Service" && (
-            <span className="inline-flex items-center gap-1 font-mono text-[10.5px] text-stone-500 dark:text-zinc-400">
-              <Icon name="github" size={12} /> {r.repo}
+            <span className="inline-flex min-w-0 items-center gap-1 font-mono text-[10.5px] text-stone-500 dark:text-zinc-400">
+              <Icon name="github" size={12} /> <span className="truncate">{r.repo}</span>
             </span>
           )}
         </div>
@@ -94,7 +94,7 @@ function Row({ r }: { r: RecentActivity }) {
   );
 
   const shell =
-    "flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-3.5 py-3 dark:border-zinc-800 dark:bg-zinc-900";
+    "flex w-full min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-white px-3.5 py-3 dark:border-zinc-800 dark:bg-zinc-900";
 
   if (!href) {
     return (
@@ -116,6 +116,10 @@ export default function RecentActivity() {
   const [since, setSince] = useState(7);
   const [kindFilter, setKindFilter] = useState<ActivityKind | "all">("all");
   const [q, setQ] = useState("");
+  // Which kind regions are collapsed. Grouping is distinct from the type filter:
+  // collapsing hides a kind's rows but keeps its region + count in view, where the
+  // filter removes the kind from the set entirely.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   // Each window is its own cached read; no auto-fetch so a tab entry never spends
   // sats before the architect has chosen a window.
@@ -149,6 +153,35 @@ export default function RecentActivity() {
   }, [rows, q, kindFilter]);
 
   const presentKinds = KIND_ORDER.filter((k) => counts[k]);
+
+  // Group the (filtered) rows by kind into collapsible regions, ordered by the
+  // canonical KIND_ORDER with any unknown kinds (e.g. FundingBlock) appended.
+  const groups = useMemo(() => {
+    const byKind = new Map<string, RecentActivity[]>();
+    for (const r of filtered) {
+      const list = byKind.get(r.kind);
+      if (list) list.push(r);
+      else byKind.set(r.kind, [r]);
+    }
+    const rank = (k: string) => {
+      const i = KIND_ORDER.indexOf(k as ActivityKind);
+      return i === -1 ? KIND_ORDER.length : i;
+    };
+    return [...byKind.entries()]
+      .map(([kind, items]) => ({ kind, items }))
+      .sort((a, b) => rank(a.kind) - rank(b.kind) || a.kind.localeCompare(b.kind));
+  }, [filtered]);
+
+  const toggleKind = (kind: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(kind)) next.delete(kind);
+      else next.add(kind);
+      return next;
+    });
+  const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.has(g.kind));
+  const setAll = (collapse: boolean) =>
+    setCollapsed(collapse ? new Set(groups.map((g) => g.kind)) : new Set());
 
   return (
     <Page
@@ -227,10 +260,45 @@ export default function RecentActivity() {
           ) : filtered.length === 0 ? (
             <Empty>{rows.length === 0 ? "Nothing changed in this window." : "No entries match this filter."}</Empty>
           ) : (
-            <div className="grid gap-2">
-              {filtered.map((r, i) => (
-                <Row key={`${r.kind}:${r.key}:${r.repo}:${i}`} r={r} />
-              ))}
+            <div className="space-y-3">
+              {/* Expand/collapse every kind region at once. */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setAll(!allCollapsed)}
+                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[11px] text-stone-500 transition-colors hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                >
+                  <Icon name="chevron" size={12} className={`transition-transform ${allCollapsed ? "" : "rotate-90"}`} />
+                  {allCollapsed ? "Expand all" : "Collapse all"}
+                </button>
+              </div>
+
+              {groups.map((g) => {
+                const km = meta(g.kind);
+                const open = !collapsed.has(g.kind);
+                return (
+                  <section key={g.kind} className="overflow-hidden rounded-xl border border-stone-200 dark:border-zinc-800">
+                    <button
+                      onClick={() => toggleKind(g.kind)}
+                      className="flex w-full min-w-0 items-center gap-2 bg-stone-50 px-3.5 py-2.5 text-left transition-colors hover:bg-stone-100 dark:bg-zinc-900/60 dark:hover:bg-zinc-900"
+                      aria-expanded={open}
+                    >
+                      <Icon name="chevron" size={13} className={`shrink-0 text-stone-400 transition-transform ${open ? "rotate-90" : ""}`} />
+                      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded ${km.tint}`}>
+                        <Icon name={km.icon} size={13} />
+                      </span>
+                      <span className="truncate text-[13px] font-semibold text-stone-800 dark:text-zinc-100">{g.kind}</span>
+                      <span className={`ml-auto shrink-0 rounded-full px-2 py-0.5 font-mono text-[10.5px] ${faint}`}>{g.items.length}</span>
+                    </button>
+                    {open && (
+                      <div className="grid gap-2 p-2">
+                        {g.items.map((r, i) => (
+                          <Row key={`${r.kind}:${r.key}:${r.repo}:${i}`} r={r} />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
             </div>
           )}
         </>
