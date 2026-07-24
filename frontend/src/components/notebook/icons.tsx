@@ -12,6 +12,7 @@ import {
   Bookmark,
   Braces,
   Check,
+  ChevronRight,
   Copy,
   Database,
   ExternalLink,
@@ -33,7 +34,7 @@ import {
 
 export type IconName =
   | "info" | "open" | "copy" | "check" | "close" | "symbol" | "verified"
-  | "bookmark" | "quote" | "history" | "swap" | "dns" | "database" | "bolt"
+  | "bookmark" | "quote" | "history" | "swap" | "dns" | "database" | "bolt" | "chevron"
   | "key" | "back" | "groups" | "tag" | "working"
   | "worker" | "delivered" | "handshake"
   | "github" | "python" | "typescript" | "bitcoin";
@@ -43,6 +44,7 @@ const LUCIDE: Partial<Record<IconName, LucideIcon>> = {
   open: ExternalLink,
   copy: Copy,
   check: Check,
+  chevron: ChevronRight,
   close: X,
   symbol: Braces,
   verified: BadgeCheck,
