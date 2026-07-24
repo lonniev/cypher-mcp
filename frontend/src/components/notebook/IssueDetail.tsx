@@ -141,6 +141,7 @@ export default function IssueDetail() {
               d.disposition ? (
                 <Stamp
                   tone={life.kind === "done" ? "good" : "warn"}
+                  ink={life.stamp}
                   icon={life.icon}
                   label={life.label}
                   sub="Status"

@@ -19,6 +19,7 @@ export interface Lifecycle {
   icon: IconName;
   badge: string; // bg + text tailwind for the round glyph badge
   pill: string; // subtle bg + text tailwind for an inline text pill
+  stamp: string; // text + border ink for the rubber stamp (matches the glyph color)
   label: string;
 }
 
@@ -26,21 +27,25 @@ const IN_PROGRESS: Lifecycle = {
   kind: "in-progress", icon: "worker", label: "In progress",
   badge: "bg-emerald-500 text-white",
   pill: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  stamp: "text-emerald-700 border-emerald-600/60 dark:text-emerald-400",
 };
 const DONE: Lifecycle = {
   kind: "done", icon: "delivered", label: "Done",
   badge: "bg-violet-500 text-white",
   pill: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  stamp: "text-violet-700 border-violet-600/60 dark:text-violet-400",
 };
 const DELEGATED: Lifecycle = {
   kind: "delegated", icon: "handshake", label: "Delegated",
   badge: "bg-orange-500 text-white",
   pill: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
+  stamp: "text-orange-700 border-orange-600/60 dark:text-orange-400",
 };
 const DECLINED: Lifecycle = {
   kind: "declined", icon: "close", label: "Closed — not planned",
   badge: "bg-stone-400 text-white dark:bg-zinc-500",
   pill: "bg-stone-500/10 text-stone-600 dark:text-zinc-400",
+  stamp: "text-stone-600 border-stone-500/60 dark:text-zinc-400",
 };
 
 // A disposition is "delegated" when the issue was handed to a peer service.
