@@ -1012,6 +1012,9 @@ export interface RecentActivity {
   label?: string;
   key?: string;
   repo?: string;
+  /// Canonical GitHub URL, when the kind carries one (e.g. FundingBlock links
+  /// straight to the cited issue/PR; Issue rows carry their pr/issue URL).
+  url?: string;
   updated_at?: number;
 }
 

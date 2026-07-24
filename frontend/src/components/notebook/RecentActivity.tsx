@@ -56,8 +56,16 @@ const KIND_ORDER: ActivityKind[] = [
   "Capability", "Issue", "Symbol", "Invariant", "PatentElement", "Service",
 ];
 
-function meta(kind: string) {
-  return KIND[kind as ActivityKind] ?? { icon: "bookmark" as IconName, tint: `${muted}`, href: () => null };
+function meta(kind: string): { icon: IconName; tint: string; href: (r: RecentActivity) => string | null } {
+  // FundingBlock isn't a canonical dossier kind — it links straight out to the
+  // cited issue/PR on GitHub via the URL the stamp carried from CI.
+  if (kind === "FundingBlock")
+    return {
+      icon: "bolt",
+      tint: "text-amber-700 bg-amber-500/[0.12] dark:text-amber-300",
+      href: (r) => r.url || null,
+    };
+  return KIND[kind as ActivityKind] ?? { icon: "bookmark", tint: `${muted}`, href: (r) => r.url || null };
 }
 
 /// One activity row — a Link when the kind has a dossier, an inert div otherwise.
@@ -103,8 +111,18 @@ function Row({ r }: { r: RecentActivity }) {
       </div>
     );
   }
+  const linkClass = `group ${shell} transition-colors hover:border-amber-300 dark:hover:border-amber-500/40`;
+  // An absolute URL (FundingBlock → GitHub) opens out in a new tab; internal
+  // dossier routes use the router.
+  if (/^https?:\/\//.test(href)) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className={linkClass}>
+        {inner}
+      </a>
+    );
+  }
   return (
-    <Link to={href} className={`group ${shell} transition-colors hover:border-amber-300 dark:hover:border-amber-500/40`}>
+    <Link to={href} className={linkClass}>
       {inner}
     </Link>
   );
