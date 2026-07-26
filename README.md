@@ -179,15 +179,28 @@ subject to invalidation under 35 U.S.C. 102(a).
 — the full story of how we're monetizing the monetization of AI APIs, and
 then fading to the background.
 
-## Software Factory mutation vocabulary (DPYC agents)
+## Software Factory intent vocabulary (DPYC agents)
 
 cypher-mcp is the graph substrate for the DPYC Software Factory: its agents (Porter =
-Service Desk, Journeyman = Engineering) write an institutional-memory graph here **without
-ever holding a raw Cypher write tool**. They call a fixed vocabulary of operator-authored,
-parameterized *write* templates — `record_triage`, `note_rejection`, `link_root_cause`,
-`assert_rationale`, `bind_rationale_to_symbol`, `register_service` — published as typed
-`cypher_<key>` tools. `assert_rationale` hard-codes `provenance:'llm-inferred-unverified'`
-as a Cypher literal, so an agent key can never claim authoritative provenance.
+Service Desk, Journeyman = Engineering) read and write an institutional-memory graph here
+**without ever holding a raw Cypher tool**. They call a fixed vocabulary of
+operator-authored, parameterized templates — currently 43 (25 *write*, 18 *read*) —
+published as typed `cypher_<key>` tools.
+
+- **Write templates** capture the memory: `record_triage`, `note_rejection`,
+  `route_rejection` (anti-ping-pong: bounce a rejection back to its origin), `record_scope`,
+  `link_root_cause`, `link_pr`, `assert_rationale`, `bind_rationale_to_symbol`,
+  `anchor_symbol` (post-edit grep-scoping anchor), `upsert_capability`, `assert_invariant`,
+  `upsert_patent_element`, `register_service`, and more.
+- **Read templates** are the intention-service *forward map* — the RAG surface that resolves
+  "which service handles X / why does this capability exist" in one query instead of a
+  twelve-repo grep: `which_service_handles`, `explain_capability`, `what_realizes_capability`,
+  `capability_patents`, `context_pack` (the flagship grep-scoping bundle), `list_capabilities`,
+  `list_invariants`, `list_patent_elements`, `routing_history`, `recent_activity`,
+  `factory_resolution_stats`, and their provenance readers.
+
+`assert_rationale` hard-codes `provenance:'llm-inferred-unverified'` as a Cypher literal, so
+an agent key can never claim authoritative provenance.
 
 **Start unlimited, limit later.** Seeding just authors + publishes the tools; they then
 appear in **Pricing Studio** unpriced. Price them and any funded patron can call — the two
