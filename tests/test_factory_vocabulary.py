@@ -264,3 +264,34 @@ class TestAllowListGatingContract:
         result = self._constraint().evaluate(self._ctx(PORTER_NPUB))
         assert result.allowed is False
         assert result.reason == "not_authorized"
+
+
+class TestEveryReferencedOptionalParamBinds:
+    """A template's Cypher may only reference a param that will actually be bound.
+
+    The synthesis layer drops an omitted optional param rather than passing None,
+    so a template that interpolates `$x` unconditionally needs `x` to carry a
+    declared default — otherwise the query runs against an unbound parameter and
+    dies. That is not hypothetical: `list_capabilities` failed on every
+    no-argument call for four days (2026-07-26 → 07-29), refunding each time, and
+    `claim_issue` carried the same latent break on `$title`.
+
+    This guards the whole class rather than the two instances we happened to hit.
+    """
+
+    def test_no_referenced_optional_param_lacks_a_default(self):
+        import re
+
+        offenders = []
+        for coll in (VOCABULARY, READ_VOCABULARY):
+            for t in coll:
+                referenced = set(re.findall(r"\$([a-z_][a-z0-9_]*)", t.cypher))
+                for name, spec in (t.param_schema or {}).items():
+                    if spec.get("required", True):
+                        continue
+                    if name in referenced and "default" not in spec:
+                        offenders.append(f"{t.key}:${name}")
+        assert offenders == [], (
+            "these optional params are interpolated by their Cypher but declare no "
+            f"default, so omitting them leaves the parameter unbound: {offenders}"
+        )
