@@ -174,7 +174,10 @@ VOCABULARY: list[Template] = [
                          "description": "What the agent is doing this turn: 'triaging' | 'fixing' | 'reviewing'."},
             "worked_by": {"type": "string", "required": True,
                           "description": "The agent role picking it up: 'porter' | 'journeyman' | 'qa'."},
-            "title": {"type": "string", "required": False,
+            # Explicitly nullable: the Cypher above reads `coalesce($title, i.title)`,
+            # so an omitted title must arrive as a bound null. Dropping the name
+            # instead leaves `$title` unbound and the whole claim fails.
+            "title": {"type": "string", "required": False, "default": None,
                       "description": "Issue title (sets it if the node is new; omit to leave as-is)."},
             "issue_url": {"type": "string", "required": True,
                           "description": "The issue's actual GitHub URL (gh issue view <n> --json url). "
@@ -759,7 +762,7 @@ READ_VOCABULARY: list[Template] = [
             "ORDER BY coalesce(i.scoped_at, i.triaged_at) DESC, i.number DESC"
         ),
         param_schema={
-            "since_ms": {"type": "int", "required": False,
+            "since_ms": {"type": "int", "required": False, "default": 0,
                          "description": "Epoch-ms lower bound on triage/scope time; 0 (default) = any time."},
         },
         description="The compact issue catalog (repo, number, title, classification, disposition, "
@@ -784,7 +787,7 @@ READ_VOCABULARY: list[Template] = [
             "ORDER BY name"
         ),
         param_schema={
-            "since_ms": {"type": "int", "required": False,
+            "since_ms": {"type": "int", "required": False, "default": 0,
                          "description": "Epoch-ms lower bound on change time; 0 (default) = any time."},
         },
         description="The compact capability catalog (name, owners, keywords) for semantic triage "
@@ -992,7 +995,7 @@ READ_VOCABULARY: list[Template] = [
             "ORDER BY name"
         ),
         param_schema={
-            "since_ms": {"type": "int", "required": False,
+            "since_ms": {"type": "int", "required": False, "default": 0,
                          "description": "Epoch-ms lower bound on change time; 0 (default) = any time."},
         },
         description="The compact Invariant catalog (name, rule, guarded-symbol count, patent refs) "
@@ -1042,7 +1045,7 @@ READ_VOCABULARY: list[Template] = [
             "ORDER BY ref"
         ),
         param_schema={
-            "since_ms": {"type": "int", "required": False,
+            "since_ms": {"type": "int", "required": False, "default": 0,
                          "description": "Epoch-ms lower bound on change time; 0 (default) = any time."},
         },
         description="The compact PatentElement catalog (ref, name, figures, claim family, and how "
@@ -1147,9 +1150,9 @@ READ_VOCABULARY: list[Template] = [
             "ORDER BY updated_at DESC"
         ),
         param_schema={
-            "since_ms": {"type": "int", "required": False,
+            "since_ms": {"type": "int", "required": False, "default": 0,
                          "description": "Epoch-ms lower bound on change time (inclusive); 0 = from the beginning."},
-            "until_ms": {"type": "int", "required": False,
+            "until_ms": {"type": "int", "required": False, "default": 0,
                          "description": "Epoch-ms upper bound on change time (exclusive); 0 (default) = open (now)."},
         },
         description="The cross-type activity feed: every Capability, Issue, Symbol, Invariant, "
