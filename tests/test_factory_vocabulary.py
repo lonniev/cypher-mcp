@@ -18,6 +18,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from factory_vocabulary import (
+    CODE_OWNER,
     JOURNEYMAN,
     OPERATOR,
     PORTER,
@@ -36,7 +37,9 @@ from cypher_mcp.catalog import assert_parameterized
 PORTER_NPUB = "npub1porter_test"
 JOURNEYMAN_NPUB = "npub1journeyman_test"
 OPERATOR_NPUB = "npub1operator_test"
-NPUBS = {PORTER: PORTER_NPUB, JOURNEYMAN: JOURNEYMAN_NPUB, OPERATOR: OPERATOR_NPUB}
+CODE_OWNER_NPUB = "npub1codeowner_test"
+NPUBS = {PORTER: PORTER_NPUB, JOURNEYMAN: JOURNEYMAN_NPUB, OPERATOR: OPERATOR_NPUB,
+         CODE_OWNER: CODE_OWNER_NPUB}
 
 
 class TestVocabulary:
@@ -75,12 +78,23 @@ class TestVocabulary:
         assert "c.why =" not in t.cypher
         assert "c.provenance =" not in t.cypher
 
-    def test_authoritative_why_and_invariants_are_operator_only_human_authored(self):
+    def test_authoritative_why_and_invariants_are_human_only_human_authored(self):
+        # "human-authored" means a HUMAN authored it — the operator identity or the Code
+        # Owner. What must never hold is an AGENT role stamping it (see the structural
+        # defense below); widening to the Code Owner does not weaken that.
         for key in ("authorize_capability_why", "assert_invariant"):
             t = next(t for t in VOCABULARY if t.key == key)
-            assert t.allow_roles == (OPERATOR,)
+            assert t.allow_roles == (OPERATOR, CODE_OWNER)
             assert PORTER not in t.allow_roles and JOURNEYMAN not in t.allow_roles
             assert "'human-authored'" in t.cypher
+
+    def test_code_owner_is_confined_to_doctrine(self):
+        # The Code Owner token exists to author doctrine as a human — nothing else. If it
+        # spreads onto ordinary writes it stops meaning "this is doctrine" and becomes just
+        # another way to reach the graph.
+        reachable = {t.key for t in VOCABULARY if CODE_OWNER in t.allow_roles}
+        assert reachable == {"authorize_capability_why", "assert_invariant",
+                             "guard_invariant_symbol"}
 
     def test_no_journeyman_reachable_template_writes_human_authored(self):
         # Structural confabulation defense: nothing an agent can call stamps 'human-authored'.
@@ -201,12 +215,13 @@ class TestSeedBuilders:
         }
         assert all(tp["priced"] and tp["price_sats"] > 0 for tp in model["tools"])
 
-    def test_operator_only_writes_are_gated_to_operator(self):
+    def test_doctrine_writes_are_gated_to_operator_and_code_owner(self):
         model = {"tools": [{"tool_name": f"cypher_{t.key}", "chain": []} for t in VOCABULARY]}
         apply_gate_and_price(model, NPUBS)
         by = {tp["tool_name"]: tp for tp in model["tools"]}
         for key in ("authorize_capability_why", "assert_invariant", "guard_invariant_symbol"):
-            assert by[f"cypher_{key}"]["chain"][0]["params"]["expression"]["value"] == [OPERATOR_NPUB]
+            assert by[f"cypher_{key}"]["chain"][0]["params"]["expression"]["value"] == [
+                OPERATOR_NPUB, CODE_OWNER_NPUB]
 
     def test_journeyman_forward_map_writes_are_gated_to_journeyman(self):
         model = {"tools": [{"tool_name": f"cypher_{t.key}", "chain": []} for t in VOCABULARY]}

@@ -41,6 +41,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from factory_vocabulary import (
+    CODE_OWNER,
     JOURNEYMAN,
     OPERATOR,
     PORTER,
@@ -229,6 +230,9 @@ def main() -> int:
     ap.add_argument("--operator-npub", default=os.environ.get("OPERATOR_NPUB", ""))
     ap.add_argument("--porter-npub", default=os.environ.get("PORTER_NPUB", ""))
     ap.add_argument("--journeyman-npub", default=os.environ.get("JOURNEYMAN_NPUB", ""))
+    ap.add_argument("--code-owner-npub", default=os.environ.get("CODE_OWNER_NPUB", ""),
+                    help="the Code Owner's patron npub — may author doctrine alongside the "
+                         "operator identity, so the graph attributes it to the human")
     ap.add_argument("--dry-run", action="store_true", help="print payloads; no network, no nsec")
     ap.add_argument("--price", action="store_true",
                     help="price every tool at its vocab price with NO allow-list "
@@ -242,6 +246,7 @@ def main() -> int:
         PORTER: args.porter_npub,
         JOURNEYMAN: args.journeyman_npub,
         OPERATOR: args.operator_npub,  # the human-run operator writes the authoritative why
+        CODE_OWNER: args.code_owner_npub,  # ...and so does the Code Owner, as themselves
     }
     if args.dry_run:
         return _dry_run(npubs)
@@ -249,9 +254,12 @@ def main() -> int:
     if not args.operator_npub:
         print("--operator-npub (or OPERATOR_NPUB) is required to apply", file=sys.stderr)
         return 2
-    if args.gate and not (npubs[PORTER] and npubs[JOURNEYMAN] and npubs[OPERATOR]):
-        print("--gate requires --porter-npub, --journeyman-npub, and --operator-npub",
-              file=sys.stderr)
+    # Every role must be named. resolve_roles() silently drops an empty npub, so a missing
+    # --code-owner-npub would re-gate doctrine to the operator alone and lock the Code Owner
+    # out of their own graph — a narrowing with no error to notice. Fail loudly instead.
+    if args.gate and not all(npubs[r] for r in (PORTER, JOURNEYMAN, OPERATOR, CODE_OWNER)):
+        print("--gate requires --porter-npub, --journeyman-npub, --operator-npub, "
+              "and --code-owner-npub", file=sys.stderr)
         return 2
     operator_nsec = os.environ.get("OPERATOR_NSEC", "")
     if not operator_nsec:

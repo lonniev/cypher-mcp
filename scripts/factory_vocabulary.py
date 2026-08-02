@@ -78,6 +78,11 @@ from typing import Any
 PORTER = "porter"
 JOURNEYMAN = "journeyman"
 OPERATOR = "operator"  # the human-run operator identity; writes authoritative (human-authored) intent
+# The Code Owner's own patron npub. Doctrine is gated on "a HUMAN authored this", not on
+# "the service's own key signed this" — and the Code Owner is that human. Without this the
+# only way for them to author doctrine is to borrow the operator identity, which makes the
+# graph attribute their words to the service. A distinct token keeps the record honest.
+CODE_OWNER = "code_owner"
 
 
 @dataclass(frozen=True)
@@ -579,7 +584,7 @@ VOCABULARY: list[Template] = [
         description="Set a Capability's authoritative why (provenance 'human-authored'). "
                     "OPERATOR-only — the human stepping in.",
         intent="Author the authoritative why for a capability.",
-        allow_roles=(OPERATOR,),
+        allow_roles=(OPERATOR, CODE_OWNER),
     ),
     Template(
         # OPERATOR-only. Invariants are enforceable; only a human authors them. Provenance
@@ -599,7 +604,7 @@ VOCABULARY: list[Template] = [
         description="Author an enforceable Invariant node (provenance 'human-authored'). "
                     "OPERATOR-only — distinct from Capability.",
         intent="Record an enforceable code invariant.",
-        allow_roles=(OPERATOR,),
+        allow_roles=(OPERATOR, CODE_OWNER),
     ),
     Template(
         key="guard_invariant_symbol",
@@ -617,7 +622,7 @@ VOCABULARY: list[Template] = [
         description="Add a Symbol to an Invariant's guarded (bounded) set (GUARDS). A later "
                     "symbol matching the pattern but absent from this set is the drift alarm.",
         intent="Register a symbol an invariant guards.",
-        allow_roles=(OPERATOR,),
+        allow_roles=(OPERATOR, CODE_OWNER),
     ),
     # ---- Patent tracing: ground capabilities in the filed provisional patent ---- #
     # PatentElement nodes are a transcription of the public REFERENCE-NUMERAL-SCHEDULE
