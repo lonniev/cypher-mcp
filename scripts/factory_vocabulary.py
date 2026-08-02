@@ -67,6 +67,18 @@ published *write* tool via the pricing model (a ``json_expression`` allow-list o
 ``patron.npub``). Read tools are open (priced, unrestricted). See
 ``seed_factory_vocabulary.py`` :func:`build_gate_step`. Each entry only *declares* which
 roles should be allowed; the seed script turns that into pricing-model config.
+
+Two roles may author doctrine: ``OPERATOR`` (the service's own identity) and ``CODE_OWNER``
+(the human's own patron npub). Both are humans — that is the whole predicate. Doctrine is
+gated on "a human authored this", never on "the service's key signed this", so that the
+graph attributes a human's words to the human rather than to the service they happen to
+run. An agent role appearing on any template that writes ``'human-authored'`` is a bug,
+and is asserted against in the tests.
+
+NOTE: the allow-list is *declared* here but *lives* in the pricing model, so the two can
+drift — a tool published after the last ``--gate`` run is live-ungated (callable by any
+funded patron) no matter what its ``allow_roles`` says. This file is the intent; the
+pricing model is the enforcement. Check the live model before trusting either alone.
 """
 
 from __future__ import annotations
