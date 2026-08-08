@@ -115,6 +115,39 @@ class TestVocabulary:
             t = next(t for t in VOCABULARY if t.key == key)
             assert "p.updated_at = timestamp()" in t.cypher
 
+    def test_a_node_is_resolved_by_the_same_key_in_every_template(self):
+        """Every template must resolve a given node label by the SAME property key.
+
+        This is the invariant that broke: `register_service` MERGEd a Service on
+        {repo_npub, repo_name} while `index_symbol` MERGEd it on {repo_name} alone and
+        `symbols_in_service` MATCHed on {repo_name}. repo_npub is mutable, so a
+        re-registration under a new npub minted a SECOND Service wearing the same name —
+        8 of 18 repos ended up doubled. Downstream, `symbols_in_service` matched both twins
+        and returned every row twice, and IN_SERVICE edges scattered across the pair.
+
+        Nothing raises when this happens; MERGE just creates. So the guard has to live here.
+        Composite keys are legitimate where every part is immutable identity (an Issue IS
+        (repo_name, number)) — what is forbidden is DISAGREEMENT between templates.
+        """
+        import re
+        pattern = re.compile(r"(?:MERGE|MATCH) \(\w*:(\w+) \{([^}]*)\}\)")
+        keys_by_label: dict[str, dict[frozenset, list[str]]] = {}
+        for t in list(VOCABULARY) + list(READ_VOCABULARY):
+            for label, props in pattern.findall(t.cypher):
+                key = frozenset(p.split(":")[0].strip() for p in props.split(","))
+                keys_by_label.setdefault(label, {}).setdefault(key, []).append(t.key)
+        disagreements = {
+            label: {tuple(sorted(k)): tmpls for k, tmpls in variants.items()}
+            for label, variants in keys_by_label.items() if len(variants) > 1
+        }
+        assert not disagreements, (
+            f"these node labels are resolved by different keys in different templates, so "
+            f"the same real-world entity can become two nodes: {disagreements}"
+        )
+        # and pin the two that actually carry cross-template identity
+        assert list(keys_by_label["Service"]) == [frozenset({"repo_name"})]
+        assert list(keys_by_label["Symbol"]) == [frozenset({"fqn"})]
+
     def test_record_triage_stores_actual_issue_and_repo_urls(self):
         t = next(t for t in VOCABULARY if t.key == "record_triage")
         # URLs are caller-supplied params (the real GitHub URLs), bound in the SET — never derived.

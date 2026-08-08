@@ -112,9 +112,19 @@ class Template:
 VOCABULARY: list[Template] = [
     Template(
         key="register_service",
+        # A Service's identity is its repo_name — the key every other template resolves it
+        # by (`index_symbol` MERGEs on repo_name alone; `symbols_in_service` MATCHes on it).
+        # repo_npub is an ATTRIBUTE and it changes: when this MERGEd on {repo_npub, repo_name}
+        # a re-registration under a new npub silently minted a SECOND Service node with the
+        # same name, and 8 of 18 repos ended up doubled. The damage is quiet and compounding —
+        # `symbols_in_service` matches BOTH twins and returns every row twice, and IN_SERVICE
+        # edges scatter across the pair, so a capability attached to one twin is invisible from
+        # the other. Same rule as a Symbol's fqn: identity is ONE stable key; anything that can
+        # change is SET, never merged on.
         cypher=(
-            "MERGE (s:Service {repo_npub: $repo_npub, repo_name: $repo_name}) "
+            "MERGE (s:Service {repo_name: $repo_name}) "
             "ON CREATE SET s.created_at = timestamp() "
+            "SET s.repo_npub = $repo_npub "
             "RETURN s.repo_name AS repo_name"
         ),
         param_schema={
