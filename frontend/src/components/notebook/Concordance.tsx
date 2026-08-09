@@ -156,7 +156,7 @@ function ConcordanceResult({ keyword }: { keyword: string }) {
                   <div key={i} className="flex items-center justify-between px-4 py-2.5 text-sm">
                     <span className="font-mono text-[13px]">{s.service ?? "—"}</span>
                     {s.capability && (
-                      <XRef to={`/capabilities/${encodeURIComponent(s.capability)}`}>{s.capability}</XRef>
+                      <XRef to={`/notebook/capabilities/${encodeURIComponent(s.capability)}`}>{s.capability}</XRef>
                     )}
                   </div>
                 ))}
@@ -191,7 +191,7 @@ function PackCard({ p }: { p: ContextPackEntry }) {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {p.capability && (
           <Link
-            to={`/capabilities/${encodeURIComponent(p.capability)}`}
+            to={`/notebook/capabilities/${encodeURIComponent(p.capability)}`}
             className="font-serif text-lg font-semibold text-stone-900 hover:text-amber-700 dark:text-zinc-50 dark:hover:text-amber-300"
           >
             {p.capability}

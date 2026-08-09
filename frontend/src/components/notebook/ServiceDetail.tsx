@@ -84,7 +84,7 @@ export default function ServiceDetail() {
               {owns.length ? (
                 <div className="flex flex-wrap gap-2">
                   {owns.map((c) => (
-                    <Link key={c} to={`/capabilities/${encodeURIComponent(c)}`} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[11.5px] text-stone-700 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
+                    <Link key={c} to={`/notebook/capabilities/${encodeURIComponent(c)}`} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[11.5px] text-stone-700 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
                       <Icon name="verified" size={13} className="text-stone-500 dark:text-zinc-400" /> {c}
                     </Link>
                   ))}
@@ -99,7 +99,7 @@ export default function ServiceDetail() {
               {consumes.length ? (
                 <div className="flex flex-wrap gap-2">
                   {consumes.map((c) => (
-                    <Link key={c} to={`/capabilities/${encodeURIComponent(c)}`} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[11.5px] text-stone-700 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
+                    <Link key={c} to={`/notebook/capabilities/${encodeURIComponent(c)}`} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[11.5px] text-stone-700 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
                       <Icon name="verified" size={13} className="text-stone-500 dark:text-zinc-400" /> {c}
                     </Link>
                   ))}
@@ -117,7 +117,7 @@ export default function ServiceDetail() {
                     <li key={k} className="flex items-center gap-2.5">
                       <Icon name="github" size={15} className="text-stone-500 dark:text-zinc-400" />
                       {i.repo_name && i.number != null ? (
-                        <Link to={`/issues/${encodeURIComponent(i.repo_name)}/${i.number}`} className="font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">#{i.number}</Link>
+                        <Link to={`/notebook/issues/${encodeURIComponent(i.repo_name)}/${i.number}`} className="font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">#{i.number}</Link>
                       ) : (
                         <span className="font-mono text-[12.5px]">#{i.number}</span>
                       )}
@@ -153,7 +153,7 @@ export default function ServiceDetail() {
                       return (
                         <div key={fqn + k} className="flex items-center gap-2.5">
                           <Icon name={langIcon(s.lang, s.file ?? s.file_path)} size={15} className="text-[#35618e] dark:text-[#6e9bc9]" />
-                          <Link to={`/symbol?fqn=${encodeURIComponent(fqn)}`} className="min-w-0 truncate font-mono text-[13px] hover:text-amber-700 hover:underline dark:hover:text-amber-300">{fqn}</Link>
+                          <Link to={`/notebook/symbol?fqn=${encodeURIComponent(fqn)}`} className="min-w-0 truncate font-mono text-[13px] hover:text-amber-700 hover:underline dark:hover:text-amber-300">{fqn}</Link>
                           {(s.file ?? s.file_path) && <span className={`shrink-0 font-mono text-[11px] ${faint}`}>{s.file ?? s.file_path}</span>}
                         </div>
                       );

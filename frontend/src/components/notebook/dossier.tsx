@@ -411,7 +411,7 @@ export function SymbolRow({
   return (
     <div className="flex items-center gap-2.5">
       <Icon name={langIcon(lang, file)} size={15} className="text-[#35618e] dark:text-[#6e9bc9]" />
-      <Link to={`/symbol?fqn=${encodeURIComponent(fqn)}`} title="Open the symbol's dossier" className={`${nameCls} hover:text-amber-700 hover:underline dark:hover:text-amber-300`}>
+      <Link to={`/notebook/symbol?fqn=${encodeURIComponent(fqn)}`} title="Open the symbol's dossier" className={`${nameCls} hover:text-amber-700 hover:underline dark:hover:text-amber-300`}>
         {fqn}
       </Link>
       {(file || sha) && (
@@ -437,7 +437,7 @@ const badge =
 
 export function RepoBadge({ repo }: { repo: string }) {
   return (
-    <Link to={`/services/${encodeURIComponent(repo)}`} className={badge}>
+    <Link to={`/notebook/services/${encodeURIComponent(repo)}`} className={badge}>
       <Icon name="github" size={14} className="text-stone-500 dark:text-zinc-400" />
       {repo}
     </Link>
@@ -446,7 +446,7 @@ export function RepoBadge({ repo }: { repo: string }) {
 
 export function PatentBadge({ refNum, name }: { refNum: number; name?: string }) {
   return (
-    <Link to={`/patent/${refNum}`} className={badge}>
+    <Link to={`/notebook/patent/${refNum}`} className={badge}>
       <span className="font-semibold text-amber-600 dark:text-amber-400">[{refNum}]</span>
       {name}
     </Link>

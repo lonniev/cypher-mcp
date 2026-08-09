@@ -37,14 +37,14 @@ export default function Contents() {
 
   const registers: Entry[] = [
     {
-      to: "/recent",
+      to: "/notebook/recent",
       title: "Recently Changed",
       blurb:
         "What the knowledge base learned lately — every capability, issue, symbol, invariant, patent element, and service created or modified in a date window, newest first. Pick Today, Yesterday, Last 7 days, or Last 30 days, then open any entry.",
       icon: <CalendarClock className="h-5 w-5" />,
     },
     {
-      to: "/capabilities",
+      to: "/notebook/capabilities",
       title: "Capabilities",
       blurb:
         "The abilities the fleet owns — each with its human-authored ‘why’ (doctrine) or an agent's inferred rationale, its owning and consuming services, and the symbols that realize it.",
@@ -52,49 +52,49 @@ export default function Contents() {
       count: caps ? `${caps.length} entries` : undefined,
     },
     {
-      to: "/issues",
+      to: "/notebook/issues",
       title: "Issues",
       blurb:
         "Every issue the Service Desk has triaged — classification, disposition, root cause, and the capability it touched. A peer entry into the graph; open one to see its full case file.",
       icon: <History className="h-5 w-5" />,
     },
     {
-      to: "/invariants",
+      to: "/notebook/invariants",
       title: "Invariants",
       blurb:
         "The fleet's enforceable business logic — human-authored rules a change must not violate. Each guards a bounded set of symbols; open one to see the rule, what it guards, and the patent topics it grounds.",
       icon: <ShieldCheck className="h-5 w-5" />,
     },
     {
-      to: "/patents",
+      to: "/notebook/patents",
       title: "Patent Topics",
       blurb:
         "The filed provisional's reference numerals (US Prov. 64/045,999) — the patentable topics. Each grounds the capabilities and invariants traced to it; open one to see what it describes.",
       icon: <Award className="h-5 w-5" />,
     },
     {
-      to: "/concordance",
+      to: "/notebook/concordance",
       title: "Concordance",
       blurb:
         "Look up any keyword and see which services handle it and the full context pack — the one query that resolves twelve repos to one answer.",
       icon: <SearchCode className="h-5 w-5" />,
     },
     {
-      to: "/metrics",
+      to: "/notebook/metrics",
       title: "Factory Metrics",
       blurb:
         "How the Service Desk locates code — graph, scoped-grep, or wide-grep. Watch wide-grep trend to zero as the graph learns. The token-savings ledger.",
       icon: <Gauge className="h-5 w-5" />,
     },
     {
-      to: "/catalog",
+      to: "/notebook/catalog",
       title: "Query Catalog",
       blurb:
         "The published tool set — the apparatus of the graph service, read straight from the operator's pricing model.",
       icon: <ScrollText className="h-5 w-5" />,
     },
     {
-      to: "/audit",
+      to: "/notebook/audit",
       title: "Audit",
       blurb:
         "Six audit questions over one capability — why it exists, who authorized it, what it derived from, what guards it, what contradicts it, and what changed since a date. PROV badges, contradictions banner, and honest gaps.",

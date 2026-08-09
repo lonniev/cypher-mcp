@@ -254,12 +254,15 @@ const BOOTSTRAP_TOOLS = new Set([
   // unexpected `npub` kwarg on these). They describe the operator, not a patron.
   "get_pricing_model",
   "get_operator_onboarding_status",
+  // Unauthenticated aggregate landing-page stats (#72) — no npub/proof args.
+  "public_factory_stats",
 ]);
 
 /// Tools too noisy/background to clutter the debug log (polled liveness).
 const QUIET_TOOLS = new Set([
   "service_status",
   "get_nostr_profile",
+  "public_factory_stats",
 ]);
 
 async function callTool<T = unknown>(
@@ -388,6 +391,30 @@ export interface ServiceStatus {
 
 export async function serviceStatus(): Promise<ServiceStatus> {
   return callTool<ServiceStatus>("service_status", {});
+}
+
+/// cypher_public_factory_stats — free, unauthenticated aggregate counts for the
+/// public landing pages. Never returns titles, paths, or npubs. Server-side
+/// hard-cached; safe to call from a guest session.
+export interface PublicFactoryStats {
+  success?: boolean;
+  available?: boolean;
+  reason?: string | null;
+  capability_count?: number;
+  invariant_count?: number;
+  issue_count?: number;
+  service_count?: number;
+  symbol_count?: number;
+  resolution?: ResolutionStat[];
+  last_activity_ms?: number | null;
+  cached_at?: number | null;
+  cache_ttl_s?: number;
+  cache_hit?: boolean;
+  error?: string;
+}
+
+export async function publicFactoryStats(): Promise<PublicFactoryStats> {
+  return callTool<PublicFactoryStats>("public_factory_stats", {}, { bestEffort: true, timeoutMs: 20_000 });
 }
 
 /// cypher_session_status — the database-health traffic light. Lifecycle is one

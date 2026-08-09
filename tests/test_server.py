@@ -12,13 +12,20 @@ _RESTRICTED_CAPS = (
 
 def test_domain_registry_tool_surface():
     caps = {ti.capability for ti in server.TOOL_REGISTRY.values()}
-    assert caps == {"execute_query_by_key", *_RESTRICTED_CAPS}
+    assert caps == {
+        "execute_query_by_key",
+        "public_factory_stats",
+        *_RESTRICTED_CAPS,
+    }
 
 
 def test_executor_is_priced_others_restricted():
     by_cap = {ti.capability: ti for ti in server.TOOL_REGISTRY.values()}
     ex = by_cap["execute_query_by_key"]
     assert ex.category == "read" and ex.pricing_hint_value == 5
+    free = by_cap["public_factory_stats"]
+    assert free.category == "free"
+    assert free.tool_id == server.PUBLIC_FACTORY_STATS_UUID
     for cap in _RESTRICTED_CAPS:
         assert by_cap[cap].category == "restricted"
 
@@ -27,6 +34,7 @@ async def test_registered_tool_names_present():
     tools = await server.mcp._list_tools()
     names = {t.name for t in tools}
     assert "cypher_execute_query_by_key" in names
+    assert "cypher_public_factory_stats" in names
     for cap in _RESTRICTED_CAPS:
         assert f"cypher_{cap}" in names
     # standard wheel tools are present too

@@ -35,7 +35,7 @@ from tollbooth.dynamic_tools import validate_param_schema, validate_params
 from tollbooth.runtime import OperatorRuntime, register_standard_tools
 from tollbooth.tool_identity import STANDARD_IDENTITIES, ToolIdentity
 
-from cypher_mcp import __version__, catalog, graph
+from cypher_mcp import __version__, catalog, graph, public_stats
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,9 @@ LIST_QUERIES_UUID         = "7ba73b4f-5993-5ef5-8aad-ca3a4c99d5e2"
 DELETE_QUERY_UUID         = "0151ecef-9528-5705-8f94-af9a5975014b"
 PUBLISH_TOOL_UUID         = "53625966-b026-5b5d-90db-056a24a9a6bf"
 UNPUBLISH_TOOL_UUID       = "248d328a-f7e0-50a1-b3d9-369d3e4372c0"
+# Free unauthenticated aggregate read for the public landing pages (#72).
+# Pinned via capability_uuid("public_factory_stats"); never regenerate.
+PUBLIC_FACTORY_STATS_UUID = "fbffe21d-3d5f-571d-b962-b0b4329ffa95"
 
 _DOMAIN_TOOLS = [
     # The one priced patron tool. Flat starter price; operator reprices in Neon.
@@ -96,6 +99,13 @@ _DOMAIN_TOOLS = [
         intent="Execute a published, parameterized Cypher query by key.",
         pricing_hint_type="flat",
         pricing_hint_value=5,
+    ),
+    # Public landing-page aggregates — free, no proof, no titles/paths/npubs.
+    ToolIdentity(
+        tool_id=PUBLIC_FACTORY_STATS_UUID,
+        capability="public_factory_stats",
+        category="free",
+        intent="Unauthenticated aggregate counts for the public factory landing pages.",
     ),
     # Operator-only authoring plane — restricted (operator-proof) + unpriced.
     ToolIdentity(
@@ -391,6 +401,48 @@ async def execute_query_by_key(
             interpolated. Must match the query's declared schema.
     """
     return await _run_named_query(key, params, npub, dpop_token)
+
+
+# ---------------------------------------------------------------------------
+# Public landing-page aggregates — free, unauthenticated, cache-hard
+# ---------------------------------------------------------------------------
+
+
+@tool
+@runtime.paid_tool(PUBLIC_FACTORY_STATS_UUID)
+async def public_factory_stats() -> dict[str, Any]:
+    """Aggregate-only factory stats for the unauthenticated landing pages.
+
+    Free — no credits, no npub proof. Returns counts only (capabilities,
+    invariants, issues, services, symbols), the resolved_via mix
+    (graph | scoped-grep | wide-grep), and a last-activity timestamp.
+    Never returns issue titles, symbol paths, or npubs.
+
+    Hard-cached in-process (~5 min) so a sleeping AuraDB free tier is not
+    woken on every page view. Safe for cold Bolt: failures return an empty
+    available=false payload rather than raising.
+    """
+    try:
+        creds = await runtime.load_credentials(
+            ["neo4j_uri", "neo4j_user", "neo4j_password"],
+            service="cypher-operator",
+        )
+    except Exception:
+        logger.debug("public_factory_stats: credentials unavailable", exc_info=True)
+        return public_stats._empty_stats(reason="operator_not_ready")
+
+    if not all(creds.get(f) for f in ("neo4j_uri", "neo4j_user", "neo4j_password")):
+        return public_stats._empty_stats(reason="operator_not_ready")
+
+    async def _run(**kwargs: Any) -> dict[str, Any]:
+        return await graph.run_named(
+            uri=creds["neo4j_uri"],
+            user=creds["neo4j_user"],
+            password=creds["neo4j_password"],
+            **kwargs,
+        )
+
+    return await public_stats.fetch_public_stats(_run)
 
 
 # ---------------------------------------------------------------------------
