@@ -31,7 +31,11 @@ from fastmcp.server.middleware import Middleware
 from pydantic import Field
 from tollbooth.credential_templates import CredentialTemplate, FieldSpec
 from tollbooth.credential_validators import validate_btcpay_creds
-from tollbooth.dynamic_tools import validate_param_schema, validate_params
+from tollbooth.dynamic_tools import (
+    apply_param_defaults,
+    validate_param_schema,
+    validate_params,
+)
 from tollbooth.runtime import OperatorRuntime, register_standard_tools
 from tollbooth.tool_identity import STANDARD_IDENTITIES, ToolIdentity
 
@@ -336,6 +340,15 @@ async def _run_named_query(
     errors = validate_params(row["param_schema"], params)
     if errors:
         raise ValueError("Invalid parameters: " + "; ".join(errors))
+
+    # Bind the schema's declared defaults. Validation alone accepts an omitted
+    # optional param and returns no error, so without this the template's $name
+    # for it is never bound and Neo4j fails the statement — the patron gets
+    # "Tool execution failed. Check operator logs." for a parameter the schema
+    # told them was optional. The named-tool path (build_dynamic_handler) has
+    # always filled defaults; this is the same rule, from the same function, so
+    # the two routes to one query cannot disagree again.
+    params = apply_param_defaults(row["param_schema"], params)
 
     creds = await runtime.load_credentials(
         ["neo4j_uri", "neo4j_user", "neo4j_password"],
