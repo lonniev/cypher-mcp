@@ -14,13 +14,27 @@ Node model
                actionable_text, resolved_via})        actionable_text = Porter's rough→spec translation;
                                                        resolved_via = graph | scoped-grep | wide-grep (the metric)
     (:Rejection {reason, at})                          history-preserving; linked to its Issue
-    (:Decision {id, statement, reason, provenance, at}) provenance is a LITERAL here
+    (:Decision {id, statement, reason, provenance, at,
+                attributed_to, role, generated_at_time, confidence, provenance_status,
+                valid_from, valid_to})                 provenance is a LITERAL here; PROV-ish
+                                                       assertion props make the Porter/Journeyman split
+                                                       queryable (role maps onto prov:Role)
+    (:Assertion {id, statement, attributed_to, role, generated_at_time, confidence,
+                 provenance_status, valid_from, valid_to})
+                                                       versioned why/rationale claims. provenance_status
+                                                       ∈ suggested | asserted | authorized | superseded.
+                                                       Capability why no longer silently overwrites —
+                                                       authorize keeps prior assertions and SUPERSEDES.
     (:Symbol  {fqn, lang, file_path, verified_at_sha, anchor_provenance})
                                                        fqn = fully-qualified name; file_path + verified_at_sha
                                                        are the grep-scoping ANCHOR the Journeyman writes
                                                        post-edit (anchor_provenance='journeyman-verified')
-    (:Capability {name, keywords, why, provenance, inferred_why})  cross-cutting ability, e.g. "Secure Courier"
-    (:Invariant  {name, rule, provenance})             an enforceable rule, e.g. "exactly two transaction types"
+    (:Capability {name, keywords, why, provenance, inferred_why, valid_from, valid_to})
+                                                       cross-cutting ability; valid_* = valid time
+                                                       (recent_activity is transaction time only)
+    (:Invariant  {name, rule, provenance, severity, valid_from, valid_to})
+                                                       severity ∈ Violation | Warning | Info (SHACL-ish);
+                                                       not every invariant is equally enforceable
     (:PatentElement {ref, name, figures, claim_family})  a patent reference numeral, e.g. 610 "Secure Courier channel"
     (:FundingBlock {repo_name, kind, number, state, at})  an LLM-credit outage deferred this work-item; kind=issue|pr,
                                                        state=awaiting-funds|clear. Its OWN node (not a property on
@@ -43,6 +57,11 @@ Node model
     (:FundingBlock)-[:BLOCKS]->(:Service)              the deferred work-item's repo — "what is awaiting funds, where"
     (:Issue)-[:ABOUT_CAPABILITY]->(:Capability)        precedent: a future fuzzy issue on the same
                                                        theme matches this issue's actionable_text
+    (:Capability)-[:HAS_ASSERTION]->(:Assertion)      versioned why claims (suggested + authorized)
+    (:Assertion)-[:SUPERSEDES]->(:Assertion)          newer authorized claim replaces prior (no delete)
+    (:Assertion)-[:CONTRADICTS]->(:Assertion)          authorized vs suggested (or any incompatible pair)
+    (:Invariant)-[:CONTRADICTS]->(:Invariant)          two invariants guarding one symbol incompatibly
+    (:Decision)-[:SUPERSEDES]->(:Decision)            generalize retire_funding_block's keep-not-delete
 
 Provenance — the asymmetry that defends against confabulation
 -------------------------------------------------------------
@@ -356,11 +375,16 @@ VOCABULARY: list[Template] = [
         # without its agentic pass. Distinct from 'clear' (funds restored, work replayed on a
         # still-open item). Fired event-driven on close, deterministically, over the sats rail.
         key="retire_funding_block",
+        # SUPERSEDES pattern: keep the historical node, break the live BLOCKS edge. Never
+        # delete the FundingBlock — it is the durable record that the item shipped without
+        # its agentic pass. The SUPERSEDES edge is reserved for versioned assertions; here
+        # the same keep-not-delete discipline is applied via state='historical'.
         cypher=(
             "MATCH (f:FundingBlock {repo_name: $repo_name, kind: $kind, number: $number}) "
             "OPTIONAL MATCH (f)-[b:BLOCKS]->(:Service) "
             "DELETE b "
-            "SET f.state = 'historical', f.at = timestamp() "
+            "SET f.state = 'historical', f.at = timestamp(), "
+            "    f.provenance_status = 'superseded' "
             "RETURN f.state AS state, f.kind AS kind, f.number AS number"
         ),
         param_schema={
@@ -371,8 +395,8 @@ VOCABULARY: list[Template] = [
                        "description": "The issue or PR number whose block is being retired."},
         },
         description="Retire a FundingBlock to a historical record when its work-item closed while "
-                    "still awaiting funds: break the BLOCKS edge and mark it 'historical', keeping "
-                    "the node as the record that the item shipped without its agentic pass.",
+                    "still awaiting funds: break the BLOCKS edge and mark it 'historical'/"
+                    "superseded, keeping the node (SUPERSEDES keep-not-delete discipline).",
         intent="Retire a stale funding block to a historical record when its item closes.",
         allow_roles=(PORTER, JOURNEYMAN),
     ),
@@ -415,11 +439,17 @@ VOCABULARY: list[Template] = [
     Template(
         key="assert_rationale",
         # provenance is a LITERAL — no param — so an agent key cannot set another value.
+        # Assertion props (role, provenance_status, confidence, generated_at_time, valid_*)
+        # make the Journeyman half of the Porter/Journeyman split queryable for audit.
         cypher=(
             "MATCH (i:Issue {repo_name: $repo_name, number: $issue_number}) "
             "MERGE (d:Decision {id: $decision_id}) "
+            "ON CREATE SET d.valid_from = timestamp() "
             "SET d.statement = $statement, d.reason = $reason, "
-            "    d.provenance = 'llm-inferred-unverified', d.at = timestamp() "
+            "    d.provenance = 'llm-inferred-unverified', d.at = timestamp(), "
+            "    d.role = 'Journeyman', d.provenance_status = 'suggested', "
+            "    d.confidence = 0.5, d.generated_at_time = timestamp(), "
+            "    d.valid_to = null "
             "MERGE (i)-[:HAS_RATIONALE]->(d) "
             "RETURN d.id AS decision"
         ),
@@ -433,7 +463,8 @@ VOCABULARY: list[Template] = [
             "reason": {"type": "string", "required": True, "description": "Why — the rationale."},
         },
         description="Assert a Decision (rationale) for an Issue. Provenance is fixed to "
-                    "'llm-inferred-unverified' — agents cannot claim authoritative provenance.",
+                    "'llm-inferred-unverified' — agents cannot claim authoritative provenance. "
+                    "Stamps role=Journeyman, provenance_status=suggested, confidence=0.5.",
         intent="Record the Journeyman's rationale for a fix (unverified provenance).",
         allow_roles=(JOURNEYMAN,),
     ),
@@ -462,8 +493,11 @@ VOCABULARY: list[Template] = [
     # a parameter; the calling role's template fixes it.
     Template(
         key="upsert_capability",
+        # valid_from stamped ON CREATE only so re-upserts don't rewrite effectivity.
+        # valid_to stays null while the capability is in effect.
         cypher=(
             "MERGE (c:Capability {name: $name}) "
+            "ON CREATE SET c.valid_from = timestamp(), c.valid_to = null "
             "SET c.keywords = $keywords, c.updated_at = timestamp() "
             "MERGE (s:Service {repo_name: $owner_repo}) "
             "MERGE (c)-[:OWNED_BY]->(s) "
@@ -477,7 +511,7 @@ VOCABULARY: list[Template] = [
             "keywords": {"type": "string", "required": True,
                          "description": "Comma-joined search keywords for forward-map resolution."},
         },
-        description="Upsert a Capability (derived structure: keywords + OWNED_BY). No why/"
+        description="Upsert a Capability (derived structure: keywords + OWNED_BY + valid_from). No why/"
                     "provenance — those are separate, provenance-tiered templates.",
         intent="Record a cross-cutting service Capability and one of its owners.",
         allow_roles=(JOURNEYMAN,),
@@ -572,12 +606,22 @@ VOCABULARY: list[Template] = [
         # never the authoritative ``why``/``provenance``. It will not overwrite the machine
         # advice onto a human-authored why (separate field). Trusted advice, not doctrine.
         key="suggest_capability_why",
+        # Still writes inferred_why (legacy readers + explain_capability), AND mints a
+        # versioned :Assertion so authorize can SUPERSEDE/CONTRADICT instead of overwriting.
+        # Assertion id is deterministic per (capability, statement) so re-suggest is idempotent.
         cypher=(
             "MERGE (c:Capability {name: $name}) "
             "SET c.inferred_why = $inferred_why, "
             "    c.inferred_provenance = 'llm-inferred-unverified', "
             "    c.inferred_at = timestamp() "
-            "RETURN c.name AS name"
+            "MERGE (a:Assertion {id: $name + '::suggested::' + $inferred_why}) "
+            "ON CREATE SET a.valid_from = timestamp() "
+            "SET a.statement = $inferred_why, "
+            "    a.role = 'Journeyman', a.provenance_status = 'suggested', "
+            "    a.confidence = 0.5, a.generated_at_time = timestamp(), "
+            "    a.valid_to = null "
+            "MERGE (c)-[:HAS_ASSERTION]->(a) "
+            "RETURN c.name AS name, a.id AS assertion_id"
         ),
         param_schema={
             "name": {"type": "string", "required": True, "description": "Capability name."},
@@ -585,36 +629,67 @@ VOCABULARY: list[Template] = [
                              "description": "The Journeyman's best explanation of why this capability exists."},
         },
         description="Record the Journeyman's advice on why a capability exists "
-                    "(inferred_why; provenance fixed to 'llm-inferred-unverified' — never doctrine).",
+                    "(inferred_why + versioned Assertion; provenance fixed to "
+                    "'llm-inferred-unverified' — never doctrine).",
         intent="Offer the Journeyman's read on why a capability exists.",
         allow_roles=(JOURNEYMAN,),
     ),
     Template(
-        # OPERATOR-only. Hard-codes 'human-authored'. Writes the AUTHORITATIVE why —
-        # the field the Journeyman cannot reach.
+        # OPERATOR-only. Hard-codes 'human-authored'. Still mirrors why onto Capability
+        # for legacy readers, but NEVER silently overwrites prior suggestions: mints a
+        # new authorized Assertion, SUPERSEDES any prior authorized one, and CONTRADICTS
+        # every still-open suggested Assertion so both sides remain queryable.
         key="authorize_capability_why",
         cypher=(
             "MERGE (c:Capability {name: $name}) "
             "SET c.why = $why, c.provenance = 'human-authored', c.authored_at = timestamp() "
-            "RETURN c.name AS name"
+            "WITH c, timestamp() AS now "
+            "MERGE (a:Assertion {id: $name + '::authorized::' + toString(now)}) "
+            "ON CREATE SET a.valid_from = now "
+            "SET a.statement = $why, a.role = 'Authority', "
+            "    a.provenance_status = 'authorized', a.confidence = 1.0, "
+            "    a.generated_at_time = now, a.valid_to = null "
+            "MERGE (c)-[:HAS_ASSERTION]->(a) "
+            "WITH c, a, now "
+            "OPTIONAL MATCH (c)-[:HAS_ASSERTION]->(prev:Assertion) "
+            "WHERE prev.id <> a.id AND prev.provenance_status = 'authorized' "
+            "  AND prev.valid_to IS NULL "
+            "FOREACH (_ IN CASE WHEN prev IS NULL THEN [] ELSE [1] END | "
+            "  SET prev.provenance_status = 'superseded', prev.valid_to = now "
+            "  MERGE (a)-[:SUPERSEDES]->(prev) "
+            ") "
+            "WITH c, a "
+            "OPTIONAL MATCH (c)-[:HAS_ASSERTION]->(sug:Assertion) "
+            "WHERE sug.provenance_status = 'suggested' AND sug.valid_to IS NULL "
+            "FOREACH (_ IN CASE WHEN sug IS NULL THEN [] ELSE [1] END | "
+            "  MERGE (a)-[:CONTRADICTS]->(sug) "
+            ") "
+            "RETURN c.name AS name, a.id AS assertion_id"
         ),
         param_schema={
             "name": {"type": "string", "required": True, "description": "Capability name."},
             "why": {"type": "string", "required": True,
                     "description": "The authoritative, human-authored reason this capability exists."},
         },
-        description="Set a Capability's authoritative why (provenance 'human-authored'). "
-                    "OPERATOR-only — the human stepping in.",
+        description="Set a Capability's authoritative why (provenance 'human-authored') as a "
+                    "versioned Assertion. SUPERSEDES prior authorized claims and CONTRADICTS "
+                    "open suggested ones — never deletes. OPERATOR-only.",
         intent="Author the authoritative why for a capability.",
         allow_roles=(OPERATOR, CODE_OWNER),
     ),
     Template(
         # OPERATOR-only. Invariants are enforceable; only a human authors them. Provenance
-        # hard-coded 'human-authored'.
+        # hard-coded 'human-authored'. severity is a SHACL-ish enum (Violation|Warning|Info);
+        # default Violation preserves today's "every invariant is equally enforceable" semantics
+        # when the caller omits it. valid_from/valid_to give effectivity for audit windows.
         key="assert_invariant",
         cypher=(
             "MERGE (inv:Invariant {name: $name}) "
-            "SET inv.rule = $rule, inv.provenance = 'human-authored', inv.at = timestamp() "
+            "ON CREATE SET inv.valid_from = timestamp(), inv.valid_to = null "
+            "SET inv.rule = $rule, inv.provenance = 'human-authored', inv.at = timestamp(), "
+            "    inv.severity = coalesce($severity, 'Violation'), "
+            "    inv.role = 'Authority', inv.provenance_status = 'authorized', "
+            "    inv.confidence = 1.0, inv.generated_at_time = timestamp() "
             "RETURN inv.name AS invariant"
         ),
         param_schema={
@@ -622,10 +697,35 @@ VOCABULARY: list[Template] = [
                      "description": "Invariant name, e.g. 'exactly two transaction types'."},
             "rule": {"type": "string", "required": True,
                      "description": "The rule stated plainly (the enforceable 'MUST NOT' / cardinality)."},
+            "severity": {"type": "string", "required": False, "default": "Violation",
+                         "description": "Enforceability band: 'Violation' | 'Warning' | 'Info' (SHACL-ish)."},
         },
-        description="Author an enforceable Invariant node (provenance 'human-authored'). "
-                    "OPERATOR-only — distinct from Capability.",
+        description="Author an enforceable Invariant node (provenance 'human-authored', "
+                    "severity band, valid_from effectivity). OPERATOR-only — distinct from Capability.",
         intent="Record an enforceable code invariant.",
+        allow_roles=(OPERATOR, CODE_OWNER),
+    ),
+    Template(
+        # Link two Invariants that guard the same Symbol with incompatible constraints.
+        # Neither is deleted; audit.what_contradicts surfaces both sides.
+        key="mark_invariant_contradiction",
+        cypher=(
+            "MATCH (a:Invariant {name: $name_a}) "
+            "MATCH (b:Invariant {name: $name_b}) "
+            "MERGE (a)-[r:CONTRADICTS]->(b) "
+            "SET r.at = timestamp(), r.reason = $reason "
+            "RETURN a.name AS left, b.name AS right"
+        ),
+        param_schema={
+            "name_a": {"type": "string", "required": True,
+                       "description": "One side of the contradiction (Invariant name)."},
+            "name_b": {"type": "string", "required": True,
+                       "description": "The other side of the contradiction (Invariant name)."},
+            "reason": {"type": "string", "required": True,
+                       "description": "Why these two invariants are incompatible."},
+        },
+        description="Record that two Invariants CONTRADICT each other (keep both; neither is deleted).",
+        intent="Mark two invariants as contradictory.",
         allow_roles=(OPERATOR, CODE_OWNER),
     ),
     Template(
@@ -1187,6 +1287,344 @@ READ_VOCABULARY: list[Template] = [
                     "normalized to (kind, label, key, repo, updated_at) and ordered newest-first — "
                     "the Recently Changed register's one query.",
         intent="List every domain object changed within a date window, across all node types.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    # ---- Audit-answering catalog (PROV-O vocabulary + effectivity) ------------- #
+    # One question per query, same envelope shape: subject / question / assertions
+    # (with PROV term strings as badges, never prose) / contradictions / gaps.
+    # Keys use underscores (publish_tool requires ^[a-z][a-z0-9_]*$); the conceptual
+    # names are audit.why_exists etc. $as_at_ms filters valid_from/valid_to (0 = now).
+    Template(
+        key="audit_why_exists",
+        cypher=(
+            "MATCH (c:Capability {name: $name}) "
+            "WITH c, CASE WHEN $as_at_ms <= 0 THEN timestamp() ELSE $as_at_ms END AS at "
+            "OPTIONAL MATCH (c)-[:HAS_ASSERTION]->(a:Assertion) "
+            "WHERE (a.valid_from IS NULL OR a.valid_from <= at) "
+            "  AND (a.valid_to IS NULL OR a.valid_to > at) "
+            "OPTIONAL MATCH (a)-[:CONTRADICTS]->(other:Assertion) "
+            "OPTIONAL MATCH (c)-[:OWNED_BY]->(o:Service) "
+            "OPTIONAL MATCH (inv:Invariant)-[:GUARDS]->(:Symbol)<-[:REALIZED_BY]-(c) "
+            "WITH c, at, "
+            "     [x IN collect(DISTINCT a) WHERE x IS NOT NULL | "
+            "         {prov: 'wasAttributedTo', "
+            "          agent: {npub: coalesce(x.attributed_to, ''), "
+            "                  label: coalesce(x.role, ''), role: coalesce(x.role, '')}, "
+            "          statement: x.statement, confidence: coalesce(x.confidence, 0.0), "
+            "          status: x.provenance_status, "
+            "          generated_at: x.generated_at_time, "
+            "          valid_from: x.valid_from, valid_to: x.valid_to, "
+            "          derived_from: []}] AS assertion_rows, "
+            "     [x IN collect(DISTINCT {left: a, right: other}) "
+            "         WHERE x.left IS NOT NULL AND x.right IS NOT NULL | "
+            "         {left: x.left.statement, right: x.right.statement, "
+            "          left_status: x.left.provenance_status, "
+            "          right_status: x.right.provenance_status}] AS contradiction_rows, "
+            "     collect(DISTINCT o.repo_name) AS owners, "
+            "     collect(DISTINCT inv.name) AS guarding, "
+            "     c.why AS why, c.inferred_why AS inferred_why, c.provenance AS provenance "
+            "WITH c, assertion_rows, contradiction_rows, owners, guarding, why, inferred_why, provenance, "
+            "     CASE WHEN size(assertion_rows) = 0 AND why IS NOT NULL AND why <> '' THEN "
+            "       [{prov: 'wasAttributedTo', "
+            "         agent: {npub: '', label: 'Authority', role: 'Authority'}, "
+            "         statement: why, confidence: 1.0, status: 'authorized', "
+            "         generated_at: c.authored_at, valid_from: c.valid_from, "
+            "         valid_to: c.valid_to, derived_from: []}] "
+            "     WHEN size(assertion_rows) = 0 AND inferred_why IS NOT NULL AND inferred_why <> '' THEN "
+            "       [{prov: 'wasAttributedTo', "
+            "         agent: {npub: '', label: 'Journeyman', role: 'Journeyman'}, "
+            "         statement: inferred_why, confidence: 0.5, status: 'suggested', "
+            "         generated_at: c.inferred_at, valid_from: c.valid_from, "
+            "         valid_to: null, derived_from: []}] "
+            "     ELSE assertion_rows END AS assertions "
+            "WITH c, assertions, contradiction_rows, owners, guarding, why, inferred_why, "
+            "     [g IN ["
+            "         CASE WHEN NONE(a IN assertions WHERE a.status = 'authorized') "
+            "              THEN 'no authorized why exists for this capability' ELSE null END, "
+            "         CASE WHEN ANY(a IN assertions WHERE a.status = 'suggested') "
+            "               AND NONE(a IN assertions WHERE a.status = 'authorized') "
+            "              THEN 'Journeyman suggested a why that is not yet authorized' ELSE null END, "
+            "         CASE WHEN size(guarding) = 0 "
+            "              THEN 'no invariant guards this capability' ELSE null END"
+            "     ] WHERE g IS NOT NULL] AS gaps "
+            "RETURN {id: c.name, label: c.name, kind: 'Capability'} AS subject, "
+            "       'why_exists' AS question, "
+            "       assertions AS assertions, "
+            "       contradiction_rows AS contradictions, "
+            "       gaps AS gaps, "
+            "       owners AS owners"
+        ),
+        param_schema={
+            "name": {"type": "string", "required": True, "description": "Capability name."},
+            "as_at_ms": {"type": "int", "required": False, "default": 0,
+                         "description": "Valid-time point (epoch ms); 0 = now. Filters assertion valid_from/valid_to."},
+        },
+        description="Audit envelope: why does this capability exist? Assertions (authorized + "
+                    "suggested), CONTRADICTS banner, and honest gaps (no authorized why / no guards).",
+        intent="Answer why a capability exists with PROV-attributed assertions and gaps.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        key="audit_who_authorized",
+        cypher=(
+            "MATCH (c:Capability {name: $name}) "
+            "WITH c, CASE WHEN $as_at_ms <= 0 THEN timestamp() ELSE $as_at_ms END AS at "
+            "OPTIONAL MATCH (c)-[:HAS_ASSERTION]->(a:Assertion) "
+            "WHERE a.provenance_status = 'authorized' "
+            "  AND (a.valid_from IS NULL OR a.valid_from <= at) "
+            "  AND (a.valid_to IS NULL OR a.valid_to > at) "
+            "WITH c, "
+            "     [x IN collect(DISTINCT a) WHERE x IS NOT NULL | "
+            "         {prov: 'wasAttributedTo', "
+            "          agent: {npub: coalesce(x.attributed_to, ''), "
+            "                  label: coalesce(x.role, 'Authority'), "
+            "                  role: coalesce(x.role, 'Authority')}, "
+            "          statement: x.statement, confidence: coalesce(x.confidence, 1.0), "
+            "          status: x.provenance_status, "
+            "          generated_at: x.generated_at_time, "
+            "          valid_from: x.valid_from, valid_to: x.valid_to, "
+            "          derived_from: []}] AS assertion_rows, "
+            "     c.why AS why, c.authored_at AS authored_at, c.provenance AS provenance "
+            "WITH c, assertion_rows, why, authored_at, provenance, "
+            "     CASE WHEN size(assertion_rows) = 0 AND why IS NOT NULL AND why <> '' "
+            "           AND provenance = 'human-authored' THEN "
+            "       [{prov: 'wasAttributedTo', "
+            "         agent: {npub: '', label: 'Authority', role: 'Authority'}, "
+            "         statement: why, confidence: 1.0, status: 'authorized', "
+            "         generated_at: authored_at, valid_from: c.valid_from, "
+            "         valid_to: c.valid_to, derived_from: []}] "
+            "     ELSE assertion_rows END AS assertions "
+            "WITH c, assertions, "
+            "     [g IN ["
+            "         CASE WHEN size(assertions) = 0 "
+            "              THEN 'no authorized why exists for this capability' ELSE null END"
+            "     ] WHERE g IS NOT NULL] AS gaps "
+            "RETURN {id: c.name, label: c.name, kind: 'Capability'} AS subject, "
+            "       'who_authorized' AS question, "
+            "       assertions AS assertions, "
+            "       [] AS contradictions, "
+            "       gaps AS gaps"
+        ),
+        param_schema={
+            "name": {"type": "string", "required": True, "description": "Capability name."},
+            "as_at_ms": {"type": "int", "required": False, "default": 0,
+                         "description": "Valid-time point (epoch ms); 0 = now."},
+        },
+        description="Audit envelope: who authorized this capability's why? Only authorized "
+                    "assertions (prov:wasAttributedTo), with a gap when none exist.",
+        intent="Answer who authorized a capability's authoritative why.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        key="audit_what_derived_from",
+        cypher=(
+            "MATCH (c:Capability {name: $name}) "
+            "OPTIONAL MATCH (i:Issue)-[:ABOUT_CAPABILITY]->(c) "
+            "OPTIONAL MATCH (i)-[:HAS_RATIONALE]->(d:Decision) "
+            "OPTIONAL MATCH (c)-[:DESCRIBED_IN]->(p:PatentElement) "
+            "OPTIONAL MATCH (c)-[:HAS_ASSERTION]->(a:Assertion) "
+            "WITH c, "
+            "     [x IN collect(DISTINCT i) WHERE x IS NOT NULL | "
+            "         {id: coalesce(x.repo_name, '') + '#' + toString(x.number), "
+            "          prov: 'wasDerivedFrom', "
+            "          kind: 'Issue', "
+            "          label: coalesce(x.title, ''), "
+            "          url: coalesce(x.url, '')}] "
+            "     + [x IN collect(DISTINCT d) WHERE x IS NOT NULL | "
+            "         {id: x.id, prov: 'wasDerivedFrom', kind: 'Decision', "
+            "          label: coalesce(x.statement, ''), url: ''}] "
+            "     + [x IN collect(DISTINCT p) WHERE x IS NOT NULL | "
+            "         {id: 'patent-' + toString(x.ref), prov: 'wasDerivedFrom', "
+            "          kind: 'PatentElement', label: coalesce(x.name, ''), url: ''}] "
+            "     AS derived, "
+            "     [x IN collect(DISTINCT a) WHERE x IS NOT NULL | "
+            "         {prov: 'wasGeneratedBy', "
+            "          agent: {npub: coalesce(x.attributed_to, ''), "
+            "                  label: coalesce(x.role, ''), role: coalesce(x.role, '')}, "
+            "          statement: x.statement, confidence: coalesce(x.confidence, 0.0), "
+            "          status: x.provenance_status, "
+            "          generated_at: x.generated_at_time, "
+            "          valid_from: x.valid_from, valid_to: x.valid_to, "
+            "          derived_from: []}] AS assertions "
+            "WITH c, derived, assertions, "
+            "     [g IN ["
+            "         CASE WHEN size(derived) = 0 "
+            "              THEN 'no derivation sources (issues, decisions, patents) linked' ELSE null END"
+            "     ] WHERE g IS NOT NULL] AS gaps "
+            "RETURN {id: c.name, label: c.name, kind: 'Capability'} AS subject, "
+            "       'what_derived_from' AS question, "
+            "       assertions AS assertions, "
+            "       [] AS contradictions, "
+            "       gaps AS gaps, "
+            "       derived AS derived_from"
+        ),
+        param_schema={
+            "name": {"type": "string", "required": True, "description": "Capability name."},
+        },
+        description="Audit envelope: what was this capability derived from? Issues, decisions, "
+                    "and patent elements as prov:wasDerivedFrom sources, plus honest gaps.",
+        intent="Answer what sources a capability was derived from.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        key="audit_what_guards",
+        cypher=(
+            "MATCH (c:Capability {name: $name}) "
+            "WITH c, CASE WHEN $as_at_ms <= 0 THEN timestamp() ELSE $as_at_ms END AS at "
+            "OPTIONAL MATCH (c)-[:REALIZED_BY]->(sym:Symbol)<-[:GUARDS]-(inv:Invariant) "
+            "WHERE (inv.valid_from IS NULL OR inv.valid_from <= at) "
+            "  AND (inv.valid_to IS NULL OR inv.valid_to > at) "
+            "WITH c, "
+            "     [x IN collect(DISTINCT inv) WHERE x IS NOT NULL | "
+            "         {prov: 'wasAssociatedWith', "
+            "          agent: {npub: '', label: 'Authority', role: 'Authority'}, "
+            "          statement: coalesce(x.rule, x.name), "
+            "          confidence: coalesce(x.confidence, 1.0), "
+            "          status: coalesce(x.provenance_status, x.provenance, 'authorized'), "
+            "          severity: coalesce(x.severity, 'Violation'), "
+            "          generated_at: coalesce(x.generated_at_time, x.at), "
+            "          valid_from: x.valid_from, valid_to: x.valid_to, "
+            "          derived_from: [], "
+            "          name: x.name}] AS assertions "
+            "WITH c, assertions, "
+            "     [g IN ["
+            "         CASE WHEN size(assertions) = 0 "
+            "              THEN 'no invariant guards this capability' ELSE null END"
+            "     ] WHERE g IS NOT NULL] AS gaps "
+            "RETURN {id: c.name, label: c.name, kind: 'Capability'} AS subject, "
+            "       'what_guards' AS question, "
+            "       assertions AS assertions, "
+            "       [] AS contradictions, "
+            "       gaps AS gaps"
+        ),
+        param_schema={
+            "name": {"type": "string", "required": True, "description": "Capability name."},
+            "as_at_ms": {"type": "int", "required": False, "default": 0,
+                         "description": "Valid-time point (epoch ms); 0 = now."},
+        },
+        description="Audit envelope: which invariants guard the symbols realizing this capability? "
+                    "Includes severity bands and a gap when none guard it.",
+        intent="Answer which invariants guard a capability.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        key="audit_what_contradicts",
+        cypher=(
+            "MATCH (c:Capability {name: $name}) "
+            "OPTIONAL MATCH (c)-[:HAS_ASSERTION]->(a:Assertion)-[r:CONTRADICTS]->(b:Assertion) "
+            "OPTIONAL MATCH (c)-[:REALIZED_BY]->(:Symbol)<-[:GUARDS]-(inv1:Invariant) "
+            "OPTIONAL MATCH (inv1)-[ri:CONTRADICTS]->(inv2:Invariant) "
+            "WITH c, "
+            "     [x IN collect(DISTINCT {left: a, right: b, via: 'assertion'}) "
+            "         WHERE x.left IS NOT NULL AND x.right IS NOT NULL | "
+            "         {kind: 'Assertion', "
+            "          left: {id: x.left.id, statement: x.left.statement, "
+            "                 status: x.left.provenance_status, role: x.left.role}, "
+            "          right: {id: x.right.id, statement: x.right.statement, "
+            "                  status: x.right.provenance_status, role: x.right.role}}] "
+            "     + [x IN collect(DISTINCT {left: inv1, right: inv2, via: 'invariant'}) "
+            "         WHERE x.left IS NOT NULL AND x.right IS NOT NULL | "
+            "         {kind: 'Invariant', "
+            "          left: {id: x.left.name, statement: x.left.rule, "
+            "                 status: coalesce(x.left.provenance_status, 'authorized'), "
+            "                 role: 'Authority'}, "
+            "          right: {id: x.right.name, statement: x.right.rule, "
+            "                  status: coalesce(x.right.provenance_status, 'authorized'), "
+            "                  role: 'Authority'}}] AS contradictions, "
+            "     [x IN collect(DISTINCT a) WHERE x IS NOT NULL | "
+            "         {prov: 'wasAttributedTo', "
+            "          agent: {npub: coalesce(x.attributed_to, ''), "
+            "                  label: coalesce(x.role, ''), role: coalesce(x.role, '')}, "
+            "          statement: x.statement, confidence: coalesce(x.confidence, 0.0), "
+            "          status: x.provenance_status, "
+            "          generated_at: x.generated_at_time, "
+            "          valid_from: x.valid_from, valid_to: x.valid_to, "
+            "          derived_from: []}] AS assertions "
+            "WITH c, contradictions, assertions, "
+            "     [g IN ["
+            "         CASE WHEN size(contradictions) = 0 "
+            "              THEN 'no contradictions recorded for this capability' ELSE null END"
+            "     ] WHERE g IS NOT NULL] AS gaps "
+            "RETURN {id: c.name, label: c.name, kind: 'Capability'} AS subject, "
+            "       'what_contradicts' AS question, "
+            "       assertions AS assertions, "
+            "       contradictions AS contradictions, "
+            "       gaps AS gaps"
+        ),
+        param_schema={
+            "name": {"type": "string", "required": True, "description": "Capability name."},
+        },
+        description="Audit envelope: what CONTRADICTS this capability's claims? Assertion pairs "
+                    "and Invariant pairs, both sides kept, never buried.",
+        intent="Answer what contradicts a capability's assertions or guarding invariants.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        key="audit_what_changed_since",
+        cypher=(
+            "MATCH (c:Capability {name: $name}) "
+            "OPTIONAL MATCH (c)-[:HAS_ASSERTION]->(a:Assertion) "
+            "WHERE a.generated_at_time >= $since_ms "
+            "   OR coalesce(a.valid_from, 0) >= $since_ms "
+            "   OR coalesce(a.valid_to, 0) >= $since_ms "
+            "OPTIONAL MATCH (a)-[:SUPERSEDES]->(prev:Assertion) "
+            "OPTIONAL MATCH (c)-[:REALIZED_BY]->(sym:Symbol)<-[:GUARDS]-(inv:Invariant) "
+            "WHERE coalesce(inv.at, inv.generated_at_time, 0) >= $since_ms "
+            "WITH c, "
+            "     [x IN collect(DISTINCT a) WHERE x IS NOT NULL | "
+            "         {prov: 'wasGeneratedBy', "
+            "          agent: {npub: coalesce(x.attributed_to, ''), "
+            "                  label: coalesce(x.role, ''), role: coalesce(x.role, '')}, "
+            "          statement: x.statement, confidence: coalesce(x.confidence, 0.0), "
+            "          status: x.provenance_status, "
+            "          generated_at: x.generated_at_time, "
+            "          valid_from: x.valid_from, valid_to: x.valid_to, "
+            "          derived_from: [], "
+            "          superseded: exists((x)-[:SUPERSEDES]->())}] AS assertion_rows, "
+            "     [x IN collect(DISTINCT inv) WHERE x IS NOT NULL | "
+            "         {prov: 'wasGeneratedBy', "
+            "          agent: {npub: '', label: 'Authority', role: 'Authority'}, "
+            "          statement: coalesce(x.rule, x.name), "
+            "          confidence: coalesce(x.confidence, 1.0), "
+            "          status: coalesce(x.provenance_status, 'authorized'), "
+            "          severity: coalesce(x.severity, 'Violation'), "
+            "          generated_at: coalesce(x.generated_at_time, x.at), "
+            "          valid_from: x.valid_from, valid_to: x.valid_to, "
+            "          derived_from: [], name: x.name}] AS inv_rows, "
+            "     [x IN collect(DISTINCT {newer: a, older: prev}) "
+            "         WHERE x.newer IS NOT NULL AND x.older IS NOT NULL | "
+            "         {kind: 'SUPERSEDES', "
+            "          left: {id: x.newer.id, statement: x.newer.statement, "
+            "                 status: x.newer.provenance_status}, "
+            "          right: {id: x.older.id, statement: x.older.statement, "
+            "                  status: x.older.provenance_status}}] AS supersessions "
+            "WITH c, assertion_rows + inv_rows AS assertions, supersessions, "
+            "     [g IN ["
+            "         CASE WHEN size(assertion_rows + inv_rows) = 0 "
+            "              THEN 'nothing changed on this capability since the given time' ELSE null END"
+            "     ] WHERE g IS NOT NULL] AS gaps "
+            "RETURN {id: c.name, label: c.name, kind: 'Capability'} AS subject, "
+            "       'what_changed_since' AS question, "
+            "       assertions AS assertions, "
+            "       supersessions AS contradictions, "
+            "       gaps AS gaps, "
+            "       $since_ms AS since_ms"
+        ),
+        param_schema={
+            "name": {"type": "string", "required": True, "description": "Capability name."},
+            "since_ms": {"type": "int", "required": True,
+                         "description": "Epoch-ms lower bound — only assertions/invariants "
+                                        "touched at or after this time."},
+        },
+        description="Audit envelope: what changed on this capability since a valid/transaction "
+                    "time? New assertions, SUPERSEDES chains, and invariant edits.",
+        intent="Answer what changed on a capability since a given time.",
         allow_roles=(),
         access_mode="read",
     ),

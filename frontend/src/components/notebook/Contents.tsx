@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Award,
   ArrowRight,
+  Scale,
 } from "lucide-react";
 import FrontMatter from "./FrontMatter";
 import { Page, SectionLabel, card, muted, faint } from "./ui";
@@ -91,6 +92,13 @@ export default function Contents() {
       blurb:
         "The published tool set — the apparatus of the graph service, read straight from the operator's pricing model.",
       icon: <ScrollText className="h-5 w-5" />,
+    },
+    {
+      to: "/audit",
+      title: "Audit",
+      blurb:
+        "Six audit questions over one capability — why it exists, who authorized it, what it derived from, what guards it, what contradicts it, and what changed since a date. PROV badges, contradictions banner, and honest gaps.",
+      icon: <Scale className="h-5 w-5" />,
     },
   ];
 

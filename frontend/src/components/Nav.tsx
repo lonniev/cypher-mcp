@@ -59,6 +59,7 @@ export default function Nav() {
       {tab("/concordance", "Concordance")}
       {tab("/metrics", "Metrics")}
       {tab("/catalog", "Catalog")}
+      {tab("/audit", "Audit")}
       {tab("/wallet", "Wallet")}
 
       <div className="ml-auto flex items-center gap-3">

@@ -77,6 +77,10 @@ class TestVocabulary:
         assert "inferred_why" in t.cypher
         assert "c.why =" not in t.cypher
         assert "c.provenance =" not in t.cypher
+        # Versioned Assertion so authorize can SUPERSEDE/CONTRADICT instead of overwrite.
+        assert ":Assertion" in t.cypher
+        assert "provenance_status = 'suggested'" in t.cypher
+        assert "HAS_ASSERTION" in t.cypher
 
     def test_authoritative_why_and_invariants_are_human_only_human_authored(self):
         # "human-authored" means a HUMAN authored it — the operator identity or the Code
@@ -88,13 +92,50 @@ class TestVocabulary:
             assert PORTER not in t.allow_roles and JOURNEYMAN not in t.allow_roles
             assert "'human-authored'" in t.cypher
 
+    def test_authorize_keeps_prior_assertions_via_supersedes_and_contradicts(self):
+        # Highest-value item from the audit proposal: authorize must NOT silently
+        # overwrite the Journeyman's suggested why. Keep both nodes and link them.
+        t = next(t for t in VOCABULARY if t.key == "authorize_capability_why")
+        assert ":Assertion" in t.cypher
+        assert "SUPERSEDES" in t.cypher
+        assert "CONTRADICTS" in t.cypher
+        assert "provenance_status = 'authorized'" in t.cypher
+        assert "provenance_status = 'superseded'" in t.cypher
+        # Still mirrors onto c.why for legacy readers.
+        assert "c.why = $why" in t.cypher
+
+    def test_assert_invariant_carries_severity_and_effectivity(self):
+        t = next(t for t in VOCABULARY if t.key == "assert_invariant")
+        assert "severity" in t.param_schema
+        assert t.param_schema["severity"]["default"] == "Violation"
+        assert "inv.severity" in t.cypher
+        assert "inv.valid_from" in t.cypher
+        assert "inv.valid_to" in t.cypher
+
+    def test_capability_and_decision_carry_effectivity_windows(self):
+        cap = next(t for t in VOCABULARY if t.key == "upsert_capability")
+        assert "c.valid_from" in cap.cypher and "c.valid_to" in cap.cypher
+        dec = next(t for t in VOCABULARY if t.key == "assert_rationale")
+        assert "d.valid_from" in dec.cypher
+        assert "provenance_status = 'suggested'" in dec.cypher
+        assert "d.role = 'Journeyman'" in dec.cypher
+        assert "d.confidence" in dec.cypher
+        assert "d.generated_at_time" in dec.cypher
+
+    def test_retire_funding_block_marks_superseded_without_deleting_node(self):
+        t = next(t for t in VOCABULARY if t.key == "retire_funding_block")
+        assert "DELETE b" in t.cypher  # only the BLOCKS edge
+        assert "DELETE f" not in t.cypher
+        assert "historical" in t.cypher
+        assert "superseded" in t.cypher
+
     def test_code_owner_is_confined_to_doctrine(self):
         # The Code Owner token exists to author doctrine as a human — nothing else. If it
         # spreads onto ordinary writes it stops meaning "this is doctrine" and becomes just
         # another way to reach the graph.
         reachable = {t.key for t in VOCABULARY if CODE_OWNER in t.allow_roles}
         assert reachable == {"authorize_capability_why", "assert_invariant",
-                             "guard_invariant_symbol"}
+                             "guard_invariant_symbol", "mark_invariant_contradiction"}
 
     def test_no_journeyman_reachable_template_writes_human_authored(self):
         # Structural confabulation defense: nothing an agent can call stamps 'human-authored'.
@@ -224,6 +265,47 @@ class TestReadVocabulary:
             assert col in t.cypher, col
         assert "ORDER BY updated_at DESC" in t.cypher
 
+    def test_six_audit_queries_exist_with_shared_envelope(self):
+        # One question per query (not a mega-query). Keys use underscores so
+        # publish_tool accepts them (^ [a-z][a-z0-9_]* $); conceptual names are
+        # audit.why_exists etc.
+        expected = {
+            "audit_why_exists": "why_exists",
+            "audit_who_authorized": "who_authorized",
+            "audit_what_derived_from": "what_derived_from",
+            "audit_what_guards": "what_guards",
+            "audit_what_contradicts": "what_contradicts",
+            "audit_what_changed_since": "what_changed_since",
+        }
+        by_key = {t.key: t for t in READ_VOCABULARY}
+        for key, question in expected.items():
+            assert key in by_key, f"missing audit query {key}"
+            t = by_key[key]
+            assert t.access_mode == "read"
+            assert t.allow_roles == ()
+            # Shared envelope columns the FE page renders.
+            for col in ("subject", "question", "assertions", "contradictions", "gaps"):
+                assert col in t.cypher, f"{key} missing envelope field {col}"
+            assert f"'{question}' AS question" in t.cypher
+            # PROV term as a badge string, never bare prose-only.
+            assert "prov:" in t.cypher or "wasAttributedTo" in t.cypher \
+                or "wasDerivedFrom" in t.cypher or "wasGeneratedBy" in t.cypher \
+                or "wasAssociatedWith" in t.cypher
+
+    def test_audit_why_exists_surfaces_gaps_and_effectivity(self):
+        t = next(t for t in READ_VOCABULARY if t.key == "audit_why_exists")
+        assert "as_at_ms" in t.param_schema
+        assert "no authorized why exists" in t.cypher
+        assert "no invariant guards this capability" in t.cypher
+        assert "valid_from" in t.cypher and "valid_to" in t.cypher
+
+    def test_audit_what_contradicts_keeps_both_sides(self):
+        t = next(t for t in READ_VOCABULARY if t.key == "audit_what_contradicts")
+        assert "CONTRADICTS" in t.cypher
+        assert "left" in t.cypher and "right" in t.cypher
+        # Never a DELETE in a read.
+        assert "DELETE" not in t.cypher
+
 
 class TestSeedBuilders:
     def test_resolve_roles_dedups_and_orders(self):
@@ -252,7 +334,8 @@ class TestSeedBuilders:
         model = {"tools": [{"tool_name": f"cypher_{t.key}", "chain": []} for t in VOCABULARY]}
         apply_gate_and_price(model, NPUBS)
         by = {tp["tool_name"]: tp for tp in model["tools"]}
-        for key in ("authorize_capability_why", "assert_invariant", "guard_invariant_symbol"):
+        for key in ("authorize_capability_why", "assert_invariant", "guard_invariant_symbol",
+                    "mark_invariant_contradiction"):
             assert by[f"cypher_{key}"]["chain"][0]["params"]["expression"]["value"] == [
                 OPERATOR_NPUB, CODE_OWNER_NPUB]
 
