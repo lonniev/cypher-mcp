@@ -59,6 +59,7 @@ export default function Nav() {
       {tab("/notebook/concordance", "Concordance")}
       {tab("/notebook/metrics", "Metrics")}
       {tab("/notebook/catalog", "Catalog")}
+      {tab("/notebook/audit", "Audit")}
       {tab("/notebook/wallet", "Wallet")}
       <Link
         to="/"

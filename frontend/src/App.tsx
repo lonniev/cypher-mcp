@@ -23,6 +23,7 @@ import Issues from "./components/notebook/Issues";
 import Concordance from "./components/notebook/Concordance";
 import Metrics from "./components/notebook/Metrics";
 import QueryCatalog from "./components/notebook/QueryCatalog";
+import Audit from "./components/notebook/Audit";
 import ServiceDetail from "./components/notebook/ServiceDetail";
 import PatentDetail from "./components/notebook/PatentDetail";
 import PatentElements from "./components/notebook/PatentElements";
@@ -198,6 +199,7 @@ function NotebookApp() {
         <Route path="concordance" element={<Concordance />} />
         <Route path="metrics" element={<Metrics />} />
         <Route path="catalog" element={<QueryCatalog />} />
+        <Route path="audit" element={<Audit />} />
         <Route path="services/:repo" element={<ServiceDetail />} />
         <Route path="patent/:ref" element={<PatentDetail />} />
         <Route path="issues/:repo/:number" element={<IssueDetail />} />

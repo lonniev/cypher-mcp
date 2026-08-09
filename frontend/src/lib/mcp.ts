@@ -1058,6 +1058,178 @@ export async function recentActivity(
   return asArray<RecentActivity>(raw);
 }
 
+// ─── Audit envelope — six named questions, one shared shape ─────────────────
+// Conceptual keys are audit.why_exists etc.; published tool keys use underscores
+// (publish_tool requires ^[a-z][a-z0-9_]*$). Each returns the same envelope so
+// the Audit page can render any question with one component. PROV terms travel
+// as badge strings (wasAttributedTo / wasDerivedFrom / …), never as prose.
+
+export type AuditQuestion =
+  | "why_exists"
+  | "who_authorized"
+  | "what_derived_from"
+  | "what_guards"
+  | "what_contradicts"
+  | "what_changed_since";
+
+export const AUDIT_QUESTIONS: {
+  id: AuditQuestion;
+  key: string;
+  label: string;
+  blurb: string;
+  needsSince?: boolean;
+}[] = [
+  {
+    id: "why_exists",
+    key: "audit_why_exists",
+    label: "Why does it exist?",
+    blurb: "Authorized and suggested whys, with honest gaps when doctrine is missing.",
+  },
+  {
+    id: "who_authorized",
+    key: "audit_who_authorized",
+    label: "Who authorized it?",
+    blurb: "Only authorized assertions — the human-authored Authority trail.",
+  },
+  {
+    id: "what_derived_from",
+    key: "audit_what_derived_from",
+    label: "What was it derived from?",
+    blurb: "Issues, decisions, and patent elements that sourced this capability.",
+  },
+  {
+    id: "what_guards",
+    key: "audit_what_guards",
+    label: "What guards it?",
+    blurb: "Invariants on the realizing symbols, with severity bands.",
+  },
+  {
+    id: "what_contradicts",
+    key: "audit_what_contradicts",
+    label: "What contradicts it?",
+    blurb: "Assertion and invariant CONTRADICTS pairs — both sides kept, never buried.",
+  },
+  {
+    id: "what_changed_since",
+    key: "audit_what_changed_since",
+    label: "What changed since…?",
+    blurb: "New assertions, SUPERSEDES chains, and invariant edits after a point in time.",
+    needsSince: true,
+  },
+];
+
+export interface AuditAgent {
+  npub?: string;
+  label?: string;
+  role?: string;
+}
+
+export interface AuditDerivedFrom {
+  id?: string;
+  prov?: string;
+  kind?: string;
+  label?: string;
+  url?: string;
+}
+
+export interface AuditAssertion {
+  prov?: string; // PROV term badge, e.g. "wasAttributedTo"
+  agent?: AuditAgent;
+  statement?: string;
+  confidence?: number;
+  status?: string; // suggested | asserted | authorized | superseded
+  severity?: string; // Violation | Warning | Info (invariants)
+  generated_at?: number;
+  valid_from?: number | null;
+  valid_to?: number | null;
+  derived_from?: AuditDerivedFrom[];
+  name?: string;
+  superseded?: boolean;
+}
+
+export interface AuditContradictionSide {
+  id?: string;
+  statement?: string;
+  status?: string;
+  role?: string;
+}
+
+export interface AuditContradiction {
+  kind?: string;
+  left?: AuditContradictionSide | string;
+  right?: AuditContradictionSide | string;
+  left_status?: string;
+  right_status?: string;
+}
+
+export interface AuditSubject {
+  id?: string;
+  label?: string;
+  kind?: string;
+}
+
+/// Shared envelope every audit_* query returns. `gaps` is the honest work queue —
+/// silence is never a valid audit answer.
+export interface AuditEnvelope {
+  subject?: AuditSubject;
+  question?: AuditQuestion | string;
+  assertions?: AuditAssertion[];
+  contradictions?: AuditContradiction[];
+  gaps?: string[];
+  owners?: string[];
+  derived_from?: AuditDerivedFrom[];
+  since_ms?: number;
+  error?: string;
+  error_code?: string;
+}
+
+function confidenceBand(c?: number, status?: string): "Authorized" | "Asserted" | "Suggested" {
+  if (status === "authorized" || (c != null && c >= 0.95)) return "Authorized";
+  if (status === "asserted" || (c != null && c >= 0.75)) return "Asserted";
+  return "Suggested";
+}
+
+export { confidenceBand };
+
+/// Run one of the six audit questions against a capability name. Prefer the
+/// published named tool; fall back to execute_query_by_key so the page works
+/// even before the operator has priced the audit_* tools.
+export async function auditQuery(
+  question: AuditQuestion,
+  name: string,
+  opts: { asAtMs?: number; sinceMs?: number } = {},
+): Promise<AuditEnvelope> {
+  const meta = AUDIT_QUESTIONS.find((q) => q.id === question);
+  if (!meta) return { error: `Unknown audit question: ${question}` };
+
+  const params: Record<string, unknown> = { name };
+  if (meta.needsSince) {
+    params.since_ms = opts.sinceMs ?? 0;
+  } else if (opts.asAtMs != null) {
+    params.as_at_ms = opts.asAtMs;
+  } else {
+    // Optional as_at_ms defaults to 0 (= now) on the server for the five
+    // effectivity-aware queries.
+    params.as_at_ms = 0;
+  }
+
+  let raw: unknown;
+  try {
+    raw = await callTool<unknown>(meta.key, params);
+  } catch {
+    raw = await callTool<unknown>("execute_query_by_key", { key: meta.key, params });
+  }
+  const row = firstRow<AuditEnvelope>(raw);
+  return {
+    ...row,
+    assertions: Array.isArray(row.assertions) ? row.assertions : [],
+    contradictions: Array.isArray(row.contradictions) ? row.contradictions : [],
+    gaps: asStrList(row.gaps),
+    owners: asStrList(row.owners),
+    derived_from: Array.isArray(row.derived_from) ? row.derived_from : [],
+  };
+}
+
 // ─── Nostr kind-0 profile (served by the wheel; no relay I/O in the FE) ────
 
 export interface Kind0 {
