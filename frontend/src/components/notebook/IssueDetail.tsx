@@ -101,7 +101,7 @@ export default function IssueDetail() {
   return (
     <DossierWrap swipe={swipe}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <Link to="/issues" className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
+        <Link to="/notebook/issues" className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
           <Icon name="back" size={15} /> Issues
         </Link>
         <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label="issue" />
@@ -116,7 +116,7 @@ export default function IssueDetail() {
           <div className="font-serif text-lg font-semibold">No such issue in the graph</div>
           <p className={`mx-auto mt-1.5 max-w-md text-sm ${muted}`}>
             <span className="font-mono text-stone-600 dark:text-zinc-300">{decodedRepo}#{num}</span> hasn't been triaged into the intention graph. Check the number, or start from a real one on the{" "}
-            <Link to="/issues" className="text-amber-700 hover:underline dark:text-amber-300">Issues register</Link>.
+            <Link to="/notebook/issues" className="text-amber-700 hover:underline dark:text-amber-300">Issues register</Link>.
           </p>
         </div>
       )}
@@ -128,7 +128,7 @@ export default function IssueDetail() {
             crestBadge={<IssueStatusGlyph url={d.issue_url} disposition={d.disposition} className="-right-2 -top-2" size={18} />}
             role={
               <>
-                <Link to={`/services/${encodeURIComponent(decodedRepo)}`} className="hover:text-amber-700 hover:underline dark:hover:text-amber-300">
+                <Link to={`/notebook/services/${encodeURIComponent(decodedRepo)}`} className="hover:text-amber-700 hover:underline dark:hover:text-amber-300">
                   {decodedRepo}
                 </Link>
                 {d.classification ? ` · ${d.classification}` : ""}
@@ -196,7 +196,7 @@ export default function IssueDetail() {
                   {caps.map((c) => (
                     <Link
                       key={c}
-                      to={`/capabilities/${encodeURIComponent(c)}`}
+                      to={`/notebook/capabilities/${encodeURIComponent(c)}`}
                       className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[11.5px] text-stone-700 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300"
                     >
                       <Icon name="verified" className="text-[13px] text-stone-500 dark:text-zinc-400" />
@@ -274,7 +274,7 @@ export default function IssueDetail() {
                     <li key={i} className="flex items-baseline gap-2 text-[13px]">
                       <Icon name="swap" size={14} className="text-stone-500 dark:text-zinc-400" />
                       {r.from_repo ? (
-                        <Link to={`/services/${encodeURIComponent(r.from_repo)}`} className="shrink-0 font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">{r.from_repo}</Link>
+                        <Link to={`/notebook/services/${encodeURIComponent(r.from_repo)}`} className="shrink-0 font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">{r.from_repo}</Link>
                       ) : (
                         <span className="shrink-0 font-mono text-[12.5px] text-stone-500">a repo</span>
                       )}

@@ -83,7 +83,7 @@ export default function Invariants() {
                 </button>
               )}
             </form>
-            <Link to="/concordance" className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300">
+            <Link to="/notebook/concordance" className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300">
               <Icon name="swap" size={16} /> Elastic search
             </Link>
           </div>
@@ -118,7 +118,7 @@ export default function Invariants() {
               {filtered.map((v) => (
                 <Link
                   key={v.name}
-                  to={`/invariants/${encodeURIComponent(v.name)}`}
+                  to={`/notebook/invariants/${encodeURIComponent(v.name)}`}
                   className="group flex flex-col gap-2.5 rounded-xl border border-stone-200 bg-white p-4 transition-colors hover:border-amber-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-amber-500/40"
                 >
                   <div className="flex items-start gap-3">
@@ -145,7 +145,7 @@ export default function Invariants() {
                     {(v.patents ?? []).map((p) => (
                       <Link
                         key={p}
-                        to={`/patent/${p}`}
+                        to={`/notebook/patent/${p}`}
                         onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 font-mono text-[10.5px] text-blue-700 hover:underline dark:text-blue-300"
                       >
