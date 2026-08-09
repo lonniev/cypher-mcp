@@ -105,7 +105,7 @@ export default function SymbolDetail() {
               {caps.length ? (
                 <div className="flex flex-wrap gap-2">
                   {caps.map((c) => (
-                    <Link key={c} to={`/capabilities/${encodeURIComponent(c)}`} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[11.5px] text-stone-700 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
+                    <Link key={c} to={`/notebook/capabilities/${encodeURIComponent(c)}`} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[11.5px] text-stone-700 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
                       <Icon name="verified" size={13} className="text-stone-500 dark:text-zinc-400" /> {c}
                     </Link>
                   ))}
@@ -132,7 +132,7 @@ export default function SymbolDetail() {
                     <li key={k} className="flex items-center gap-2.5">
                       <Icon name="github" size={15} className="text-stone-500 dark:text-zinc-400" />
                       {i.repo_name && i.number != null ? (
-                        <Link to={`/issues/${encodeURIComponent(i.repo_name)}/${i.number}`} className="font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">
+                        <Link to={`/notebook/issues/${encodeURIComponent(i.repo_name)}/${i.number}`} className="font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">
                           {i.repo_name}#{i.number}
                         </Link>
                       ) : (

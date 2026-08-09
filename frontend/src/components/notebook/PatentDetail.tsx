@@ -69,7 +69,7 @@ export default function PatentDetail() {
               {caps.length ? (
                 <div className="flex flex-wrap gap-2">
                   {caps.map((c) => (
-                    <Link key={c} to={`/capabilities/${encodeURIComponent(c)}`} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[11.5px] text-stone-700 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
+                    <Link key={c} to={`/notebook/capabilities/${encodeURIComponent(c)}`} className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 font-mono text-[11.5px] text-stone-700 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
                       <Icon name="verified" size={13} className="text-stone-500 dark:text-zinc-400" /> {c}
                     </Link>
                   ))}
@@ -86,7 +86,7 @@ export default function PatentDetail() {
                   {invariants.map((inv, k) => (
                     <li key={k} className="flex items-start gap-2 text-[13.5px]">
                       <Icon name="verified" size={15} className="mt-0.5 text-emerald-600 dark:text-emerald-400" />
-                      <Link to={`/invariants/${encodeURIComponent(inv)}`} className="text-amber-700 hover:underline dark:text-amber-300">{inv}</Link>
+                      <Link to={`/notebook/invariants/${encodeURIComponent(inv)}`} className="text-amber-700 hover:underline dark:text-amber-300">{inv}</Link>
                     </li>
                   ))}
                 </ul>

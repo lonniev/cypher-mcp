@@ -45,21 +45,27 @@ export default function Nav() {
 
   return (
     <header className="border-b border-stone-200 dark:border-zinc-800 px-4 py-2.5 flex items-center gap-1.5 flex-wrap">
-      <Link to="/" className="flex items-center gap-2 mr-3">
+      <Link to="/notebook" className="flex items-center gap-2 mr-3">
         <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
         <span className="font-serif font-semibold tracking-wide">Cypher</span>
       </Link>
 
-      {tab("/", "Contents", true)}
-      {tab("/recent", "Recent")}
-      {tab("/capabilities", "Capabilities")}
-      {tab("/issues", "Issues")}
-      {tab("/invariants", "Invariants")}
-      {tab("/patents", "Patents")}
-      {tab("/concordance", "Concordance")}
-      {tab("/metrics", "Metrics")}
-      {tab("/catalog", "Catalog")}
-      {tab("/wallet", "Wallet")}
+      {tab("/notebook", "Contents", true)}
+      {tab("/notebook/recent", "Recent")}
+      {tab("/notebook/capabilities", "Capabilities")}
+      {tab("/notebook/issues", "Issues")}
+      {tab("/notebook/invariants", "Invariants")}
+      {tab("/notebook/patents", "Patents")}
+      {tab("/notebook/concordance", "Concordance")}
+      {tab("/notebook/metrics", "Metrics")}
+      {tab("/notebook/catalog", "Catalog")}
+      {tab("/notebook/wallet", "Wallet")}
+      <Link
+        to="/"
+        className="px-3 py-1.5 rounded-lg text-sm font-medium text-stone-400 hover:text-stone-700 hover:bg-stone-100 dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-zinc-800"
+      >
+        Factory
+      </Link>
 
       <div className="ml-auto flex items-center gap-3">
         <div className="relative" ref={menuRef}>
@@ -75,14 +81,14 @@ export default function Nav() {
                 </div>
               </div>
               <Link
-                to="/profile"
+                to="/notebook/profile"
                 onClick={() => setMenuOpen(false)}
                 className="block px-3 py-2 text-sm text-stone-600 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors"
               >
                 Profile &amp; theme
               </Link>
               <Link
-                to="/wallet"
+                to="/notebook/wallet"
                 onClick={() => setMenuOpen(false)}
                 className="block px-3 py-2 text-sm text-stone-600 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors"
               >

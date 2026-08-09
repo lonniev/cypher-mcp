@@ -11,7 +11,6 @@ import {
 } from "./lib/mcp";
 import { hydrateAvatarFromNostr } from "./lib/avatar";
 import Nav from "./components/Nav";
-import Hero from "./components/Hero";
 import NpubGate from "./components/NpubGate";
 import DebugPanel from "./components/DebugPanel";
 import WalletPage from "./components/WalletPage";
@@ -31,6 +30,11 @@ import Invariants from "./components/notebook/Invariants";
 import InvariantDetail from "./components/notebook/InvariantDetail";
 import IssueDetail from "./components/notebook/IssueDetail";
 import SymbolDetail from "./components/notebook/SymbolDetail";
+import { PublicLayout, PublicNav, PublicFooter } from "./components/public/PublicShell";
+import HomePage from "./components/public/HomePage";
+import FactoryPage from "./components/public/FactoryPage";
+import MemoryPage from "./components/public/MemoryPage";
+import JoinPage from "./components/public/JoinPage";
 
 interface SessionCtx {
   npub: string;
@@ -100,50 +104,113 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-stone-50 dark:bg-zinc-950 text-stone-900 dark:text-zinc-100 transition-colors">
       <Ctx.Provider value={{ npub, status, logOut }}>
-        {loggedIn ? (
-          <BrowserRouter>
-            <Routes>
-              <Route element={<Layout />}>
-                <Route index element={<Contents />} />
-                <Route path="recent" element={<RecentActivity />} />
-                <Route path="capabilities" element={<Capabilities />} />
-                <Route path="capabilities/:name" element={<CapabilityDetail />} />
-                <Route path="issues" element={<Issues />} />
-                <Route path="invariants" element={<Invariants />} />
-                <Route path="invariants/:name" element={<InvariantDetail />} />
-                <Route path="patents" element={<PatentElements />} />
-                <Route path="concordance" element={<Concordance />} />
-                <Route path="metrics" element={<Metrics />} />
-                <Route path="catalog" element={<QueryCatalog />} />
-                <Route path="services/:repo" element={<ServiceDetail />} />
-                <Route path="patent/:ref" element={<PatentDetail />} />
-                <Route path="issues/:repo/:number" element={<IssueDetail />} />
-                <Route path="symbol" element={<SymbolDetail />} />
-                <Route path="wallet" element={<WalletPage />} />
-                <Route path="profile" element={<ProfilePage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        ) : (
-          <>
-            <TopBar />
-            <main className="flex-1">
-              <Hero />
-              <div className="pb-16">
-                <NpubGate onLogin={onLogin} operatorHash={status?.operator_npub_hash} notice={reauthNotice} />
-              </div>
-            </main>
-            <Footer status={status} />
-          </>
-        )}
+        <BrowserRouter>
+          <Routes>
+            {/* Public factory spokesman — no auth required (#72). */}
+            <Route element={<PublicLayout status={status} />}>
+              <Route index element={<HomePage />} />
+              <Route path="factory" element={<FactoryPage />} />
+              <Route path="memory" element={<MemoryPage />} />
+              <Route path="join" element={<JoinPage />} />
+            </Route>
+
+            {/* Lab Notebook — auth gate; signed-in patrons get the full registers. */}
+            <Route
+              path="notebook/*"
+              element={
+                loggedIn ? (
+                  <NotebookApp />
+                ) : (
+                  <NotebookGate
+                    status={status}
+                    onLogin={onLogin}
+                    operatorHash={status?.operator_npub_hash}
+                    notice={reauthNotice}
+                  />
+                )
+              }
+            />
+
+            {/* Convenience: legacy deep links into notebook sections. */}
+            {loggedIn ? (
+              <>
+                <Route path="capabilities/*" element={<Navigate to="/notebook/capabilities" replace />} />
+                <Route path="issues/*" element={<Navigate to="/notebook/issues" replace />} />
+                <Route path="metrics" element={<Navigate to="/notebook/metrics" replace />} />
+                <Route path="wallet" element={<Navigate to="/notebook/wallet" replace />} />
+                <Route path="profile" element={<Navigate to="/notebook/profile" replace />} />
+              </>
+            ) : null}
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
         <DebugPanel />
       </Ctx.Provider>
     </div>
   );
 }
 
-function Layout() {
+function NotebookGate({
+  status,
+  onLogin,
+  operatorHash,
+  notice,
+}: {
+  status: ServiceStatus | null;
+  onLogin: () => void;
+  operatorHash?: string;
+  notice?: string;
+}) {
+  return (
+    <>
+      <PublicNav />
+      <main className="flex-1">
+        <div className="mx-auto max-w-xl px-6 py-12">
+          <h1 className="font-serif text-2xl font-semibold tracking-tight">Lab Notebook</h1>
+          <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-zinc-400">
+            Sign in with a Nostr key to read the intention graph — capabilities, issues,
+            invariants, concordance, and the token-savings ledger. The public factory
+            pages need no sign-in.
+          </p>
+        </div>
+        <div className="pb-16">
+          <NpubGate onLogin={onLogin} operatorHash={operatorHash} notice={notice} />
+        </div>
+      </main>
+      <PublicFooter status={status} />
+    </>
+  );
+}
+
+function NotebookApp() {
+  return (
+    <Routes>
+      <Route element={<NotebookLayout />}>
+        <Route index element={<Contents />} />
+        <Route path="recent" element={<RecentActivity />} />
+        <Route path="capabilities" element={<Capabilities />} />
+        <Route path="capabilities/:name" element={<CapabilityDetail />} />
+        <Route path="issues" element={<Issues />} />
+        <Route path="invariants" element={<Invariants />} />
+        <Route path="invariants/:name" element={<InvariantDetail />} />
+        <Route path="patents" element={<PatentElements />} />
+        <Route path="concordance" element={<Concordance />} />
+        <Route path="metrics" element={<Metrics />} />
+        <Route path="catalog" element={<QueryCatalog />} />
+        <Route path="services/:repo" element={<ServiceDetail />} />
+        <Route path="patent/:ref" element={<PatentDetail />} />
+        <Route path="issues/:repo/:number" element={<IssueDetail />} />
+        <Route path="symbol" element={<SymbolDetail />} />
+        <Route path="wallet" element={<WalletPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="*" element={<Navigate to="/notebook" replace />} />
+      </Route>
+    </Routes>
+  );
+}
+
+function NotebookLayout() {
   const { status } = useSession();
   return (
     <>
@@ -151,42 +218,8 @@ function Layout() {
       <main className="flex-1">
         <Outlet />
       </main>
-      <Footer status={status} />
+      <PublicFooter status={status} />
     </>
   );
 }
 
-function TopBar() {
-  return (
-    <header className="border-b border-stone-200 dark:border-zinc-800 px-4 py-3 flex items-center gap-2">
-      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-      <span className="font-serif font-semibold tracking-wide">Cypher</span>
-      <span className="text-sm text-stone-400 dark:text-zinc-500">Lab Notebook</span>
-    </header>
-  );
-}
-
-function Footer({ status }: { status: ServiceStatus | null }) {
-  return (
-    <footer className="border-t border-stone-100 px-4 py-3 text-center text-xs text-stone-400 dark:border-zinc-900 dark:text-zinc-600 space-y-0.5">
-      <div>
-        Cypher Lab Notebook v{__APP_VERSION__} · {__BUILD_COMMIT__}
-        {status?.version && ` · MCP ${status.version}`}
-        {status && (status.tollbooth_version ?? status.tollbooth_dpyc_version) &&
-          ` · SDK ${status.tollbooth_version ?? status.tollbooth_dpyc_version}`}
-      </div>
-      <div>
-        Monetized with{" "}
-        <a
-          href="https://tollbooth-dpyc.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-amber-600/80 hover:underline dark:text-amber-400/80"
-        >
-          Tollbooth DPYC™
-        </a>{" "}
-        · Apache-2.0 · Patent Pending (US Prov. 64/045,999)
-      </div>
-    </footer>
-  );
-}

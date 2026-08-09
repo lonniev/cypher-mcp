@@ -231,7 +231,7 @@ export function MeteredError({ error }: { error: string }) {
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
         <span className="text-sm font-medium text-amber-800 dark:text-amber-300">Your balance is empty.</span>
         <Link
-          to="/wallet"
+          to="/notebook/wallet"
           className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-500"
         >
           Top up
