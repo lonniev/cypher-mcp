@@ -299,12 +299,46 @@ class TestReadVocabulary:
         assert "no invariant guards this capability" in t.cypher
         assert "valid_from" in t.cypher and "valid_to" in t.cypher
 
+    def test_point_in_time_audit_queries_accept_as_at_ms(self):
+        """#76: derived_from and what_contradicts must share the as_at_ms convention.
+
+        The FE always sends as_at_ms for every non-since question. When these two
+        rejected it as an unexpected keyword, both the named tool and the
+        execute_query_by_key fallback failed identically — no way to ask either
+        question as-at a point in time. as_at_ms=0 means now, matching siblings.
+        """
+        point_in_time = (
+            "audit_why_exists",
+            "audit_who_authorized",
+            "audit_what_derived_from",
+            "audit_what_guards",
+            "audit_what_contradicts",
+        )
+        by_key = {t.key: t for t in READ_VOCABULARY}
+        for key in point_in_time:
+            t = by_key[key]
+            assert "as_at_ms" in t.param_schema, f"{key} must declare as_at_ms"
+            spec = t.param_schema["as_at_ms"]
+            assert spec.get("required") is False
+            assert spec.get("default") == 0
+            assert "$as_at_ms" in t.cypher, f"{key} must bind $as_at_ms in Cypher"
+            # Shared valid-time filter shape used by the siblings that already work.
+            assert "CASE WHEN $as_at_ms <= 0 THEN timestamp() ELSE $as_at_ms END" in t.cypher
+
+        # Window-since stays deliberate asymmetry — since_ms, not as_at_ms.
+        changed = by_key["audit_what_changed_since"]
+        assert "since_ms" in changed.param_schema
+        assert "as_at_ms" not in changed.param_schema
+
     def test_audit_what_contradicts_keeps_both_sides(self):
         t = next(t for t in READ_VOCABULARY if t.key == "audit_what_contradicts")
         assert "CONTRADICTS" in t.cypher
         assert "left" in t.cypher and "right" in t.cypher
         # Never a DELETE in a read.
         assert "DELETE" not in t.cypher
+        # Effectivity filters both assertion and invariant sides (#76).
+        assert "as_at_ms" in t.param_schema
+        assert "valid_from" in t.cypher and "valid_to" in t.cypher
 
 
 class TestSeedBuilders:
