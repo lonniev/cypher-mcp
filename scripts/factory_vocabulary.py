@@ -1422,10 +1422,13 @@ READ_VOCABULARY: list[Template] = [
         key="audit_what_derived_from",
         cypher=(
             "MATCH (c:Capability {name: $name}) "
+            "WITH c, CASE WHEN $as_at_ms <= 0 THEN timestamp() ELSE $as_at_ms END AS at "
             "OPTIONAL MATCH (i:Issue)-[:ABOUT_CAPABILITY]->(c) "
             "OPTIONAL MATCH (i)-[:HAS_RATIONALE]->(d:Decision) "
             "OPTIONAL MATCH (c)-[:DESCRIBED_IN]->(p:PatentElement) "
             "OPTIONAL MATCH (c)-[:HAS_ASSERTION]->(a:Assertion) "
+            "WHERE (a.valid_from IS NULL OR a.valid_from <= at) "
+            "  AND (a.valid_to IS NULL OR a.valid_to > at) "
             "WITH c, "
             "     [x IN collect(DISTINCT i) WHERE x IS NOT NULL | "
             "         {id: coalesce(x.repo_name, '') + '#' + toString(x.number), "
@@ -1463,6 +1466,8 @@ READ_VOCABULARY: list[Template] = [
         ),
         param_schema={
             "name": {"type": "string", "required": True, "description": "Capability name."},
+            "as_at_ms": {"type": "int", "required": False, "default": 0,
+                         "description": "Valid-time point (epoch ms); 0 = now. Filters assertion valid_from/valid_to."},
         },
         description="Audit envelope: what was this capability derived from? Issues, decisions, "
                     "and patent elements as prov:wasDerivedFrom sources, plus honest gaps.",
@@ -1516,9 +1521,18 @@ READ_VOCABULARY: list[Template] = [
         key="audit_what_contradicts",
         cypher=(
             "MATCH (c:Capability {name: $name}) "
+            "WITH c, CASE WHEN $as_at_ms <= 0 THEN timestamp() ELSE $as_at_ms END AS at "
             "OPTIONAL MATCH (c)-[:HAS_ASSERTION]->(a:Assertion)-[r:CONTRADICTS]->(b:Assertion) "
+            "WHERE (a.valid_from IS NULL OR a.valid_from <= at) "
+            "  AND (a.valid_to IS NULL OR a.valid_to > at) "
+            "  AND (b.valid_from IS NULL OR b.valid_from <= at) "
+            "  AND (b.valid_to IS NULL OR b.valid_to > at) "
             "OPTIONAL MATCH (c)-[:REALIZED_BY]->(:Symbol)<-[:GUARDS]-(inv1:Invariant) "
+            "WHERE (inv1.valid_from IS NULL OR inv1.valid_from <= at) "
+            "  AND (inv1.valid_to IS NULL OR inv1.valid_to > at) "
             "OPTIONAL MATCH (inv1)-[ri:CONTRADICTS]->(inv2:Invariant) "
+            "WHERE (inv2.valid_from IS NULL OR inv2.valid_from <= at) "
+            "  AND (inv2.valid_to IS NULL OR inv2.valid_to > at) "
             "WITH c, "
             "     [x IN collect(DISTINCT {left: a, right: b, via: 'assertion'}) "
             "         WHERE x.left IS NOT NULL AND x.right IS NOT NULL | "
@@ -1558,6 +1572,8 @@ READ_VOCABULARY: list[Template] = [
         ),
         param_schema={
             "name": {"type": "string", "required": True, "description": "Capability name."},
+            "as_at_ms": {"type": "int", "required": False, "default": 0,
+                         "description": "Valid-time point (epoch ms); 0 = now. Filters assertion/invariant valid_from/valid_to."},
         },
         description="Audit envelope: what CONTRADICTS this capability's claims? Assertion pairs "
                     "and Invariant pairs, both sides kept, never buried.",

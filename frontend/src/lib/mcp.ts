@@ -1208,8 +1208,8 @@ export async function auditQuery(
   } else if (opts.asAtMs != null) {
     params.as_at_ms = opts.asAtMs;
   } else {
-    // Optional as_at_ms defaults to 0 (= now) on the server for the five
-    // effectivity-aware queries.
+    // Optional as_at_ms defaults to 0 (= now) on the server for every
+    // point-in-time audit question (all five non-since keys).
     params.as_at_ms = 0;
   }
 
