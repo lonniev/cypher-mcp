@@ -33,6 +33,52 @@ no RDF serializer, no rdflib. Seed with `scripts/seed_factory_vocabulary.py`.
   questions, contradictions banner above the answer, confidence bands, effectivity
   lines, and gaps.
 
+## 0.8.0 — 2026-08-09
+
+### Fixed — an optional parameter was never bound, and the error said nothing
+
+The audit catalog declares `as_at_ms` as `{required: False, default: 0}` and its Cypher
+references `$as_at_ms` unconditionally. Validation accepted the omission and returned no
+error, nothing filled the default, and Neo4j received a statement with an unbound parameter.
+The patron got `tool_execution_failed` — *"Tool execution failed. Check operator logs."* — for
+a parameter the schema had told them was optional.
+
+The two routes to the same query disagreed: `cypher_audit_why_exists(name=…)` worked, because
+the SDK's named-tool handler has always filled declared defaults, while
+`execute_query_by_key("audit_why_exists", {"name": …})` failed. One contract, two answers,
+depending on how you arrived.
+
+Fixed at the root rather than here: tollbooth-dpyc 0.85.0 extracts that rule into
+`apply_param_defaults`, and this executor now calls the same function the handler path does,
+so the routes cannot drift apart again. Regression tests assert at the boundary that
+matters — the params dict actually handed to `graph.run_named` — and one of them derives the
+expected set from the template text, so a query that grows a parameter is covered without
+editing the test.
+
+### Added — audit-answering catalog and the public factory spokesman
+
+Six one-question audit reads over the intention graph (`audit_why_exists`,
+`audit_who_authorized`, `audit_what_derived_from`, `audit_what_guards`,
+`audit_what_contradicts`, `audit_what_changed_since`) sharing one envelope of
+`{subject, question, assertions, contradictions, gaps}`, with PROV-O vocabulary,
+CONTRADICTS/SUPERSEDES edges, valid-time effectivity, and an `/audit` page. Authorizing a
+why now supersedes rather than overwrites, so a Journeyman's suggestion survives as evidence
+instead of being replaced. Also the public factory pages, which need no sign-in, with the Lab
+Notebook moved behind `/notebook`.
+
+### Changed — CI runs the check the deploy runs
+
+`ci.yml` now inspects the deploy entrypoint, which is what Horizon does at build time. A
+suite that never imports the entrypoint cannot fail for the reason a build fails — that gap
+cost optionality-mcp four days of silent non-deployment. Enforced fleet-wide by the doctrine
+linter (dpyc-community#183).
+
+`release.yml` matched only the bracketed `## [1.2.3]` heading while this CHANGELOG uses
+`## 1.2.3 — date`, so every release published a 16-byte body and none of this prose ever
+reached the release page. Extraction now accepts either style.
+
+### Changed — track tollbooth-dpyc 0.85.0
+
 ## 0.7.0 — 2026-07-20
 
 ### Added — grep-scoping "context pack" + code anchors (Service Desk token savings)
