@@ -55,7 +55,7 @@ export function Page({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-5xl px-5 py-8">
+    <div className="page-frame px-5 py-8">
       <header className="mb-6 border-b border-stone-200 pb-5 dark:border-zinc-800">
         <div className="flex items-start justify-between gap-4">
           <div>

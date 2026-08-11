@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useSession } from "../App";
 import Avatar from "./Avatar";
 import { avatarFor, AVATAR_EVENT } from "../lib/avatar";
+import { PrimaryNav } from "./public/PublicShell";
 
 export default function Nav() {
   const { npub, logOut } = useSession();
@@ -43,71 +44,70 @@ export default function Nav() {
     </NavLink>
   );
 
-  return (
-    <header className="border-b border-stone-200 dark:border-zinc-800 px-4 py-2.5 flex items-center gap-1.5 flex-wrap">
-      <Link to="/notebook" className="flex items-center gap-2 mr-3">
-        <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-        <span className="font-serif font-semibold tracking-wide">Cypher</span>
-      </Link>
-
-      {tab("/notebook", "Contents", true)}
-      {tab("/notebook/recent", "Recent")}
-      {tab("/notebook/capabilities", "Capabilities")}
-      {tab("/notebook/issues", "Issues")}
-      {tab("/notebook/invariants", "Invariants")}
-      {tab("/notebook/patents", "Patents")}
-      {tab("/notebook/concordance", "Concordance")}
-      {tab("/notebook/metrics", "Metrics")}
-      {tab("/notebook/catalog", "Catalog")}
-      {tab("/notebook/audit", "Audit")}
-      {tab("/notebook/wallet", "Wallet")}
-      <Link
-        to="/"
-        className="px-3 py-1.5 rounded-lg text-sm font-medium text-stone-400 hover:text-stone-700 hover:bg-stone-100 dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-zinc-800"
-      >
-        Factory
-      </Link>
-
-      <div className="ml-auto flex items-center gap-3">
-        <div className="relative" ref={menuRef}>
-          <button onClick={() => setMenuOpen((o) => !o)} title={npub} className="block rounded-full">
-            <Avatar value={avatar} size={32} />
-          </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-40">
-              <div className="px-3 py-2 border-b border-stone-100 dark:border-zinc-800">
-                <div className="text-xs text-stone-400 dark:text-zinc-500">Nostr identity</div>
-                <div className="text-xs font-mono truncate text-stone-600 dark:text-zinc-300" title={npub}>
-                  {npub}
-                </div>
+  const accountMenu = (
+    <div className="ml-auto flex items-center gap-3">
+      <div className="relative" ref={menuRef}>
+        <button onClick={() => setMenuOpen((o) => !o)} title={npub} className="block rounded-full">
+          <Avatar value={avatar} size={32} />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-40">
+            <div className="px-3 py-2 border-b border-stone-100 dark:border-zinc-800">
+              <div className="text-xs text-stone-400 dark:text-zinc-500">Nostr identity</div>
+              <div className="text-xs font-mono truncate text-stone-600 dark:text-zinc-300" title={npub}>
+                {npub}
               </div>
-              <Link
-                to="/notebook/profile"
-                onClick={() => setMenuOpen(false)}
-                className="block px-3 py-2 text-sm text-stone-600 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors"
-              >
-                Profile &amp; theme
-              </Link>
-              <Link
-                to="/notebook/wallet"
-                onClick={() => setMenuOpen(false)}
-                className="block px-3 py-2 text-sm text-stone-600 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors"
-              >
-                Wallet
-              </Link>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  logOut();
-                }}
-                className="w-full text-left px-3 py-2 text-sm text-stone-600 dark:text-zinc-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
-              >
-                Log out
-              </button>
             </div>
-          )}
-        </div>
+            <Link
+              to="/notebook/profile"
+              onClick={() => setMenuOpen(false)}
+              className="block px-3 py-2 text-sm text-stone-600 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Profile & theme
+            </Link>
+            <Link
+              to="/notebook/wallet"
+              onClick={() => setMenuOpen(false)}
+              className="block px-3 py-2 text-sm text-stone-600 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Wallet
+            </Link>
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                logOut();
+              }}
+              className="w-full text-left px-3 py-2 text-sm text-stone-600 dark:text-zinc-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+            >
+              Log out
+            </button>
+          </div>
+        )}
       </div>
-    </header>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Primary site nav — same items/order as the public pages (#80). */}
+      <PrimaryNav trailing={accountMenu} />
+      {/* Secondary notebook registers — subordinate row, does not replace primary. */}
+      <nav
+        aria-label="Lab Notebook registers"
+        className="border-b border-stone-200 dark:border-zinc-800 px-4 py-1.5 flex items-center gap-1 flex-wrap bg-stone-50/80 dark:bg-zinc-950/80"
+      >
+        {tab("/notebook", "Contents", true)}
+        {tab("/notebook/recent", "Recent")}
+        {tab("/notebook/capabilities", "Capabilities")}
+        {tab("/notebook/issues", "Issues")}
+        {tab("/notebook/invariants", "Invariants")}
+        {tab("/notebook/patents", "Patents")}
+        {tab("/notebook/concordance", "Concordance")}
+        {tab("/notebook/metrics", "Metrics")}
+        {tab("/notebook/catalog", "Catalog")}
+        {tab("/notebook/audit", "Audit")}
+        {tab("/notebook/wallet", "Wallet")}
+      </nav>
+    </>
   );
 }

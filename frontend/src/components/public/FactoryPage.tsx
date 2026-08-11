@@ -15,7 +15,7 @@ export default function FactoryPage() {
   const policy = CREW.filter((r) => r.side === "policy");
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12 space-y-14">
+    <div className="page-frame px-6 py-12 space-y-14">
       <header className="border-b border-stone-200 pb-6 dark:border-zinc-800">
         <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400">
           The model

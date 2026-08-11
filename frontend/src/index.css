@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Site-wide content measure (#80): full width on phones (padding does the
+   gutter); from tablet up, grow with the viewport to 80vw, capped at ~110ch
+   so ultrawide desktops do not produce unreadable line lengths. */
+@layer components {
+  .page-frame {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 100%;
+  }
+  @media (min-width: 640px) {
+    .page-frame {
+      max-width: min(80vw, 110ch);
+    }
+  }
+}
+
 /* color-scheme is set imperatively by lib/theme.ts on <html>. */
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }

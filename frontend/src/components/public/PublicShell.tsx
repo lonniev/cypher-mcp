@@ -2,7 +2,12 @@
 // and the sign-in surface. Same visual language as the lab notebook — serif
 // headings, amber accent, stone/zinc ground — so a guest who later signs in
 // feels continuity rather than a theme swap.
+//
+// PrimaryNav is the site-wide top row (Home · Factory · Memory · Join · Lab
+// Notebook). Every page mounts it; notebook secondary registers render BELOW
+// it, never in place of it (#80).
 
+import type { ReactNode } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import type { ServiceStatus } from "../../lib/mcp";
 
@@ -22,7 +27,16 @@ const tab = (to: string, label: string, end = false) => (
   </NavLink>
 );
 
-export function PublicNav({ showSignIn = true }: { showSignIn?: boolean }) {
+/// Site-wide primary navigation. Identical items and order on every page.
+/// Pass `trailing` to replace the default Sign-in control (e.g. the signed-in
+/// avatar menu). Lab Notebook is active for any `/notebook/*` path.
+export function PrimaryNav({
+  trailing,
+  showSignIn = true,
+}: {
+  trailing?: ReactNode;
+  showSignIn?: boolean;
+}) {
   return (
     <header className="border-b border-stone-200 dark:border-zinc-800 px-4 py-2.5 flex items-center gap-1.5 flex-wrap">
       <Link to="/" className="flex items-center gap-2 mr-3">
@@ -37,16 +51,25 @@ export function PublicNav({ showSignIn = true }: { showSignIn?: boolean }) {
       {tab("/memory", "Memory")}
       {tab("/join", "Join")}
       {tab("/notebook", "Lab Notebook")}
-      {showSignIn && (
-        <Link
-          to="/notebook"
-          className="ml-auto px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-500 transition-colors"
-        >
-          Sign in
-        </Link>
+      {trailing !== undefined ? (
+        trailing
+      ) : (
+        showSignIn && (
+          <Link
+            to="/notebook"
+            className="ml-auto px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-500 transition-colors"
+          >
+            Sign in
+          </Link>
+        )
       )}
     </header>
   );
+}
+
+/** @deprecated Prefer PrimaryNav — alias kept so existing imports keep working. */
+export function PublicNav({ showSignIn = true }: { showSignIn?: boolean }) {
+  return <PrimaryNav showSignIn={showSignIn} />;
 }
 
 export function PublicFooter({ status }: { status: ServiceStatus | null }) {
@@ -75,7 +98,7 @@ export function PublicFooter({ status }: { status: ServiceStatus | null }) {
 export function PublicLayout({ status }: { status: ServiceStatus | null }) {
   return (
     <>
-      <PublicNav />
+      <PrimaryNav />
       <main className="flex-1">
         <Outlet />
       </main>
