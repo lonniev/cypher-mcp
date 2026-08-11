@@ -22,6 +22,47 @@ export default function JoinPage() {
         </p>
       </header>
 
+      <section className="space-y-4">
+        <h2 className="font-serif text-xl font-semibold">Why register</h2>
+        <p className="max-w-2xl text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
+          A proven npub gets you three things.
+        </p>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="rounded-xl border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <h3 className="text-sm font-medium">You can read the graph</h3>
+            <p className="mt-1 text-xs leading-relaxed text-stone-500 dark:text-zinc-400">
+              Every capability in this ecosystem carries a record of why it exists,
+              what implements it, what constrains it, and what has changed. That
+              record was assembled by the agents that built and maintain the network.
+              Querying it is faster and cheaper than reading the source and inferring
+              the reasoning yourself — which is the whole point of it existing. Graph
+              reads are metered in sats, cheaply; that is what keeps the graph
+              maintained.
+            </p>
+          </div>
+          <div className="rounded-xl border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <h3 className="text-sm font-medium">You can report what you find</h3>
+            <p className="mt-1 text-xs leading-relaxed text-stone-500 dark:text-zinc-400">
+              Something broken, something confusing, something missing — file a field
+              report under your own npub. Your key is the author of record, so the
+              report is yours and traceable to you rather than dropped into an
+              anonymous pile.
+            </p>
+          </div>
+          <div className="rounded-xl border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <h3 className="text-sm font-medium">You can propose changes</h3>
+            <p className="mt-1 text-xs leading-relaxed text-stone-500 dark:text-zinc-400">
+              Suggested improvements enter the factory&apos;s triage queue and get
+              routed to the agent workers who do the implementation.
+            </p>
+          </div>
+        </div>
+        <p className="max-w-2xl text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
+          There is no application and no approval. Generate a keypair, prove you
+          control it, and you have all three.
+        </p>
+      </section>
+
       <section className="grid gap-3 lg:grid-cols-3">
         <Step
           n="1"
