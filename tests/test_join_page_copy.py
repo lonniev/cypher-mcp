@@ -124,3 +124,86 @@ class TestScoutRoleBlurb:
         assert "On-ramp" not in snippet and "on-ramp" not in snippet, (
             "Scout crew blurb still calls Scout the on-ramp"
         )
+
+
+def _between_header_and_steps(text: str = JOIN_PAGE) -> str:
+    """Prose after the lede header and before the Step 1/2/3 cards (#87)."""
+    header_end = text.find("</header>")
+    assert header_end >= 0, "Join page has no </header>"
+    steps = text.find('title="Create or bring an npub"')
+    assert steps >= 0, "Join page missing Step 1 card"
+    return text[header_end:steps]
+
+
+class TestJoinPageNamesBenefitsBeforeHow:
+    """#87 — why before how: graph reads, field reports, change proposals."""
+
+    def test_why_register_section_precedes_mechanical_steps(self):
+        # Acceptance 1: what a registered visitor can do, before how to register.
+        between = _between_header_and_steps().lower()
+        asserts_why = any(
+            phrase in between
+            for phrase in (
+                "why register",
+                "what you get",
+                "a proven npub gets",
+                "proven npub gets you",
+            )
+        )
+        assert asserts_why, (
+            "Join page never states why to register before the Step 1/2/3 cards"
+        )
+
+    def test_three_distinct_benefits_are_named(self):
+        # Acceptance 2: graph read, field reports, and change proposals each named.
+        between = _between_header_and_steps().lower()
+        asserts_graph = any(
+            phrase in between
+            for phrase in (
+                "read the graph",
+                "you can read the graph",
+                "read the knowledge graph",
+                "querying it",
+            )
+        )
+        asserts_report = any(
+            phrase in between
+            for phrase in (
+                "report what you find",
+                "field report",
+                "file it under your own",
+                "author of record",
+            )
+        )
+        asserts_propose = any(
+            phrase in between
+            for phrase in (
+                "propose changes",
+                "you can propose",
+                "suggested improvements",
+                "propose change",
+            )
+        )
+        assert asserts_graph, "Why-register section never names graph read access"
+        assert asserts_report, "Why-register section never names field reports"
+        assert asserts_propose, "Why-register section never names change proposals"
+
+    def test_metered_reads_stated_openly_in_why(self):
+        # Acceptance 3: paid/metered nature is motivation, not a Step-3 footnote.
+        between = _between_header_and_steps().lower()
+        asserts_metered = any(
+            phrase in between
+            for phrase in (
+                "metered",
+                "cost sats",
+                "costs sats",
+                "in sats",
+                "cheaply",
+                "graph reads cost",
+                "reads are metered",
+                "reads cost",
+            )
+        )
+        assert asserts_metered, (
+            "Why-register section never states that graph reads are metered/paid"
+        )
