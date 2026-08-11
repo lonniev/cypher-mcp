@@ -72,13 +72,17 @@ export default function HomePage() {
 
         <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
           <div className="text-[11px] uppercase tracking-widest text-amber-600 dark:text-amber-400">
-            Provenance cannot be forged
+            Agents may propose. Only humans authorize.
           </div>
           <p className="mt-2 max-w-3xl font-serif text-lg leading-snug text-stone-800 dark:text-zinc-100">
             {PROVENANCE_THESIS}
           </p>
           <p className="mt-2 text-xs text-stone-500 dark:text-zinc-400">
-            A guest who understands only this one thing has understood the thesis.
+            A confident guess recorded as fact is worse than no record — so inferred advice
+            and human doctrine are never conflated.{" "}
+            <Link to="/memory" className="text-amber-600 hover:underline dark:text-amber-400">
+              Why the graph keeps them apart →
+            </Link>
           </p>
         </section>
 

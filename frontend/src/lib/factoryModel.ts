@@ -165,44 +165,45 @@ export const RESOLVED_VIA = [
   {
     key: "graph",
     title: "graph",
-    gloss: "Answered from the intention graph alone — no grep. The cheapest path.",
+    gloss: "Answered from the intention graph alone. No search. The cheapest path.",
   },
   {
     key: "scoped-grep",
     title: "scoped-grep",
-    gloss: "The graph narrowed a grep to a handful of files.",
+    gloss: "The graph narrowed the search to a handful of files.",
   },
   {
     key: "wide-grep",
     title: "wide-grep",
-    gloss: "The graph missed; the whole repo was re-tokenized. The metric to drive down.",
+    gloss:
+      "The graph had nothing useful. The whole repository was re-read. The expensive path, and the number to drive toward zero.",
   },
 ] as const;
 
 export const MEMORY_STORES = [
   {
     name: "Capabilities",
-    body: "Cross-cutting abilities the fleet owns — each with a human-authored why (doctrine) or an agent's inferred advice, owners, consumers, and realizing symbols.",
+    body: "Cross-cutting abilities the network owns — each with a human-authorized why (doctrine) or an agent's inferred advice, plus owners, consumers, and realizing symbols.",
     tools: ["list_capabilities", "explain_capability", "context_pack", "which_service_handles"],
   },
   {
     name: "Symbols",
-    body: "Code symbols with file anchors. The Journeyman writes them post-edit so the next triage greps a narrow scope — or skips grep.",
+    body: "Code symbols with file anchors, written after an edit so the next agent greps a narrow scope — or skips search entirely.",
     tools: ["index_symbol", "anchor_symbol", "symbol_provenance", "symbols_in_service"],
   },
   {
     name: "Invariants",
-    body: "Enforceable rules a change must not violate. Provenance is the Cypher literal human-authored — an agent cannot claim it.",
+    body: "Enforceable rules a change must not violate. Only a human can author them; an agent cannot stamp them as doctrine.",
     tools: ["list_invariants", "assert_invariant", "invariant_provenance", "guard_invariant_symbol"],
   },
   {
     name: "Decisions",
-    body: "The Journeyman's rationale for a fix. Recorded as llm-inferred-unverified — trusted advice, never doctrine.",
+    body: "An engineering agent's rationale for a fix. Stored as inferred and unverified — trusted advice, never doctrine.",
     tools: ["assert_rationale", "bind_rationale_to_symbol"],
   },
   {
     name: "Issues",
-    body: "Every triaged GitHub issue with disposition, root cause, resolved_via, and the capability it touched.",
+    body: "Every triaged GitHub issue with disposition, root cause, how the code was found, and the capability it touched.",
     tools: ["list_issues", "record_triage", "record_scope", "issue_provenance", "factory_resolution_stats"],
   },
   {
@@ -212,5 +213,13 @@ export const MEMORY_STORES = [
   },
 ] as const;
 
-export const PROVENANCE_THESIS =
-  "llm-inferred-unverified is a Cypher literal inside the write template, not a parameter. There is no argument an agent can pass to claim human authority. The agent proposes; the human legislates.";
+/** Hazard first — why confabulated authority is dangerous. */
+export const PROVENANCE_HAZARD =
+  "An agent asked why a capability exists can usually produce a plausible answer. Plausible is not the same as correct, and a confident guess recorded as fact is worse than no record at all — the next agent will read it, trust it, and build on it.";
+
+/** Mechanism second — how the graph keeps inferred and authorized apart. */
+export const PROVENANCE_MECHANISM =
+  "So the graph distinguishes what was inferred from what was decided. An agent's reading of intent is stored marked as inferred and unverified. A human's ruling is stored as authoritative. Both are visible; they are never conflated. The marking is not a parameter the agent supplies — it is written into the query template itself, so there is no argument an agent can pass to claim an authority it does not have.";
+
+/** Closing epigram — earned only after hazard + mechanism. Also used on Home. */
+export const PROVENANCE_THESIS = "The agent proposes. The human legislates.";
