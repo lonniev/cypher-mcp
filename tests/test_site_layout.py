@@ -1,6 +1,7 @@
-"""Site-wide FE layout contracts (#80).
+"""Site-wide FE layout contracts (#80, #82).
 
-1. Content columns use up to 80vw (capped ~110ch), not a fixed narrow measure.
+1. Content columns use a literal 80vw from tablet up — no ch/px ceiling (#82
+   supersedes the ~110ch cap from #80). Phones stay full width.
 2. Primary nav (Home · Factory · Memory · Join · Lab Notebook) is defined once
    and present on both public and notebook chrome — notebook secondary items
    must not replace it.
@@ -37,11 +38,14 @@ PAGE_FRAMES = {
 
 class TestContentColumnWidth:
     def test_shared_page_frame_utility_exists(self):
-        # Single site-wide measure: 80vw with a ~110ch ceiling for ultrawide.
+        # Single site-wide measure: literal 80vw, no character/pixel ceiling (#82).
         assert "page-frame" in INDEX_CSS or "page-frame" in PUBLIC_SHELL
         surface = INDEX_CSS + "\n" + PUBLIC_SHELL
         assert "80vw" in surface
-        assert "110ch" in surface
+        assert "110ch" not in surface
+        assert "min(80vw" not in surface
+        # The tablet+ rule must set max-width to bare 80vw.
+        assert "max-width: 80vw" in INDEX_CSS
 
     def test_page_frames_use_shared_measure_not_fixed_5xl(self):
         # Outer page shells must not pin to Tailwind's fixed max-w-5xl/4xl alone.
