@@ -23,7 +23,7 @@ export default function FactoryPage() {
         <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight">
           DPYC Agentic Software Factory
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-zinc-400">
+        <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-zinc-400">
           {MODEL.repos} repositories. A split roster: judgement roles run as agents;
           policy roles run as bash. The shape is explained by three rules, four planes,
           and two funding rails. Source of truth:{" "}

@@ -35,21 +35,21 @@ export default function Hero() {
           </div>
         </div>
 
-        <h1 className="max-w-2xl font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+        <h1 className="font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
           Study the intention graph that grounds the Software Factory.
         </h1>
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-stone-600 dark:text-zinc-400">
+        <p className="mt-4 text-base leading-relaxed text-stone-600 dark:text-zinc-400">
           Cypher MCP holds the fleet's institutional memory — capabilities and the code that
           realizes them, invariants, patent tracing, and every issue the Service Desk has triaged.
           This is the architect's reading room over that graph: a table of contents, a keyword
           concordance, cross-referenced registers, and a metrics ledger — not a bouncing bubble map.
         </p>
-        <p className="mt-3 max-w-2xl text-base leading-relaxed text-stone-600 dark:text-zinc-400">
+        <p className="mt-3 text-base leading-relaxed text-stone-600 dark:text-zinc-400">
           Sign in with a Nostr key. Provenance is honest throughout — human-authored doctrine is
           marked apart from an agent's unverified advice.
         </p>
 
-        <div className="mt-8 grid max-w-3xl gap-3 sm:grid-cols-3">
+        <div className="mt-8 grid gap-3 sm:grid-cols-3">
           <Feature
             icon={<Boxes className="h-5 w-5" />}
             title="Cross-referenced registers"

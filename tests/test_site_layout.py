@@ -1,15 +1,19 @@
-"""Site-wide FE layout contracts (#80, #82).
+"""Site-wide FE layout contracts (#80, #82, #86).
 
 1. Content columns use a literal 80vw from tablet up — no ch/px ceiling (#82
    supersedes the ~110ch cap from #80). Phones stay full width.
 2. Primary nav (Home · Factory · Memory · Join · Lab Notebook) is defined once
    and present on both public and notebook chrome — notebook secondary items
    must not replace it.
+3. Prose (headings, ledes, paragraphs) inherits the page-frame width — no
+   nested max-w-xl / max-w-2xl / max-w-3xl ceilings that leave text at ~50%
+   while cards span 80vw (#86).
 
 No frontend test runner in this repo; these are source contracts over the FE.
 """
 
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parent.parent
 FE = ROOT / "frontend/src"
@@ -24,6 +28,7 @@ HOME = (FE / "components/public/HomePage.tsx").read_text()
 FACTORY = (FE / "components/public/FactoryPage.tsx").read_text()
 MEMORY = (FE / "components/public/MemoryPage.tsx").read_text()
 JOIN = (FE / "components/public/JoinPage.tsx").read_text()
+HERO = (FE / "components/Hero.tsx").read_text()
 
 PRIMARY_LABELS = ("Home", "Factory", "Memory", "Join", "Lab Notebook")
 PAGE_FRAMES = {
@@ -34,6 +39,18 @@ PAGE_FRAMES = {
     "notebook/ui Page": UI,
     "dossier": DOSSIER,
 }
+# Page surfaces whose prose must share the page-frame edges with card grids (#86).
+PROSE_SURFACES = {
+    "HomePage": HOME,
+    "FactoryPage": FACTORY,
+    "MemoryPage": MEMORY,
+    "JoinPage": JOIN,
+    "Hero": HERO,
+    "App NotebookGate": APP,
+    "notebook/ui Page": UI,
+}
+# Nested typographic ceilings that pin text narrower than page-frame.
+PROSE_MAX_W = re.compile(r"\bmax-w-(?:xl|2xl|3xl)\b")
 
 
 class TestContentColumnWidth:
@@ -55,6 +72,16 @@ class TestContentColumnWidth:
             if name == "dossier":
                 assert "max-w-4xl" not in src, "dossier still uses fixed max-w-4xl"
             assert "page-frame" in src, f"{name} does not use the shared page-frame class"
+
+    def test_prose_inherits_page_frame_no_nested_max_w(self):
+        # #86: cards already span page-frame; prose must not keep a separate
+        # max-w-xl/2xl/3xl ceiling that leaves headings/ledes at ~50% width.
+        for name, src in PROSE_SURFACES.items():
+            hits = PROSE_MAX_W.findall(src)
+            assert not hits, (
+                f"{name} still constrains prose with {hits!r}; "
+                "remove nested max-w-xl/2xl/3xl so text shares page-frame edges"
+            )
 
 
 class TestPrimaryNavEverywhere:

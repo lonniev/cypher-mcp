@@ -35,10 +35,10 @@ export default function HomePage() {
             </div>
           </div>
 
-          <h1 className="max-w-3xl font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+          <h1 className="font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
             An unattended crew that builds software — and a graph that remembers why.
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-stone-600 dark:text-zinc-400">
+          <p className="mt-4 text-base leading-relaxed text-stone-600 dark:text-zinc-400">
             The DPYC Agentic Software Factory is {MODEL.repos} repositories and a roster of
             judgement and policy roles. Behavior evolves by PR; the workflow skeleton that
             grants powers is human-only; containment is funding, not policy. cypher-mcp is
@@ -49,7 +49,7 @@ export default function HomePage() {
 
         <section>
           <h2 className="mb-3 font-serif text-lg font-semibold">Live from the intention graph</h2>
-          <p className="mb-4 max-w-2xl text-sm text-stone-500 dark:text-zinc-400">
+          <p className="mb-4 text-sm text-stone-500 dark:text-zinc-400">
             Aggregate counts only — no issue titles, no symbol paths, no npubs. The
             resolved_via mix is the argument that the graph pays for itself.
           </p>
@@ -74,7 +74,7 @@ export default function HomePage() {
           <div className="text-[11px] uppercase tracking-widest text-amber-600 dark:text-amber-400">
             Agents may propose. Only humans authorize.
           </div>
-          <p className="mt-2 max-w-3xl font-serif text-lg leading-snug text-stone-800 dark:text-zinc-100">
+          <p className="mt-2 font-serif text-lg leading-snug text-stone-800 dark:text-zinc-100">
             {PROVENANCE_THESIS}
           </p>
           <p className="mt-2 text-xs text-stone-500 dark:text-zinc-400">

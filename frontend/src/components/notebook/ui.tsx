@@ -67,7 +67,7 @@ export function Page({
             <h1 className="font-serif text-3xl font-semibold tracking-tight text-stone-900 dark:text-zinc-50">
               {title}
             </h1>
-            {lede && <p className={`mt-2 max-w-2xl text-sm leading-relaxed ${muted}`}>{lede}</p>}
+            {lede && <p className={`mt-2 text-sm leading-relaxed ${muted}`}>{lede}</p>}
           </div>
           {actions && <div className="shrink-0">{actions}</div>}
         </div>
