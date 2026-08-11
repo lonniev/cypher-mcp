@@ -31,7 +31,7 @@ import Invariants from "./components/notebook/Invariants";
 import InvariantDetail from "./components/notebook/InvariantDetail";
 import IssueDetail from "./components/notebook/IssueDetail";
 import SymbolDetail from "./components/notebook/SymbolDetail";
-import { PublicLayout, PublicNav, PublicFooter } from "./components/public/PublicShell";
+import { PublicLayout, PrimaryNav, PublicFooter } from "./components/public/PublicShell";
 import HomePage from "./components/public/HomePage";
 import FactoryPage from "./components/public/FactoryPage";
 import MemoryPage from "./components/public/MemoryPage";
@@ -165,11 +165,11 @@ function NotebookGate({
 }) {
   return (
     <>
-      <PublicNav />
+      <PrimaryNav />
       <main className="flex-1">
-        <div className="mx-auto max-w-xl px-6 py-12">
+        <div className="page-frame px-6 py-12">
           <h1 className="font-serif text-2xl font-semibold tracking-tight">Lab Notebook</h1>
-          <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-zinc-400">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-zinc-400">
             Sign in with a Nostr key to read the intention graph — capabilities, issues,
             invariants, concordance, and the token-savings ledger. The public factory
             pages need no sign-in.

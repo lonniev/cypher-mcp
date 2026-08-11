@@ -5,7 +5,7 @@ import { COMMUNITY_REPO } from "../../lib/factoryModel";
 
 export default function JoinPage() {
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12 space-y-12">
+    <div className="page-frame px-6 py-12 space-y-12">
       <header className="border-b border-stone-200 pb-6 dark:border-zinc-800">
         <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400">
           On-ramp

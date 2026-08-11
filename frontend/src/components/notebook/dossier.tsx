@@ -172,7 +172,7 @@ export function IconLink({ href, name, label }: { href?: string; name: IconName;
 /// between sibling dossiers.
 export function DossierWrap({ children, swipe }: { children: ReactNode; swipe?: SwipeNav }) {
   return (
-    <div className="mx-auto max-w-4xl px-5 py-8" onTouchStart={swipe?.onTouchStart} onTouchEnd={swipe?.onTouchEnd}>
+    <div className="page-frame px-5 py-8" onTouchStart={swipe?.onTouchStart} onTouchEnd={swipe?.onTouchEnd}>
       {children}
     </div>
   );

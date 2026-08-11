@@ -19,7 +19,7 @@ export default function HomePage() {
         className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-400/20 blur-3xl"
       />
 
-      <div className="relative mx-auto max-w-5xl px-6 py-14 sm:py-18 space-y-14">
+      <div className="relative page-frame px-6 py-14 sm:py-18 space-y-14">
         <section>
           <div className="mb-6 flex items-center gap-3">
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-500/15 text-amber-500 ring-1 ring-amber-500/30">
