@@ -103,7 +103,7 @@ export default function HomePage() {
             to="/join"
             icon={<DoorOpen className="h-5 w-5" />}
             title="Join"
-            body="Scout is the on-ramp. File a field report under your own proven npub."
+            body="Bring your own Nostr identity. Prove the key, then use the operator."
           />
           <Door
             to="/notebook"
