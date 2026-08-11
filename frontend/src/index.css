@@ -2,9 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Site-wide content measure (#80): full width on phones (padding does the
-   gutter); from tablet up, grow with the viewport to 80vw, capped at ~110ch
-   so ultrawide desktops do not produce unreadable line lengths. */
+/* Site-wide content measure (#80, #82): full width on phones (padding does the
+   gutter); from tablet up, a literal 80vw with no ch/px ceiling. Oversized
+   desktops can narrow the browser window; tablets cannot widen past the
+   viewport, so optimize for the constrained device. */
 @layer components {
   .page-frame {
     width: 100%;
@@ -14,7 +15,7 @@
   }
   @media (min-width: 640px) {
     .page-frame {
-      max-width: min(80vw, 110ch);
+      max-width: 80vw;
     }
   }
 }
