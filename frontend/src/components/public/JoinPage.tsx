@@ -13,7 +13,7 @@ export default function JoinPage() {
         <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight">
           You bring your own identity
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-zinc-400">
+        <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-zinc-400">
           Signing in here means proving you control a Nostr keypair. You generate
           that keypair yourself, in whatever Nostr client you prefer — nobody issues
           it to you and nobody can revoke it. If you already have an npub, you already
