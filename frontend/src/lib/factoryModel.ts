@@ -32,7 +32,7 @@ export const CREW: Role[] = [
   {
     name: "Scout",
     side: "judgement",
-    blurb: "On-ramp. An outside patron files a field report under its own proven npub.",
+    blurb: "Field-report identity. Agents file observations and defect reports under this actor — not a visitor sign-in.",
   },
   {
     name: "Porter",
