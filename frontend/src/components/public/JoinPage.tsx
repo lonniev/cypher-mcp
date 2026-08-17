@@ -24,7 +24,7 @@ export default function JoinPage() {
 
       <section className="space-y-4">
         <h2 className="font-serif text-xl font-semibold">Why register</h2>
-        <p className="max-w-2xl text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
+        <p className="text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
           A proven npub gets you three things.
         </p>
         <div className="grid gap-3 lg:grid-cols-3">
@@ -57,7 +57,7 @@ export default function JoinPage() {
             </p>
           </div>
         </div>
-        <p className="max-w-2xl text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
+        <p className="text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
           There is no application and no approval. Generate a keypair, prove you
           control it, and you have all three.
         </p>
