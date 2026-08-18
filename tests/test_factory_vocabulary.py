@@ -295,6 +295,17 @@ class TestReadVocabulary:
             assert "(p)-[:FIXES]->(i:Issue)" in t.cypher
             assert "(i)-[:ABOUT_CAPABILITY]->(" in t.cypher
 
+    def test_pr_reads_fall_back_to_the_fixed_issue_title(self):
+        # A row must lead with a human summary, never a bare number: when a PR has no
+        # title of its own (mirrored/backfilled before it was captured), its title
+        # coalesces to the title of the issue it fixes.
+        by_key = {t.key: t for t in READ_VOCABULARY}
+        for key in ("list_pull_requests", "pr_provenance"):
+            assert "coalesce(p.title, collect(DISTINCT i.title)[0])" in by_key[key].cypher, key
+        # recent_activity's PullRequest row does the same via the fixed-issue title.
+        ra = by_key["recent_activity"].cypher
+        assert "coalesce(pr.title, fix_title, '')" in ra
+
     def test_recent_activity_is_a_bounded_cross_type_feed(self):
         t = next(t for t in READ_VOCABULARY if t.key == "recent_activity")
         # Bounded by BOTH ends so calendar windows (yesterday / last month) are exact.

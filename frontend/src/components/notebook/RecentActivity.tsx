@@ -61,6 +61,10 @@ const KIND_ORDER: ActivityKind[] = [
   "Capability", "Issue", "PullRequest", "Symbol", "Invariant", "PatentElement", "Service",
 ];
 
+// Kinds whose `key` is a GitHub number — shown as a secondary "#n" tag so the row's
+// serif line can lead with the human title instead.
+const NUMBERED = new Set<string>(["Issue", "PullRequest", "FundingBlock"]);
+
 function meta(kind: string): { icon: IconName; tint: string; href: (r: RecentActivity) => string | null } {
   // FundingBlock isn't a canonical dossier kind — it links straight out to the
   // cited issue/PR on GitHub via the URL the stamp carried from CI.
@@ -94,9 +98,14 @@ function Row({ r }: { r: RecentActivity }) {
               <Icon name="github" size={12} /> <span className="truncate">{r.repo}</span>
             </span>
           )}
+          {/* The number rides alongside the repo as a secondary tag so the serif line
+              below can lead with the human title (like a commit's first line). */}
+          {NUMBERED.has(r.kind) && r.key && (
+            <span className="font-mono text-[10.5px] text-stone-400 dark:text-zinc-500">#{r.key}</span>
+          )}
         </div>
         <div className="mt-0.5 truncate font-serif text-[15px] font-medium text-stone-900 dark:text-zinc-50">
-          {r.label?.trim() || r.key || "(unnamed)"}
+          {r.label?.trim() || (r.key ? `#${r.key}` : "(unnamed)")}
         </div>
       </div>
       <div className={`flex shrink-0 items-center gap-1.5 pl-2 text-[10.5px] ${faint}`}>
