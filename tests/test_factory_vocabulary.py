@@ -212,11 +212,39 @@ class TestVocabulary:
                 assert "MERGE (i:Issue" not in t.cypher, f"{t.key} must MATCH, not create, an Issue"
                 assert "MERGE (o:Issue" not in t.cypher, f"{t.key} must MATCH, not create, an Issue"
 
-    def test_link_pr_is_journeyman_only_and_stores_actual_pr_url(self):
+    def test_link_pr_is_journeyman_only_and_creates_the_fixes_edge(self):
         t = next(t for t in VOCABULARY if t.key == "link_pr")
         assert t.allow_roles == (JOURNEYMAN,)
+        # The Journeyman KNOWS the PR number (gh pr create prints it) — it is explicit,
+        # never scraped out of pr_url.
         assert t.param_schema["pr_url"]["required"] is True
-        assert "i.pr_url = $pr_url" in t.cypher
+        assert t.param_schema["pr_number"]["required"] is True
+        # It owns ONLY the FIXES edge; it MATCHes the Issue (never mints one) and the PR
+        # node is a skeleton it may MERGE by (repo_name, number).
+        assert "MATCH (i:Issue" in t.cypher and "MERGE (i:Issue" not in t.cypher
+        assert "MERGE (p:PullRequest {repo_name: $repo_name, number: $pr_number})" in t.cypher
+        assert "MERGE (p)-[:FIXES]->(i)" in t.cypher
+        # Clean break: the flat pr_url string on the Issue is gone.
+        assert "i.pr_url" not in t.cypher
+
+    def test_upsert_pull_request_mirrors_state_and_carries_no_provenance(self):
+        t = next(t for t in VOCABULARY if t.key == "upsert_pull_request")
+        assert t.allow_roles == (JOURNEYMAN,)
+        # Keyed by (repo_name, number) — the same identity link_pr uses, so the two
+        # writers converge on one node and never mint duplicates.
+        assert "MERGE (p:PullRequest {repo_name: $repo_name, number: $number})" in t.cypher
+        # Owns the mutable lifecycle state that makes an ACTIVE PR visible.
+        assert "p.state = $state" in t.cypher and "p.draft = $draft" in t.cypher
+        # An OBSERVED mirror node, same tier as :FundingBlock — it carries NO provenance.
+        assert "provenance" not in t.cypher
+        assert "provenance" not in t.param_schema
+
+    def test_enforcement_of_intention_is_never_a_stored_edge(self):
+        # The thesis "a PR enforces an intention" is answered by a QUERY-TIME traversal
+        # (PR-[:FIXES]->Issue-[:ABOUT_CAPABILITY]->Capability), never a written :ENFORCES
+        # edge — so no writer can forge it. No write template may create ENFORCES.
+        for t in VOCABULARY:
+            assert ":ENFORCES" not in t.cypher, t.key
 
     def test_no_template_hardcodes_a_github_owner(self):
         # The no-hardcode rule: URLs must be actual runtime values, never a baked-in owner string.
@@ -244,12 +272,28 @@ class TestReadVocabulary:
         for t in READ_VOCABULARY:
             assert t.allow_roles == ()
 
-    def test_issue_provenance_returns_the_three_urls(self):
+    def test_issue_provenance_returns_urls_and_fix_prs(self):
         t = next(t for t in READ_VOCABULARY if t.key == "issue_provenance")
         assert t.access_mode == "read"
-        # The click-through surface returns the issue, repo, and PR URLs.
-        for field in ("issue_url", "repo_url", "pr_url"):
+        # The click-through surface returns the issue and repo URLs.
+        for field in ("issue_url", "repo_url"):
             assert field in t.cypher, field
+        # PRs are first-class now: the fix PR(s) arrive as a collected list off the FIXES
+        # edge, not a flat pr_url string (an issue can be fixed by more than one PR).
+        assert "(pr:PullRequest)-[:FIXES]->(i)" in t.cypher
+        assert "prs" in t.cypher
+        assert "i.pr_url" not in t.cypher
+
+    def test_pr_reads_derive_enforced_capabilities_by_traversal(self):
+        by_key = {t.key: t for t in READ_VOCABULARY}
+        for key in ("list_pull_requests", "pr_provenance"):
+            assert key in by_key, f"missing PR read {key}"
+            t = by_key[key]
+            assert t.access_mode == "read" and t.allow_roles == ()
+            # The intention a PR enforces is derived, at read time, from
+            # FIXES->Issue->ABOUT_CAPABILITY — never a stored edge.
+            assert "(p)-[:FIXES]->(i:Issue)" in t.cypher
+            assert "(i)-[:ABOUT_CAPABILITY]->(" in t.cypher
 
     def test_recent_activity_is_a_bounded_cross_type_feed(self):
         t = next(t for t in READ_VOCABULARY if t.key == "recent_activity")
@@ -258,7 +302,7 @@ class TestReadVocabulary:
         assert "updated_at >= $since_ms" in t.cypher
         assert "$until_ms <= 0 OR updated_at < $until_ms" in t.cypher
         # Unions every first-class node type into one normalized stream.
-        for label in ("Capability", "Issue", "Symbol", "Invariant", "PatentElement", "Service"):
+        for label in ("Capability", "Issue", "PullRequest", "Symbol", "Invariant", "PatentElement", "Service"):
             assert f":{label})" in t.cypher, label
         # The uniform row shape the FE renders + routes on, newest-first.
         for col in ("kind", "label", "key", "repo", "updated_at"):

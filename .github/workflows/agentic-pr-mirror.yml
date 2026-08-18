@@ -1,0 +1,18 @@
+# Thin caller — mirror this repo's PRs into the cypher intention graph.
+#
+# Deterministic, no LLM: on every pull_request event it upserts a :PullRequest node
+# so the Lab Notebook shows the change WHILE IT IS ACTIVE (open / draft / in review),
+# not only after merge. No branch filter — every PR is mirrored, whatever its author
+# or branch. Uses pull_request (never pull_request_target): GitHub withholds secrets
+# from fork PRs, so a stranger's PR simply skips the mirror (no nsec) rather than
+# reaching the Journeyman key — the load-bearing fork-secrets property.
+name: Agentic PR Mirror
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, converted_to_draft, synchronize, closed]
+
+jobs:
+  mirror:
+    uses: lonniev/dpyc-community/.github/workflows/pr-mirror.yml@main
+    secrets: inherit

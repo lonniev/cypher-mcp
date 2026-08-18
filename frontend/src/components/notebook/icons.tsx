@@ -16,6 +16,7 @@ import {
   Copy,
   Database,
   ExternalLink,
+  GitPullRequestArrow,
   Handshake,
   HardHat,
   History,
@@ -35,7 +36,7 @@ import {
 export type IconName =
   | "info" | "open" | "copy" | "check" | "close" | "symbol" | "verified"
   | "bookmark" | "quote" | "history" | "swap" | "dns" | "database" | "bolt" | "chevron"
-  | "key" | "back" | "groups" | "tag" | "working"
+  | "key" | "back" | "groups" | "tag" | "working" | "pullrequest"
   | "worker" | "delivered" | "handshake"
   | "github" | "python" | "typescript" | "bitcoin";
 
@@ -63,6 +64,7 @@ const LUCIDE: Partial<Record<IconName, LucideIcon>> = {
   worker: HardHat,
   delivered: PackageCheck,
   handshake: Handshake,
+  pullrequest: GitPullRequestArrow,
 };
 
 // Decorations use a medal rather than a plain bookmark.

@@ -696,10 +696,23 @@ export interface IssueDecision {
   provenance?: string;
 }
 
+/// A fix PR attached to an issue via the (:PullRequest)-[:FIXES]->(:Issue) edge.
+/// An issue can carry more than one, which is why this replaced the flat pr_url
+/// string. `state` is the graph's mirrored state; the FE overlays live GitHub
+/// status (open/merged/closed) on top via githubStatus.ts.
+export interface PrRef {
+  number?: number;
+  url?: string;
+  title?: string;
+  state?: string; // 'open' | 'closed'
+  draft?: boolean;
+  merged_at?: string;
+}
+
 export interface IssueProvenance {
   issue_url?: string;
   repo_url?: string;
-  pr_url?: string;
+  prs?: PrRef[];
   repo_name?: string;
   number?: number;
   title?: string;
@@ -962,6 +975,7 @@ export async function issueProvenance(repoName: string, issueNumber: number): Pr
     capabilities: asStrList(r.capabilities),
     root_cause_symbols: normalizeSymbols(r.root_cause_symbols),
     rejections: normalizeRejections(r.rejections),
+    prs: Array.isArray(r.prs) ? r.prs : [],
   };
 }
 
@@ -998,7 +1012,7 @@ export interface IssueSummary {
   disposition?: string;
   resolved_via?: string;
   url?: string;
-  pr_url?: string;
+  prs?: PrRef[];
   updated_at?: number;
   triaged_at?: number;
   /// Live turn heartbeat: what an agent is doing RIGHT NOW on this issue.
@@ -1012,7 +1026,91 @@ export interface IssueSummary {
 /// published + priced as its own named tool.
 export async function listIssues(opts: { sinceMs?: number } = {}): Promise<IssueSummary[]> {
   const r = await callTool<unknown>("list_issues", { since_ms: opts.sinceMs ?? 0 });
-  return asArray<IssueSummary>(r).map((i) => ({ ...i, capabilities: asStrList(i.capabilities) }));
+  return asArray<IssueSummary>(r).map((i) => ({
+    ...i,
+    capabilities: asStrList(i.capabilities),
+    prs: Array.isArray(i.prs) ? i.prs : [],
+  }));
+}
+
+/// A compact pull request for the Pull Requests register (peer of IssueSummary).
+/// `capabilities` are the intentions this PR enforces, derived server-side via
+/// FIXES->Issue->ABOUT_CAPABILITY. Live open/merged/closed state is overlaid from
+/// GitHub client-side (githubStatus.ts); `state` here is the graph's mirror.
+export interface PullRequestSummary {
+  repo_name?: string;
+  number?: number;
+  title?: string;
+  url?: string;
+  state?: string; // 'open' | 'closed'
+  draft?: boolean;
+  author?: string;
+  merged_at?: string;
+  head_ref?: string;
+  base_ref?: string;
+  updated_at?: number;
+  created_at?: number;
+  fixes_issues?: number[];
+  capabilities?: string[];
+}
+
+/// list_pull_requests — the full compact PR catalog (peer of list_issues), run via
+/// execute_query_by_key against the seeded template.
+export async function listPullRequests(opts: { sinceMs?: number } = {}): Promise<PullRequestSummary[]> {
+  const raw = await callTool<unknown>("execute_query_by_key", {
+    key: "list_pull_requests",
+    params: { since_ms: opts.sinceMs ?? 0 },
+  });
+  return asArray<PullRequestSummary>(raw).map((p) => ({
+    ...p,
+    capabilities: asStrList(p.capabilities),
+    fixes_issues: Array.isArray(p.fixes_issues) ? p.fixes_issues : [],
+  }));
+}
+
+/// An issue this PR fixes, for the PR dossier.
+export interface PrFixRef {
+  number?: number;
+  title?: string;
+  url?: string;
+  disposition?: string;
+}
+
+/// pr_provenance — a PR's case file: the issue(s) it fixes and the capabilities it
+/// enforces (the intention it enacts, derived at read time — never a stored edge).
+export interface PullRequestProvenance {
+  repo_name?: string;
+  number?: number;
+  url?: string;
+  title?: string;
+  state?: string;
+  draft?: boolean;
+  author?: string;
+  head_sha?: string;
+  head_ref?: string;
+  base_ref?: string;
+  merged_at?: string;
+  created_at?: number;
+  updated_at?: number;
+  fixes?: PrFixRef[];
+  enforces_capabilities?: string[];
+  error?: string;
+  error_code?: string;
+}
+
+/// pr_provenance — the PR dossier bundle for one (repo, number).
+export async function prProvenance(repoName: string, number: number): Promise<PullRequestProvenance> {
+  const r = firstRow<PullRequestProvenance>(
+    await callTool<unknown>("execute_query_by_key", {
+      key: "pr_provenance",
+      params: { repo_name: repoName, number },
+    }),
+  );
+  return {
+    ...r,
+    fixes: Array.isArray(r.fixes) ? r.fixes : [],
+    enforces_capabilities: asStrList(r.enforces_capabilities),
+  };
 }
 
 /// factory_resolution_stats — the grep-fallback distribution (the headline metric).
@@ -1029,7 +1127,7 @@ export async function factoryResolutionStats(): Promise<ResolutionStat[]> {
 // metered under execute_query_by_key, exactly like symbol/service provenance.
 
 export type ActivityKind =
-  | "Capability" | "Issue" | "Symbol" | "Invariant" | "PatentElement" | "Service";
+  | "Capability" | "Issue" | "PullRequest" | "Symbol" | "Invariant" | "PatentElement" | "Service";
 
 /// A normalized activity row: `key` is the type's dossier identifier (capability
 /// name, issue number, symbol fqn, patent ref, service/invariant name); `repo`

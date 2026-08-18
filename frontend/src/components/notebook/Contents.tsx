@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import {
   Boxes,
   History,
+  GitPullRequestArrow,
   SearchCode,
   Gauge,
   ScrollText,
@@ -57,6 +58,13 @@ export default function Contents() {
       blurb:
         "Every issue the Service Desk has triaged — classification, disposition, root cause, and the capability it touched. A peer entry into the graph; open one to see its full case file.",
       icon: <History className="h-5 w-5" />,
+    },
+    {
+      to: "/notebook/pulls",
+      title: "Pull Requests",
+      blurb:
+        "Every change in flight and the intention it enforces — open, draft, or merged. The enactment that closes the loop: each PR fixes an issue and, through it, enforces a capability. Watch upcoming changes here.",
+      icon: <GitPullRequestArrow className="h-5 w-5" />,
     },
     {
       to: "/notebook/invariants",

@@ -21,13 +21,13 @@ export interface Activity {
   activity?: string; // 'triaging' | 'fixing' | 'reviewing'
   worked_by?: string; // 'porter' | 'journeyman' | 'qa'
   activity_since?: number; // epoch ms the current turn began
-  pr_url?: string;
+  prs?: { number?: number }[]; // fix PR(s) via the FIXES edge
 }
 
 /// Is an agent actively working this issue right now?
 export function isWorking(a?: Activity): boolean {
   if (!a?.activity || !a.activity_since) return false;
-  if (a.pr_url) return false; // a PR is open — past the working phase
+  if (a.prs && a.prs.length > 0) return false; // a PR is open — past the working phase
   return Date.now() - a.activity_since < ACTIVE_WINDOW_MS;
 }
 
