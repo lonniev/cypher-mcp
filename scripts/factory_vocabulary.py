@@ -10,9 +10,10 @@ and a read surface, written by the Journeyman (structure + advice) and the Opera
 Node model
 ----------
     (:Service {repo_npub, repo_name})                one per repo — the service is the actor
-    (:Issue   {repo_name, number, title, classification, disposition, url, repo_url, pr_url,
+    (:Issue   {repo_name, number, title, classification, disposition, url, repo_url,
                actionable_text, resolved_via})        actionable_text = Porter's rough→spec translation;
-                                                       resolved_via = graph | scoped-grep | wide-grep (the metric)
+                                                       resolved_via = graph | scoped-grep | wide-grep (the metric).
+                                                       The fix PR is now a :PullRequest node via FIXES, not a pr_url string.
     (:Rejection {reason, at})                          history-preserving; linked to its Issue
     (:Decision {id, statement, reason, provenance, at,
                 attributed_to, role, generated_at_time, confidence, provenance_status,
@@ -41,12 +42,23 @@ Node model
                                                        :Issue) because the funding stamp must key on a PR number too,
                                                        and PRs are not :Issue nodes — a property-on-Issue stamp would
                                                        silently no-op for exactly the PR/QA outages that motivate it.
+    (:PullRequest {repo_name, number, url, title, state, draft, author, head_sha,
+                   base_ref, head_ref, merged_at, created_at, updated_at})
+                                                       an OBSERVED GitHub mirror node, same tier as :FundingBlock —
+                                                       carries NO provenance (a mirrored fact is not an assertion). The
+                                                       enactment that closes the intention loop: it FIXES an Issue and
+                                                       thereby ENFORCES (by traversal) the Capability that issue is about.
+                                                       upsert_pull_request owns live state; link_pr owns the FIXES edge.
 
     (:Issue)-[:FILED_AGAINST]->(:Service)
     (:Issue)-[:HAS_REJECTION]->(:Rejection)
     (:Issue)-[:ROOT_CAUSE]->(:Symbol)
     (:Issue)-[:HAS_RATIONALE]->(:Decision)
     (:Decision)-[:ABOUT]->(:Symbol)
+    (:PullRequest)-[:FIXES]->(:Issue)                  the fix that enacts an issue's intention (link_pr).
+                                                       ENFORCES(:Capability) is a QUERY-TIME traversal, never a stored
+                                                       edge: PR-[:FIXES]->Issue-[:ABOUT_CAPABILITY]->Capability — so
+                                                       enforcement stays derived and cannot be forged by a writer.
     (:Capability)-[:OWNED_BY]->(:Service)              multi-owner
     (:Capability)-[:CONSUMED_BY]->(:Service)
     (:Capability)-[:REALIZED_BY]->(:Symbol)            one capability → many symbols, across repos
@@ -420,20 +432,82 @@ VOCABULARY: list[Template] = [
     ),
     Template(
         key="link_pr",
-        # pr_url is the ACTUAL URL that `gh pr create` printed — never derived from an owner.
+        # The FIX relation: the PR that carried the fix ENACTS the intention behind an Issue.
+        # This tool owns ONLY the (:PullRequest)-[:FIXES]->(:Issue) edge — the intention link,
+        # asserted by the Journeyman who KNOWS which issue the PR fixes (never scraped from a
+        # body). It MATCHes the Issue (never MERGEs it): only record_triage/claim_issue mint
+        # Issues, and both require issue_url (invariant, claim_issue above) — so a PR that
+        # references an untriaged issue simply gets no edge, rather than minting a URL-less node.
+        # The PR node here is a skeleton (ON CREATE only): url + created_at + state='open'. All
+        # LIVE lifecycle state (state/draft/merged_at/head_sha) is owned by upsert_pull_request,
+        # so the two writers never clobber each other — MERGE on (repo_name, number) converges
+        # regardless of which fires first. pr_number is explicit (gh pr create prints it), never
+        # parsed out of pr_url.
         cypher=(
             "MATCH (i:Issue {repo_name: $repo_name, number: $issue_number}) "
-            "SET i.pr_url = $pr_url "
-            "RETURN i.pr_url AS pr_url"
+            "MERGE (p:PullRequest {repo_name: $repo_name, number: $pr_number}) "
+            "ON CREATE SET p.url = $pr_url, p.state = 'open', p.created_at = timestamp(), "
+            "              p.updated_at = timestamp() "
+            "MERGE (p)-[:FIXES]->(i) "
+            "RETURN p.number AS pr, i.number AS issue"
         ),
         param_schema={
             "repo_name": {"type": "string", "required": True, "description": "Repository name."},
-            "issue_number": {"type": "int", "required": True, "description": "GitHub issue number."},
+            "issue_number": {"type": "int", "required": True, "description": "The GitHub issue number the PR fixes."},
+            "pr_number": {"type": "int", "required": True,
+                          "description": "The PR's own number (gh pr create prints it) — the PullRequest node identity."},
             "pr_url": {"type": "string", "required": True,
                        "description": "The actual GitHub URL of the PR that fixes this issue (from gh pr create)."},
         },
-        description="Record the URL of the PR that carried the fix for an Issue (click-through provenance).",
-        intent="Attach the fix PR's GitHub URL to its issue.",
+        description="Link the fix PR to the Issue it resolves: (:PullRequest)-[:FIXES]->(:Issue). "
+                    "The PR that enacts the intention behind the issue.",
+        intent="Attach the fix PR to its issue via the FIXES edge.",
+        allow_roles=(JOURNEYMAN,),
+    ),
+    Template(
+        key="upsert_pull_request",
+        # The GitHub PR mirror — an OBSERVED node, same tier as :FundingBlock, so it carries
+        # NO provenance property (provenance marks the trust tier of an ASSERTION; a mirrored
+        # fact is not one). Fired by the deterministic pr-sentinel on every pull_request event
+        # (opened/ready_for_review/converted_to_draft/synchronize/closed), so the graph shows a
+        # PR WHILE IT IS ACTIVE, not only after merge. Owns all mutable lifecycle state; MERGE
+        # on (repo_name, number) is convergent, so it and link_pr never mint duplicates.
+        # updated_at is the GRAPH write-clock (like :FundingBlock.at and :Issue.scoped_at) — the
+        # feed means "changed in the graph"; GitHub's own created_at/merged_at ride as data props.
+        cypher=(
+            "MERGE (p:PullRequest {repo_name: $repo_name, number: $number}) "
+            "ON CREATE SET p.created_at = coalesce($created_at, timestamp()) "
+            "SET p.url = $url, p.title = $title, p.state = $state, p.draft = $draft, "
+            "    p.author = $author, p.head_sha = $head_sha, p.base_ref = $base_ref, "
+            "    p.head_ref = $head_ref, p.merged_at = $merged_at, p.updated_at = timestamp() "
+            "RETURN p.number AS number, p.state AS state"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "number": {"type": "int", "required": True, "description": "The PR number (node identity)."},
+            "url": {"type": "string", "required": True, "description": "The PR's canonical GitHub URL."},
+            "title": {"type": "string", "required": True, "description": "PR title."},
+            "state": {"type": "string", "required": True,
+                      "description": "Lifecycle state: 'open' | 'closed' (merged PRs are closed with merged_at set)."},
+            "draft": {"type": "bool", "required": False, "default": False,
+                      "description": "True while the PR is a draft (in-progress, not yet up for review)."},
+            "author": {"type": "string", "required": False, "default": None,
+                       "description": "GitHub login that opened the PR."},
+            "head_sha": {"type": "string", "required": False, "default": None,
+                         "description": "Head commit SHA (changes on each synchronize)."},
+            "base_ref": {"type": "string", "required": False, "default": None,
+                         "description": "Base branch the PR targets (e.g. 'main')."},
+            "head_ref": {"type": "string", "required": False, "default": None,
+                         "description": "Head branch of the PR (e.g. 'agent/fix-123')."},
+            "merged_at": {"type": "string", "required": False, "default": None,
+                          "description": "GitHub merge timestamp (ISO-8601), or null if not merged."},
+            "created_at": {"type": "string", "required": False, "default": None,
+                           "description": "GitHub creation timestamp (ISO-8601); a graph timestamp is used if omitted."},
+        },
+        description="Mirror a GitHub Pull Request as a first-class :PullRequest node, keyed by "
+                    "(repo_name, number). Upserts live lifecycle state so the graph tracks a PR "
+                    "while it is active. Observed fact — carries no provenance.",
+        intent="Upsert the live state of a GitHub PR into the graph.",
         allow_roles=(JOURNEYMAN,),
     ),
     Template(
@@ -834,16 +908,20 @@ READ_VOCABULARY: list[Template] = [
     ),
     Template(
         key="issue_provenance",
-        # The click-through surface: an issue's stored GitHub URLs (issue / repo / PR) plus its
+        # The click-through surface: an issue's stored GitHub URLs (issue / repo) plus its
         # triage + rationale chain, so a graph reader can open the original artifacts in a browser.
+        # PRs are first-class nodes now: the fix PR(s) arrive as a collected `prs` list off the
+        # (:PullRequest)-[:FIXES]->(:Issue) edge — an issue can be fixed by more than one PR, so a
+        # flat pr_url string could never represent it.
         cypher=(
             "MATCH (i:Issue {repo_name: $repo_name, number: $issue_number}) "
             "OPTIONAL MATCH (i)-[:ROOT_CAUSE]->(sym:Symbol) "
             "OPTIONAL MATCH (i)-[:HAS_RATIONALE]->(d:Decision) "
             "OPTIONAL MATCH (i)-[:HAS_REJECTION]->(r:Rejection) "
             "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(cap:Capability) "
+            "OPTIONAL MATCH (pr:PullRequest)-[:FIXES]->(i) "
             "RETURN i.repo_name AS repo_name, i.number AS number, "
-            "       i.url AS issue_url, i.repo_url AS repo_url, i.pr_url AS pr_url, "
+            "       i.url AS issue_url, i.repo_url AS repo_url, "
             "       i.title AS title, i.classification AS classification, i.disposition AS disposition, "
             "       i.actionable_text AS actionable_text, coalesce(i.resolved_via, '') AS resolved_via, "
             "       coalesce(i.activity, '') AS activity, coalesce(i.worked_by, '') AS worked_by, "
@@ -853,16 +931,19 @@ READ_VOCABULARY: list[Template] = [
             "           {fqn: x.fqn, file: x.file_path, lang: x.lang, verified_at_sha: x.verified_at_sha}] AS root_cause_symbols, "
             "       [x IN collect(DISTINCT d) WHERE x IS NOT NULL | "
             "           {statement: x.statement, reason: x.reason, provenance: x.provenance}] AS decisions, "
+            "       [x IN collect(DISTINCT pr) WHERE x IS NOT NULL | "
+            "           {number: x.number, url: x.url, title: x.title, state: x.state, draft: x.draft, merged_at: x.merged_at}] AS prs, "
             "       collect(DISTINCT r.reason) AS rejections"
         ),
         param_schema={
             "repo_name": {"type": "string", "required": True, "description": "Repository name."},
             "issue_number": {"type": "int", "required": True, "description": "GitHub issue number."},
         },
-        description="An issue's click-through provenance: its GitHub issue/repo/PR URLs, the "
-                    "capability it concerns and how its code was located (resolved_via), plus its "
-                    "triage, rationale (Decisions), rejections, and root-cause symbols.",
-        intent="Fetch an issue's GitHub URLs and provenance chain for browser click-through.",
+        description="An issue's click-through provenance: its GitHub issue/repo URLs and the fix "
+                    "PR(s) that resolve it, the capability it concerns and how its code was located "
+                    "(resolved_via), plus its triage, rationale (Decisions), rejections, and "
+                    "root-cause symbols.",
+        intent="Fetch an issue's GitHub URLs, fix PRs, and provenance chain for browser click-through.",
         allow_roles=(),
         access_mode="read",
     ),
@@ -875,11 +956,14 @@ READ_VOCABULARY: list[Template] = [
             "MATCH (i:Issue) "
             "WHERE $since_ms <= 0 OR coalesce(i.scoped_at, i.triaged_at) >= $since_ms "
             "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(c:Capability) "
+            "OPTIONAL MATCH (pr:PullRequest)-[:FIXES]->(i) "
             "RETURN i.repo_name AS repo_name, i.number AS number, i.title AS title, "
             "       i.classification AS classification, i.disposition AS disposition, "
             "       coalesce(i.resolved_via, '') AS resolved_via, "
             "       coalesce(i.actionable_text, '') AS actionable_text, "
-            "       i.url AS url, coalesce(i.pr_url, '') AS pr_url, "
+            "       i.url AS url, "
+            "       [x IN collect(DISTINCT pr) WHERE x IS NOT NULL | "
+            "           {number: x.number, url: x.url, title: x.title, state: x.state, draft: x.draft, merged_at: x.merged_at}] AS prs, "
             "       coalesce(i.scoped_at, i.triaged_at) AS updated_at, "
             "       i.triaged_at AS triaged_at, "
             "       coalesce(i.activity, '') AS activity, "
@@ -895,6 +979,70 @@ READ_VOCABULARY: list[Template] = [
         description="The compact issue catalog (repo, number, title, classification, disposition, "
                     "resolved_via, capabilities) — the Issues index, peer to list_capabilities.",
         intent="List every triaged issue for the Issues register.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        # Peer of list_issues: the compact PR catalog backing the Pull Requests register. Each
+        # row carries the capabilities the PR enforces — the query-time traversal
+        # PR-[:FIXES]->Issue-[:ABOUT_CAPABILITY]->Capability — so the register shows, per PR, the
+        # intention it enacts, without ever storing an ENFORCES edge. updated_at is the graph
+        # write-clock (coalesce(updated_at, created_at)); live open/merged/closed state is overlaid
+        # client-side from GitHub, so a null state here is harmless.
+        key="list_pull_requests",
+        cypher=(
+            "MATCH (p:PullRequest) "
+            "WHERE $since_ms <= 0 OR coalesce(p.updated_at, p.created_at) >= $since_ms "
+            "OPTIONAL MATCH (p)-[:FIXES]->(i:Issue) "
+            "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(c:Capability) "
+            "RETURN p.repo_name AS repo_name, p.number AS number, p.title AS title, "
+            "       p.url AS url, p.state AS state, coalesce(p.draft, false) AS draft, "
+            "       coalesce(p.author, '') AS author, p.merged_at AS merged_at, "
+            "       coalesce(p.head_ref, '') AS head_ref, coalesce(p.base_ref, '') AS base_ref, "
+            "       coalesce(p.updated_at, p.created_at) AS updated_at, p.created_at AS created_at, "
+            "       collect(DISTINCT i.number) AS fixes_issues, "
+            "       collect(DISTINCT c.name) AS capabilities "
+            "ORDER BY coalesce(p.updated_at, p.created_at) DESC, p.number DESC"
+        ),
+        param_schema={
+            "since_ms": {"type": "int", "required": False, "default": 0,
+                         "description": "Epoch-ms lower bound on PR change time; 0 (default) = any time."},
+        },
+        description="The compact pull-request catalog (repo, number, title, state, draft, author, "
+                    "the issues it fixes, and the capabilities it enforces) — the Pull Requests "
+                    "index, peer to list_issues.",
+        intent="List every mirrored pull request for the Pull Requests register.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        # Peer of issue_provenance: one PR's case file. The FIXES issues, and — the thesis made
+        # queryable — the Capabilities it ENFORCES, derived at read time from
+        # PR-[:FIXES]->Issue-[:ABOUT_CAPABILITY]->Capability (never a stored edge, so it cannot be
+        # forged and always reflects current truth). Live GitHub open/merged/closed state is
+        # overlaid client-side; this returns the graph's mirrored state + timestamps.
+        key="pr_provenance",
+        cypher=(
+            "MATCH (p:PullRequest {repo_name: $repo_name, number: $number}) "
+            "OPTIONAL MATCH (p)-[:FIXES]->(i:Issue) "
+            "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(cap:Capability) "
+            "RETURN p.repo_name AS repo_name, p.number AS number, p.url AS url, p.title AS title, "
+            "       p.state AS state, coalesce(p.draft, false) AS draft, coalesce(p.author, '') AS author, "
+            "       p.head_sha AS head_sha, coalesce(p.head_ref, '') AS head_ref, "
+            "       coalesce(p.base_ref, '') AS base_ref, p.merged_at AS merged_at, "
+            "       p.created_at AS created_at, coalesce(p.updated_at, p.created_at) AS updated_at, "
+            "       [x IN collect(DISTINCT i) WHERE x IS NOT NULL | "
+            "           {number: x.number, title: x.title, url: x.url, disposition: x.disposition}] AS fixes, "
+            "       collect(DISTINCT cap.name) AS enforces_capabilities"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+            "number": {"type": "int", "required": True, "description": "The pull request number."},
+        },
+        description="A pull request's case file: its mirrored GitHub state, the issue(s) it fixes, "
+                    "and the capabilities it enforces (derived at read time via "
+                    "FIXES->Issue->ABOUT_CAPABILITY — the intention it enacts).",
+        intent="Fetch a PR's fixes and the intentions it enforces for the PR dossier.",
         allow_roles=(),
         access_mode="read",
     ),
@@ -1240,8 +1388,14 @@ READ_VOCABULARY: list[Template] = [
             "  UNION "
             "  MATCH (i:Issue) "
             "  WITH 'Issue' AS kind, coalesce(i.title, i.actionable_text, '') AS label, "
-            "       toString(i.number) AS key, i.repo_name AS repo, coalesce(i.pr_url, i.issue_url, '') AS url, "
+            "       toString(i.number) AS key, i.repo_name AS repo, coalesce(i.issue_url, '') AS url, "
             "       coalesce(i.scoped_at, i.triaged_at) AS updated_at "
+            "  RETURN kind, label, key, repo, url, updated_at "
+            "  UNION "
+            "  MATCH (pr:PullRequest) "
+            "  WITH 'PullRequest' AS kind, coalesce(pr.title, '') AS label, "
+            "       toString(pr.number) AS key, pr.repo_name AS repo, coalesce(pr.url, '') AS url, "
+            "       coalesce(pr.updated_at, pr.created_at) AS updated_at "
             "  RETURN kind, label, key, repo, url, updated_at "
             "  UNION "
             "  MATCH (sym:Symbol) "
@@ -1282,10 +1436,10 @@ READ_VOCABULARY: list[Template] = [
             "until_ms": {"type": "int", "required": False, "default": 0,
                          "description": "Epoch-ms upper bound on change time (exclusive); 0 (default) = open (now)."},
         },
-        description="The cross-type activity feed: every Capability, Issue, Symbol, Invariant, "
-                    "PatentElement, and Service created or modified within [since_ms, until_ms), "
-                    "normalized to (kind, label, key, repo, updated_at) and ordered newest-first — "
-                    "the Recently Changed register's one query.",
+        description="The cross-type activity feed: every Capability, Issue, PullRequest, Symbol, "
+                    "Invariant, PatentElement, and Service created or modified within "
+                    "[since_ms, until_ms), normalized to (kind, label, key, repo, updated_at) and "
+                    "ordered newest-first — the Recently Changed register's one query.",
         intent="List every domain object changed within a date window, across all node types.",
         allow_roles=(),
         access_mode="read",

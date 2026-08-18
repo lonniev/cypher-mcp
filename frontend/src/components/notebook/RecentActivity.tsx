@@ -30,6 +30,11 @@ const KIND: Record<
     tint: "text-sky-700 bg-sky-500/10 dark:text-sky-300",
     href: (r) => (r.repo && r.key ? `/notebook/issues/${encodeURIComponent(r.repo)}/${encodeURIComponent(r.key)}` : null),
   },
+  PullRequest: {
+    icon: "pullrequest",
+    tint: "text-indigo-700 bg-indigo-500/10 dark:text-indigo-300",
+    href: (r) => (r.repo && r.key ? `/notebook/pulls/${encodeURIComponent(r.repo)}/${encodeURIComponent(r.key)}` : null),
+  },
   Symbol: {
     icon: "symbol",
     tint: "text-violet-700 bg-violet-500/10 dark:text-violet-300",
@@ -53,7 +58,7 @@ const KIND: Record<
 };
 
 const KIND_ORDER: ActivityKind[] = [
-  "Capability", "Issue", "Symbol", "Invariant", "PatentElement", "Service",
+  "Capability", "Issue", "PullRequest", "Symbol", "Invariant", "PatentElement", "Service",
 ];
 
 function meta(kind: string): { icon: IconName; tint: string; href: (r: RecentActivity) => string | null } {
@@ -205,7 +210,7 @@ export default function RecentActivity() {
     <Page
       eyebrow="Register"
       title="Recently Changed"
-      lede="Everything the knowledge base learned in a window — capabilities, issues, symbols, invariants, patent elements, and services — newest first. Pick a range, then open any entry's dossier."
+      lede="Everything the knowledge base learned in a window — capabilities, issues, pull requests, symbols, invariants, patent elements, and services — newest first. Pick a range, then open any entry's dossier."
     >
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}

@@ -20,6 +20,8 @@ import RecentActivity from "./components/notebook/RecentActivity";
 import Capabilities from "./components/notebook/Capabilities";
 import CapabilityDetail from "./components/notebook/CapabilityDetail";
 import Issues from "./components/notebook/Issues";
+import PullRequests from "./components/notebook/PullRequests";
+import PullRequestDetail from "./components/notebook/PullRequestDetail";
 import Concordance from "./components/notebook/Concordance";
 import Metrics from "./components/notebook/Metrics";
 import QueryCatalog from "./components/notebook/QueryCatalog";
@@ -193,6 +195,8 @@ function NotebookApp() {
         <Route path="capabilities" element={<Capabilities />} />
         <Route path="capabilities/:name" element={<CapabilityDetail />} />
         <Route path="issues" element={<Issues />} />
+        <Route path="pulls" element={<PullRequests />} />
+        <Route path="pulls/:repo/:number" element={<PullRequestDetail />} />
         <Route path="invariants" element={<Invariants />} />
         <Route path="invariants/:name" element={<InvariantDetail />} />
         <Route path="patents" element={<PatentElements />} />

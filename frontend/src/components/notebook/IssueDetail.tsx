@@ -10,6 +10,7 @@ import { useMetered, readCache } from "../../lib/graphCache";
 import { useSwipeNav } from "../../lib/useSwipeNav";
 import { useLiveIssueStatus } from "../../lib/githubStatus";
 import { IssueStatusGlyph, issueLifecycle } from "./IssueStatusGlyph";
+import { PrStatusDot } from "./PrStatus";
 import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import QuoteScroller from "../QuoteScroller";
@@ -170,7 +171,7 @@ export default function IssueDetail() {
             <Stat icon="quote" num={decisions.length} label="Decisions" drill="issue-decisions" tip="Recorded rationale for the fix." />
             <Stat icon="close" num={rejections.length} label="Rejections" drill="issue-rejections" tip="Triage paths that were ruled out." />
             <Stat icon="verified" num={caps.length} label="Capabilities" drill="issue-capability" tip="The capabilities this issue was raised against." />
-            <Stat icon="github" num={(d.issue_url ? 1 : 0) + (d.pr_url ? 1 : 0) + (d.repo_url ? 1 : 0)} label="Record" drill="issue-record" tip="Links to the live GitHub issue, its pull request, and the repository." />
+            <Stat icon="github" num={(d.issue_url ? 1 : 0) + (d.prs?.length ?? 0) + (d.repo_url ? 1 : 0)} label="Record" drill="issue-record" tip="Links to the live GitHub issue, the pull request(s) that fix it, and the repository." />
             {d.resolved_via && (
               <div className="min-w-[92px] flex-1 border-r border-stone-200 px-3.5 py-3 text-center last:border-r-0 dark:border-zinc-800">
                 <ResolvedPill mode={d.resolved_via} />
@@ -286,7 +287,7 @@ export default function IssueDetail() {
             )}
 
             <Cell id="issue-record" span>
-              <Eyebrow icon="open" info="Open the live GitHub issue, its pull request, or the repository.">Record</Eyebrow>
+              <Eyebrow icon="open" info="Open the pull request(s) that fix this issue, the live GitHub issue, or the repository.">Record</Eyebrow>
               <div className="flex flex-wrap items-center gap-3">
                 {d.issue_url ? (
                   <a href={d.issue_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
@@ -295,10 +296,19 @@ export default function IssueDetail() {
                 ) : (
                   <span className={`text-sm ${muted}`}>No linked issue URL.</span>
                 )}
-                {d.pr_url && (
-                  <a href={d.pr_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
-                    <Icon name="github" className="text-[14px]" /> Pull request <Icon name="open" className="text-[13px]" />
-                  </a>
+                {/* Fix PR(s) — the enactment. Each chip opens the PR's OWN dossier (the
+                    intention it enforces), with a live GitHub status dot. */}
+                {(d.prs ?? []).map((pr) =>
+                  pr.number != null ? (
+                    <Link
+                      key={pr.number}
+                      to={`/notebook/pulls/${encodeURIComponent(decodedRepo)}/${pr.number}`}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 font-mono text-[11.5px] text-indigo-700 transition-colors hover:border-indigo-400 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:border-indigo-400/50"
+                    >
+                      <PrStatusDot url={pr.url} />
+                      <Icon name="pullrequest" className="text-[14px]" /> PR #{pr.number} <Icon name="open" className="text-[13px]" />
+                    </Link>
+                  ) : null,
                 )}
                 {d.repo_url && (
                   <a href={d.repo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
