@@ -300,11 +300,20 @@ class TestReadVocabulary:
         # title of its own (mirrored/backfilled before it was captured), its title
         # coalesces to the title of the issue it fixes.
         by_key = {t.key: t for t in READ_VOCABULARY}
-        for key in ("list_pull_requests", "pr_provenance"):
-            assert "coalesce(p.title, collect(DISTINCT i.title)[0])" in by_key[key].cypher, key
+        assert "coalesce(p.title, fix_titles[0])" in by_key["list_pull_requests"].cypher
+        assert "coalesce(p.title, [x IN issues | x.title][0])" in by_key["pr_provenance"].cypher
         # recent_activity's PullRequest row does the same via the fixed-issue title.
-        ra = by_key["recent_activity"].cypher
-        assert "coalesce(pr.title, fix_title, '')" in ra
+        assert "coalesce(pr.title, fix_title, '')" in by_key["recent_activity"].cypher
+
+    def test_no_read_nests_an_aggregate_inside_a_return_scalar(self):
+        # REGRESSION GUARD (these tests can't run Cypher, so guard the shape): Neo4j
+        # rejects a scalar like coalesce(<grouping key>, collect(...)) in a RETURN —
+        # it mixes a grouping key with an aggregate. The fix is to compute the aggregate
+        # in a prior WITH. Ban the nested form outright across every read.
+        import re
+        bad = re.compile(r"coalesce\([^)]*\b(?:collect|count|sum|min|max|avg)\s*\(", re.IGNORECASE)
+        for t in READ_VOCABULARY:
+            assert not bad.search(t.cypher), f"{t.key}: aggregate nested in a RETURN scalar — stage it in a WITH"
 
     def test_recent_activity_is_a_bounded_cross_type_feed(self):
         t = next(t for t in READ_VOCABULARY if t.key == "recent_activity")

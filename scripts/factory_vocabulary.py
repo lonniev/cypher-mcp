@@ -995,16 +995,21 @@ READ_VOCABULARY: list[Template] = [
             "WHERE $since_ms <= 0 OR coalesce(p.updated_at, p.created_at) >= $since_ms "
             "OPTIONAL MATCH (p)-[:FIXES]->(i:Issue) "
             "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(c:Capability) "
-            # title falls back to the fixed issue's title when the PR was mirrored/backfilled
-            # before its own title was captured — a human summary, never a bare number.
+            # Aggregate in a WITH first: a scalar coalesce(p.title, <aggregate>) in the RETURN
+            # would mix a grouping key with an aggregate and Neo4j rejects it. fix_titles is the
+            # fixed issues' titles (non-null) — title falls back to the first, so a PR mirrored/
+            # backfilled before its own title was captured still reads as a human summary.
+            "WITH p, "
+            "     [t IN collect(DISTINCT i.title) WHERE t IS NOT NULL] AS fix_titles, "
+            "     collect(DISTINCT i.number) AS fixes_issues, "
+            "     collect(DISTINCT c.name) AS capabilities "
             "RETURN p.repo_name AS repo_name, p.number AS number, "
-            "       coalesce(p.title, collect(DISTINCT i.title)[0]) AS title, "
+            "       coalesce(p.title, fix_titles[0]) AS title, "
             "       p.url AS url, p.state AS state, coalesce(p.draft, false) AS draft, "
             "       coalesce(p.author, '') AS author, p.merged_at AS merged_at, "
             "       coalesce(p.head_ref, '') AS head_ref, coalesce(p.base_ref, '') AS base_ref, "
             "       coalesce(p.updated_at, p.created_at) AS updated_at, p.created_at AS created_at, "
-            "       collect(DISTINCT i.number) AS fixes_issues, "
-            "       collect(DISTINCT c.name) AS capabilities "
+            "       fixes_issues, capabilities "
             "ORDER BY coalesce(p.updated_at, p.created_at) DESC, p.number DESC"
         ),
         param_schema={
@@ -1029,15 +1034,20 @@ READ_VOCABULARY: list[Template] = [
             "MATCH (p:PullRequest {repo_name: $repo_name, number: $number}) "
             "OPTIONAL MATCH (p)-[:FIXES]->(i:Issue) "
             "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(cap:Capability) "
+            # Aggregate in a WITH first (see list_pull_requests) so the RETURN's
+            # coalesce(p.title, <fixed issue title>) operates on a plain list, not an aggregate.
+            "WITH p, "
+            "     [x IN collect(DISTINCT i) WHERE x IS NOT NULL] AS issues, "
+            "     collect(DISTINCT cap.name) AS enforces_capabilities "
             "RETURN p.repo_name AS repo_name, p.number AS number, p.url AS url, "
-            "       coalesce(p.title, collect(DISTINCT i.title)[0]) AS title, "
+            "       coalesce(p.title, [x IN issues | x.title][0]) AS title, "
             "       p.state AS state, coalesce(p.draft, false) AS draft, coalesce(p.author, '') AS author, "
             "       p.head_sha AS head_sha, coalesce(p.head_ref, '') AS head_ref, "
             "       coalesce(p.base_ref, '') AS base_ref, p.merged_at AS merged_at, "
             "       p.created_at AS created_at, coalesce(p.updated_at, p.created_at) AS updated_at, "
-            "       [x IN collect(DISTINCT i) WHERE x IS NOT NULL | "
+            "       [x IN issues | "
             "           {number: x.number, title: x.title, url: x.url, disposition: x.disposition}] AS fixes, "
-            "       collect(DISTINCT cap.name) AS enforces_capabilities"
+            "       enforces_capabilities"
         ),
         param_schema={
             "repo_name": {"type": "string", "required": True, "description": "Repository name."},
