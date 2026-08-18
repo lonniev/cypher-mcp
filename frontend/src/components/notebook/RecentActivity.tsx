@@ -23,17 +23,17 @@ const KIND: Record<
   Capability: {
     icon: "verified",
     tint: "text-amber-700 bg-amber-500/[0.12] dark:text-amber-300",
-    href: (r) => (r.key ? `/capabilities/${encodeURIComponent(r.key)}` : null),
+    href: (r) => (r.key ? `/notebook/capabilities/${encodeURIComponent(r.key)}` : null),
   },
   Issue: {
     icon: "history",
     tint: "text-sky-700 bg-sky-500/10 dark:text-sky-300",
-    href: (r) => (r.repo && r.key ? `/issues/${encodeURIComponent(r.repo)}/${encodeURIComponent(r.key)}` : null),
+    href: (r) => (r.repo && r.key ? `/notebook/issues/${encodeURIComponent(r.repo)}/${encodeURIComponent(r.key)}` : null),
   },
   Symbol: {
     icon: "symbol",
     tint: "text-violet-700 bg-violet-500/10 dark:text-violet-300",
-    href: (r) => (r.key ? `/symbol?fqn=${encodeURIComponent(r.key)}` : null),
+    href: (r) => (r.key ? `/notebook/symbol?fqn=${encodeURIComponent(r.key)}` : null),
   },
   Invariant: {
     icon: "info",
@@ -43,12 +43,12 @@ const KIND: Record<
   PatentElement: {
     icon: "tag",
     tint: "text-rose-700 bg-rose-500/10 dark:text-rose-300",
-    href: (r) => (r.key ? `/patent/${encodeURIComponent(r.key)}` : null),
+    href: (r) => (r.key ? `/notebook/patent/${encodeURIComponent(r.key)}` : null),
   },
   Service: {
     icon: "dns",
     tint: "text-teal-700 bg-teal-500/10 dark:text-teal-300",
-    href: (r) => (r.repo ? `/services/${encodeURIComponent(r.repo)}` : null),
+    href: (r) => (r.repo ? `/notebook/services/${encodeURIComponent(r.repo)}` : null),
   },
 };
 
