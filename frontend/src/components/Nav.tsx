@@ -100,6 +100,7 @@ export default function Nav() {
         {tab("/notebook/recent", "Recent")}
         {tab("/notebook/capabilities", "Capabilities")}
         {tab("/notebook/issues", "Issues")}
+        {tab("/notebook/pulls", "Pull Requests")}
         {tab("/notebook/invariants", "Invariants")}
         {tab("/notebook/patents", "Patents")}
         {tab("/notebook/concordance", "Concordance")}

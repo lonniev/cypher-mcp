@@ -995,7 +995,10 @@ READ_VOCABULARY: list[Template] = [
             "WHERE $since_ms <= 0 OR coalesce(p.updated_at, p.created_at) >= $since_ms "
             "OPTIONAL MATCH (p)-[:FIXES]->(i:Issue) "
             "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(c:Capability) "
-            "RETURN p.repo_name AS repo_name, p.number AS number, p.title AS title, "
+            # title falls back to the fixed issue's title when the PR was mirrored/backfilled
+            # before its own title was captured — a human summary, never a bare number.
+            "RETURN p.repo_name AS repo_name, p.number AS number, "
+            "       coalesce(p.title, collect(DISTINCT i.title)[0]) AS title, "
             "       p.url AS url, p.state AS state, coalesce(p.draft, false) AS draft, "
             "       coalesce(p.author, '') AS author, p.merged_at AS merged_at, "
             "       coalesce(p.head_ref, '') AS head_ref, coalesce(p.base_ref, '') AS base_ref, "
@@ -1026,7 +1029,8 @@ READ_VOCABULARY: list[Template] = [
             "MATCH (p:PullRequest {repo_name: $repo_name, number: $number}) "
             "OPTIONAL MATCH (p)-[:FIXES]->(i:Issue) "
             "OPTIONAL MATCH (i)-[:ABOUT_CAPABILITY]->(cap:Capability) "
-            "RETURN p.repo_name AS repo_name, p.number AS number, p.url AS url, p.title AS title, "
+            "RETURN p.repo_name AS repo_name, p.number AS number, p.url AS url, "
+            "       coalesce(p.title, collect(DISTINCT i.title)[0]) AS title, "
             "       p.state AS state, coalesce(p.draft, false) AS draft, coalesce(p.author, '') AS author, "
             "       p.head_sha AS head_sha, coalesce(p.head_ref, '') AS head_ref, "
             "       coalesce(p.base_ref, '') AS base_ref, p.merged_at AS merged_at, "
@@ -1393,7 +1397,12 @@ READ_VOCABULARY: list[Template] = [
             "  RETURN kind, label, key, repo, url, updated_at "
             "  UNION "
             "  MATCH (pr:PullRequest) "
-            "  WITH 'PullRequest' AS kind, coalesce(pr.title, '') AS label, "
+            # A human summary, not a bare number: the PR's own title, or — for a PR
+            # mirrored/backfilled before its title was captured — the title of the issue
+            # it fixes (collect[0] dedups a multi-issue PR into one row).
+            "  OPTIONAL MATCH (pr)-[:FIXES]->(fi:Issue) "
+            "  WITH pr, collect(fi.title)[0] AS fix_title "
+            "  WITH 'PullRequest' AS kind, coalesce(pr.title, fix_title, '') AS label, "
             "       toString(pr.number) AS key, pr.repo_name AS repo, coalesce(pr.url, '') AS url, "
             "       coalesce(pr.updated_at, pr.created_at) AS updated_at "
             "  RETURN kind, label, key, repo, url, updated_at "
