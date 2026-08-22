@@ -46,6 +46,15 @@ no RDF serializer, no rdflib. Seed with `scripts/seed_factory_vocabulary.py`.
   questions, contradictions banner above the answer, confidence bands, effectivity
   lines, and gaps.
 
+## [0.8.3] — 2026-08-22
+
+### Changed — track tollbooth-dpyc 0.87.2
+
+An object argument a client serialised as a JSON string is now parsed
+rather than refused as `dict_type`. Fixes `update_post` rejecting a
+large patch and `update_design_text` rejecting a multi-key edits
+object.
+
 ## [0.8.2] — 2026-08-22
 
 ### Changed — track tollbooth-dpyc 0.87.1
