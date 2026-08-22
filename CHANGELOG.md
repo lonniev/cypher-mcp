@@ -46,6 +46,15 @@ no RDF serializer, no rdflib. Seed with `scripts/seed_factory_vocabulary.py`.
   questions, contradictions banner above the answer, confidence bands, effectivity
   lines, and gaps.
 
+## [0.8.2] — 2026-08-22
+
+### Changed — track tollbooth-dpyc 0.87.1
+
+Picks up the relay-reliability work: `COURIER_RELAY_UNREACHABLE` so an
+unreachable pinned rendezvous is no longer reported as the patron never
+replying, relay-failure reporting to the Oracle, and a publish that counts
+only when the relay acknowledges that exact event.
+
 ## 0.8.1 — 2026-08-17
 
 ### Changed — track tollbooth-dpyc 0.86.0 (GitHub-free bootstrap)
