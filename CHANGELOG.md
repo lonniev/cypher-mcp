@@ -46,6 +46,19 @@ no RDF serializer, no rdflib. Seed with `scripts/seed_factory_vocabulary.py`.
   questions, contradictions banner above the answer, confidence bands, effectivity
   lines, and gaps.
 
+## [0.8.6] — 2026-08-24
+
+### Security — track tollbooth-dpyc 0.88.1 (cryptography floor raised to >=49.0.0)
+
+Picks up the SDK's fix for GHSA-m2h6-j472-rp4c: the X.509 verifier accepted
+wildcard DNS SANs, escaping `permittedSubtrees`. The advisory is fixed in
+cryptography 49.0.0, and the SDK previously declared a floor of `>=46.0.5` —
+which admitted every affected release.
+
+No install here was exposed: the resolved lock already carried a patched
+cryptography. What changes is what a fresh resolve is *allowed* to land on.
+See tollbooth-dpyc v0.88.1.
+
 ## [0.8.5] — 2026-08-22
 
 ### Changed — track tollbooth-dpyc 0.88.0
