@@ -7,6 +7,36 @@ on:
     branches: [main]
 
 jobs:
+  # The frontend, built the same way Deploy Frontend builds it.
+  #
+  # It was built ONLY on push to main, which is one step too late: PR #121
+  # (tailwind 3 -> 4) went green on every check this repo runs, merged, and then
+  # failed at deploy — because the only thing that compiles the frontend never
+  # saw the pull request. Green has to mean the site still builds.
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # Same command Deploy Frontend runs. A break here is a break there.
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_MCP_URL: /mcp
+
   test:
     runs-on: ubuntu-latest
 
