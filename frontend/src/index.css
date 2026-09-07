@@ -1,6 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Dark mode is a CLASS here, toggled on <html> by lib/theme.ts, and v4 does not
+ * assume that the way v3's `darkMode: "class"` did — its default is the
+ * visitor's OS preference. Without this line all 832 `dark:` classes in this app
+ * would quietly start following the operating system and the theme switcher
+ * would stop doing anything, with nothing failing to say so. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* Site-wide content measure (#80, #82): full width on phones (padding does the
    gutter); from tablet up, a literal 80vw with no ch/px ceiling. Oversized
