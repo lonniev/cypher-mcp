@@ -9,7 +9,7 @@ import {
   serviceStatus,
   type ServiceStatus,
 } from "./lib/mcp";
-import { hydrateAvatarFromNostr } from "./lib/avatar";
+import { hydrateAvatarFromNostr } from "@tollbooth-dpyc/web";
 import Nav from "./components/Nav";
 import NpubGate from "./components/NpubGate";
 import DebugPanel from "./components/DebugPanel";

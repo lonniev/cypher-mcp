@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@tollbooth-dpyc/web/theme.css";
+@source "../node_modules/@tollbooth-dpyc/web/dist";
 
 /* Dark mode is a CLASS here, toggled on <html> by lib/theme.ts, and v4 does not
  * assume that the way v3's `darkMode: "class"` did — its default is the
@@ -67,4 +69,44 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .cell-mark::before { animation: none; transform: scaleY(1); opacity: 1; }
+}
+
+/* The shared account cards from @tollbooth-dpyc/web, in the notebook's own
+ * stone/zinc/amber. The site's theme is the `.dark` class set by lib/theme.ts,
+ * not the OS preference the package keys on, so the light mapping also covers
+ * `:root:not([data-theme="light"])` and the dark one comes after it. */
+:root,
+:root:not([data-theme="light"]) {
+  --tb-accent: var(--color-amber-600);
+  --tb-on-accent: var(--color-white);
+  --tb-surface: var(--color-white);
+  --tb-surface-2: var(--color-stone-50);
+  --tb-ink: var(--color-stone-900);
+  --tb-muted: var(--color-stone-500);
+  --tb-line: var(--color-stone-200);
+  --tb-ok: var(--color-emerald-700);
+  --tb-warn-bg: var(--color-amber-50);
+  --tb-warn-line: var(--color-amber-200);
+  --tb-warn-ink: var(--color-amber-800);
+  --tb-err-bg: var(--color-red-50);
+  --tb-err-line: var(--color-red-200);
+  --tb-err-ink: var(--color-red-700);
+}
+
+:root.dark,
+:root.dark:not([data-theme="light"]) {
+  --tb-accent: var(--color-amber-600);
+  --tb-on-accent: var(--color-white);
+  --tb-surface: var(--color-zinc-900);
+  --tb-surface-2: var(--color-zinc-800);
+  --tb-ink: var(--color-zinc-100);
+  --tb-muted: var(--color-zinc-400);
+  --tb-line: var(--color-zinc-800);
+  --tb-ok: var(--color-emerald-400);
+  --tb-warn-bg: color-mix(in oklab, var(--color-amber-500) 10%, transparent);
+  --tb-warn-line: color-mix(in oklab, var(--color-amber-500) 30%, transparent);
+  --tb-warn-ink: var(--color-amber-300);
+  --tb-err-bg: color-mix(in oklab, var(--color-red-500) 10%, transparent);
+  --tb-err-line: color-mix(in oklab, var(--color-red-500) 30%, transparent);
+  --tb-err-ink: var(--color-red-400);
 }

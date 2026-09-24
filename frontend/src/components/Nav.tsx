@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useSession } from "../App";
-import Avatar from "./Avatar";
-import { avatarFor, AVATAR_EVENT } from "../lib/avatar";
+import { avatarFor, AVATAR_EVENT } from "@tollbooth-dpyc/web";
+import { Avatar } from "@tollbooth-dpyc/web/react";
 import { PrimaryNav } from "./public/PublicShell";
 
 export default function Nav() {
