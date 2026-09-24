@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "../App";
 import { useTheme, type Theme } from "../lib/theme";
 import { getAccountStatement, type AccountStatementResult } from "../lib/mcp";
-import NostrProfilePanel from "./NostrProfilePanel";
+import { NostrProfilePanel, SessionKeyClaim } from "@tollbooth-dpyc/web/react";
 import CouponsPanel from "./CouponsPanel";
 
 const card = "rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900";
@@ -39,6 +39,9 @@ export default function ProfilePage() {
 
       {/* Nostr profile (kind-0) — avatar + contact, self-sovereign */}
       <NostrProfilePanel npub={npub} />
+      {/* Browser-held session nsec only — silent when NIP-07 / courier.
+          Keyed by npub so a revealed key never carries across a sign-in. */}
+      <SessionKeyClaim key={npub} npub={npub} />
 
       {/* Theme selection */}
       <div className={`${card} p-5`}>
