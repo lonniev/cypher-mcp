@@ -14,6 +14,13 @@ export const card = "rounded-xl border border-stone-200 dark:border-zinc-800 bg-
 const chip =
   "inline-flex items-center rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-400";
 
+/// The action that moves things forward — Create invoice, Open checkout,
+/// Redeem — is the notebook's filled amber button, as it was before the
+/// package drew the wallet. Amber on white and on zinc both read, so light
+/// and dark share it.
+const primary =
+  "inline-flex items-center justify-center whitespace-nowrap rounded-lg bg-amber-600 px-4 py-2 text-sm text-white transition-colors hover:bg-amber-500 disabled:opacity-40 dark:bg-amber-600 dark:hover:bg-amber-500";
+
 const errorBox =
   "rounded-lg p-3 text-xs bg-red-50 border border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400";
 
@@ -33,6 +40,7 @@ export const walletClassNames: WalletPageClassNames = {
   error: errorBox,
   chips: "flex flex-wrap items-center gap-2",
   chip,
+  primary,
   chipActive:
     "!border-amber-400 !bg-amber-100 !text-amber-800 dark:!border-amber-500/50 dark:!bg-amber-500/15 dark:!text-amber-400",
   input:
@@ -50,8 +58,8 @@ export const couponClassNames: CouponsPanelClassNames = {
   root: `${card} p-5`,
   heading: "text-sm font-medium mb-1",
   intro: "text-xs text-stone-500 dark:text-zinc-400 mb-4",
-  form:
-    "flex gap-2 mb-3 [&>button]:whitespace-nowrap [&>button]:rounded-lg [&>button]:bg-amber-600 [&>button]:px-4 [&>button]:py-2 [&>button]:text-sm [&>button]:text-white [&>button]:transition-colors [&>button]:hover:bg-amber-500 [&>button]:disabled:opacity-40",
+  form: "flex gap-2 mb-3",
+  primary,
   input:
     "flex-1 min-w-0 rounded-lg px-3 py-2 text-sm uppercase bg-white dark:bg-zinc-950 border border-stone-300 dark:border-zinc-700 focus:outline-none focus:border-amber-400",
   message: "rounded-lg p-2.5 mb-3 text-xs border",
