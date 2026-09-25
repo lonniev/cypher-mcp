@@ -9,7 +9,6 @@
 
 import type { ReactNode } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import type { ServiceStatus } from "@tollbooth-dpyc/web";
 
 const tab = (to: string, label: string, end = false) => (
   <NavLink
@@ -72,13 +71,9 @@ export function PublicNav({ showSignIn = true }: { showSignIn?: boolean }) {
   return <PrimaryNav showSignIn={showSignIn} />;
 }
 
-export function PublicFooter({ status }: { status: ServiceStatus | null }) {
+export function PublicFooter() {
   return (
-    <footer className="border-t border-stone-100 px-4 py-3 text-center text-xs text-stone-400 dark:border-zinc-900 dark:text-zinc-600 space-y-0.5">
-      <div>
-        Cypher · DPYC Agentic Software Factory v{__APP_VERSION__} · {__BUILD_COMMIT__}
-        {status?.version && ` · MCP ${status.version}`}
-      </div>
+    <footer className="border-t border-stone-100 px-4 py-3 text-center text-xs text-stone-400 dark:border-zinc-900 dark:text-zinc-600">
       <div>
         Monetized with{" "}
         <a
@@ -95,14 +90,14 @@ export function PublicFooter({ status }: { status: ServiceStatus | null }) {
   );
 }
 
-export function PublicLayout({ status }: { status: ServiceStatus | null }) {
+export function PublicLayout() {
   return (
     <>
       <PrimaryNav />
       <main className="flex-1">
         <Outlet />
       </main>
-      <PublicFooter status={status} />
+      <PublicFooter />
     </>
   );
 }

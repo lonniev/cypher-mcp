@@ -109,7 +109,7 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             {/* Public factory spokesman — no auth required (#72). */}
-            <Route element={<PublicLayout status={status} />}>
+            <Route element={<PublicLayout />}>
               <Route index element={<HomePage />} />
               <Route path="factory" element={<FactoryPage />} />
               <Route path="memory" element={<MemoryPage />} />
@@ -124,7 +124,6 @@ export default function App() {
                   <NotebookApp />
                 ) : (
                   <NotebookGate
-                    status={status}
                     onLogin={onLogin}
                     operatorHash={status?.operator_npub_hash}
                     notice={reauthNotice}
@@ -154,12 +153,10 @@ export default function App() {
 }
 
 function NotebookGate({
-  status,
   onLogin,
   operatorHash,
   notice,
 }: {
-  status: ServiceStatus | null;
   onLogin: () => void;
   operatorHash?: string;
   notice?: string;
@@ -180,7 +177,7 @@ function NotebookGate({
           <NpubGate onLogin={onLogin} operatorHash={operatorHash} notice={notice} />
         </div>
       </main>
-      <PublicFooter status={status} />
+      <PublicFooter />
     </>
   );
 }
@@ -219,14 +216,13 @@ function NotebookApp() {
 }
 
 function NotebookLayout() {
-  const { status } = useSession();
   return (
     <>
       <Nav />
       <main className="flex-1">
         <Outlet />
       </main>
-      <PublicFooter status={status} />
+      <PublicFooter />
     </>
   );
 }
