@@ -29,11 +29,11 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 
 import {
   clearSessionNsec,
+  debugPush,
   hasSessionNsec,
   sessionNsecNpub,
   signInlineProof,
 } from "@tollbooth-dpyc/web";
-import { debugPush } from "./debugLog";
 
 const SLUG = "cypher";
 
@@ -234,6 +234,7 @@ export function onProofExpired(cb: ProofExpiredListener): () => void {
 }
 
 function emitProofExpired(message: string): void {
+  debugPush("info", `proof expired → back to sign-in: ${message}`);
   for (const cb of proofExpiredListeners) {
     try {
       cb(message);
