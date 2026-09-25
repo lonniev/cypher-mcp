@@ -9,7 +9,8 @@ import { useMetered } from "../../lib/graphCache";
 import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
-import QuoteScroller from "../QuoteScroller";
+import { QuoteScroller } from "@tollbooth-dpyc/web/react";
+import { QUOTES } from "../../lib/quotes";
 import { parseIssueRef, ResolvedPill, WorkingPulse } from "./dossier";
 import { IssueStatusGlyph, IssueStatusPill } from "./IssueStatusGlyph";
 
@@ -124,7 +125,7 @@ export default function Issues() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller heading="Reading the issue catalog…" className="py-12" />
+            <QuoteScroller quotes={QUOTES} spinner heading="Reading the issue catalog…" className="py-12" />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (

@@ -21,7 +21,8 @@ import { useMetered, readCache } from "../../lib/graphCache";
 import { useSwipeNav } from "../../lib/useSwipeNav";
 import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
-import QuoteScroller from "../QuoteScroller";
+import { QuoteScroller } from "@tollbooth-dpyc/web/react";
+import { QUOTES } from "../../lib/quotes";
 import {
   DossierWrap,
   Dossier,
@@ -97,7 +98,7 @@ export default function CapabilityDetail() {
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.cold && m.loading && <QuoteScroller heading="Assembling the case file…" className="py-12" />}
+      {!m.error && m.cold && m.loading && <QuoteScroller quotes={QUOTES} spinner heading="Assembling the case file…" className="py-12" />}
 
       {explain && (
         <Dossier accent="blue" tab="Capability" tabNo="Case file">

@@ -12,7 +12,8 @@ import { useMetered } from "../../lib/graphCache";
 import { SINCE_PRESETS, sinceLabel, relTime, toMillis } from "../../lib/time";
 import { Page, MeteredBar, MeteredError, LoadPanel, Empty, muted, faint } from "./ui";
 import { Icon, type IconName } from "./icons";
-import QuoteScroller from "../QuoteScroller";
+import { QuoteScroller } from "@tollbooth-dpyc/web/react";
+import { QUOTES } from "../../lib/quotes";
 
 // Per-kind display + routing. `href` returns the dossier path, or null for kinds
 // with no standalone dossier (Invariant surfaces inside Capability/Symbol pages).
@@ -286,7 +287,7 @@ export default function RecentActivity() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller heading="Reading the activity feed…" className="py-12" />
+            <QuoteScroller quotes={QUOTES} spinner heading="Reading the activity feed…" className="py-12" />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} loading={m.loading} />
           ) : filtered.length === 0 ? (
