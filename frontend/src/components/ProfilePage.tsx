@@ -1,8 +1,25 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useSession } from "../App";
-import { getAccountStatement, type AccountStatementResult, type Theme } from "@tollbooth-dpyc/web";
-import { CouponsPanel, NostrProfilePanel, SessionKeyClaim, ThemeToggle } from "@tollbooth-dpyc/web/react";
-import { card, couponClassNames, themeToggleClassNames } from "../lib/accountStyles";
+import type { Theme } from "@tollbooth-dpyc/web";
+import {
+  BuildInfoPanel,
+  CouponsPanel,
+  NostrProfilePanel,
+  PatronFundingStatus,
+  SessionKeyClaim,
+  ThemeToggle,
+  TimezonePicker,
+  UsageSummary,
+} from "@tollbooth-dpyc/web/react";
+import {
+  buildInfoClassNames,
+  card,
+  couponClassNames,
+  fundingClassNames,
+  themeToggleClassNames,
+  timezoneClassNames,
+  usageClassNames,
+} from "../lib/accountStyles";
 
 const THEME_LABELS: Record<Theme, { label: string; hint: string }> = {
   dark: { label: "Dark", hint: "Default" },
@@ -17,13 +34,8 @@ const themeLabels: Record<Theme, ReactNode> = {
 };
 
 export default function ProfilePage() {
-  const { npub, logOut } = useSession();
-  const [stmt, setStmt] = useState<AccountStatementResult | null>(null);
+  const { npub, status, logOut } = useSession();
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    getAccountStatement(30).then(setStmt).catch(() => setStmt(null));
-  }, []);
 
   function copyNpub() {
     navigator.clipboard?.writeText(npub).then(
@@ -49,9 +61,11 @@ export default function ProfilePage() {
       <div className={`${card} p-5`}>
         <div className="text-sm font-medium mb-1">Appearance</div>
         <p className="text-xs text-stone-500 dark:text-zinc-400 mb-3">
-          The notebook defaults to dark. Your choice is saved on this device.
+          The notebook defaults to dark, and dates show in your browser's time zone. Your choices
+          are saved on this device.
         </p>
         <ThemeToggle labels={themeLabels} classNames={themeToggleClassNames} />
+        <TimezonePicker label="Time zone" classNames={timezoneClassNames} />
       </div>
 
       {/* Identity */}
@@ -71,18 +85,10 @@ export default function ProfilePage() {
       </div>
 
       {/* Usage */}
-      <div className={`${card} p-5`}>
-        <div className="text-sm font-medium mb-3">Last 30 days</div>
-        {stmt ? (
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat label="Balance" value={stmt.account_summary?.balance_api_sats} />
-            <Stat label="Deposited" value={stmt.account_summary?.total_deposited_api_sats} />
-            <Stat label="Consumed" value={stmt.account_summary?.total_consumed_api_sats} />
-          </div>
-        ) : (
-          <p className="text-xs text-stone-400 dark:text-zinc-500">No statement available.</p>
-        )}
-      </div>
+      <UsageSummary classNames={usageClassNames} />
+
+      {/* Sign-in proof and credit balance, read fresh */}
+      <PatronFundingStatus classNames={fundingClassNames} />
 
       {/* Coupons */}
       <CouponsPanel
@@ -94,6 +100,17 @@ export default function ProfilePage() {
         forgetLabel="🗑"
       />
 
+      <BuildInfoPanel
+        status={status}
+        frontend={{
+          version: __APP_VERSION__,
+          commit: __BUILD_COMMIT__,
+          builtAt: __BUILD_TIME__,
+          source: "https://github.com/lonniev/cypher-mcp",
+        }}
+        classNames={buildInfoClassNames}
+      />
+
       <div className="flex justify-end">
         <button
           onClick={logOut}
@@ -102,15 +119,6 @@ export default function ProfilePage() {
           Log out
         </button>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value?: number }) {
-  return (
-    <div>
-      <div className="text-lg font-semibold tabular-nums">{value?.toLocaleString() ?? "—"}</div>
-      <div className="text-xs text-stone-400 dark:text-zinc-500">{label}</div>
     </div>
   );
 }
