@@ -4,6 +4,8 @@
 // the four public routes does not re-hit MCP every navigation.
 
 import { useEffect, useState } from "react";
+import { formatDateTime } from "@tollbooth-dpyc/web";
+import { useTimezone } from "@tollbooth-dpyc/web/react";
 import {
   publicFactoryStats,
   type PublicFactoryStats,
@@ -35,6 +37,7 @@ function viaN(stats: ResolutionStat[] | undefined, key: string): number {
 export default function LiveStats({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<PublicFactoryStats | null>(browserCache?.data ?? null);
   const [err, setErr] = useState("");
+  const [, zone] = useTimezone();
 
   useEffect(() => {
     let cancelled = false;
@@ -128,7 +131,7 @@ export default function LiveStats({ compact = false }: { compact?: boolean }) {
 
       {data.last_activity_ms ? (
         <p className="text-[11px] text-stone-400 dark:text-zinc-500">
-          Last graph activity {new Date(data.last_activity_ms).toLocaleString()} · aggregates only, no titles or paths
+          Last graph activity {formatDateTime(new Date(data.last_activity_ms).toISOString(), zone)} · aggregates only, no titles or paths
         </p>
       ) : null}
     </div>

@@ -12,6 +12,8 @@
 
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { formatDate } from "@tollbooth-dpyc/web";
+import { useTimezone } from "@tollbooth-dpyc/web/react";
 import { RefreshCw, AlertTriangle, HelpCircle, ShieldCheck, Sparkle } from "lucide-react";
 import {
   AUDIT_QUESTIONS,
@@ -70,10 +72,12 @@ function effectivityLine(a: AuditAssertion): string {
   return "";
 }
 
-function plainEnglish(a: AuditAssertion): string {
+function plainEnglish(a: AuditAssertion, zone: string): string {
   const role = a.agent?.role || a.agent?.label || "Unknown";
   const when = toMillis(a.generated_at);
-  const whenBit = when ? ` on ${new Date(when).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}` : "";
+  const whenBit = when
+    ? ` on ${formatDate(new Date(when).toISOString(), zone, { day: "numeric", month: "short", year: "numeric" })}`
+    : "";
   if (a.status === "authorized") return `Authorized by ${role} in role ${role}${whenBit}`;
   if (a.status === "suggested") return `Suggested by ${role}${whenBit}`;
   if (a.status === "superseded") return `Superseded claim formerly by ${role}${whenBit}`;
@@ -134,6 +138,7 @@ function GapsList({ gaps }: { gaps: string[] }) {
 }
 
 function AssertionCard({ a }: { a: AuditAssertion }) {
+  const [, zone] = useTimezone();
   const effect = effectivityLine(a);
   return (
     <article className={`${card} p-4`}>
@@ -152,7 +157,7 @@ function AssertionCard({ a }: { a: AuditAssertion }) {
           </Link>
         ) : null}
       </div>
-      <p className={`mb-1 text-xs ${muted}`}>{plainEnglish(a)}</p>
+      <p className={`mb-1 text-xs ${muted}`}>{plainEnglish(a, zone)}</p>
       <p className="text-sm leading-relaxed text-stone-800 dark:text-zinc-100">
         {a.statement || <span className={faint}>(no statement)</span>}
       </p>
