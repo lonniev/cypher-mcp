@@ -5,7 +5,8 @@
 
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { listPatentElements, type PatentElementSummary, type SortDir } from "../../lib/mcp";
+import { listPatentElements, type PatentElementSummary } from "../../lib/mcp";
+import type { SortDir } from "@tollbooth-dpyc/web";
 import { useMetered } from "../../lib/graphCache";
 import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";

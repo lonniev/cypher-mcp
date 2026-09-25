@@ -1,21 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useSession } from "../App";
-import { useTheme, type Theme } from "../lib/theme";
-import { getAccountStatement, type AccountStatementResult } from "@tollbooth-dpyc/web";
-import { NostrProfilePanel, SessionKeyClaim } from "@tollbooth-dpyc/web/react";
-import CouponsPanel from "./CouponsPanel";
+import { getAccountStatement, type AccountStatementResult, type Theme } from "@tollbooth-dpyc/web";
+import { CouponsPanel, NostrProfilePanel, SessionKeyClaim, ThemeToggle } from "@tollbooth-dpyc/web/react";
+import { card, couponClassNames, themeToggleClassNames } from "../lib/accountStyles";
 
-const card = "rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900";
+const THEME_LABELS: Record<Theme, { label: string; hint: string }> = {
+  dark: { label: "Dark", hint: "Default" },
+  light: { label: "Light", hint: "" },
+  system: { label: "System", hint: "Match OS" },
+};
 
-const THEMES: { value: Theme; label: string; hint: string }[] = [
-  { value: "dark", label: "Dark", hint: "Default" },
-  { value: "light", label: "Light", hint: "" },
-  { value: "system", label: "System", hint: "Match OS" },
-];
+const themeLabels: Record<Theme, ReactNode> = {
+  dark: <ThemeChoice theme="dark" />,
+  light: <ThemeChoice theme="light" />,
+  system: <ThemeChoice theme="system" />,
+};
 
 export default function ProfilePage() {
   const { npub, logOut } = useSession();
-  const [theme, setTheme] = useTheme();
   const [stmt, setStmt] = useState<AccountStatementResult | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -49,27 +51,7 @@ export default function ProfilePage() {
         <p className="text-xs text-stone-500 dark:text-zinc-400 mb-3">
           The notebook defaults to dark. Your choice is saved on this device.
         </p>
-        <div className="grid grid-cols-3 gap-2">
-          {THEMES.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTheme(t.value)}
-              className={`rounded-lg border px-3 py-3 text-left transition-colors ${
-                theme === t.value
-                  ? "border-amber-400 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-500/10"
-                  : "border-stone-200 dark:border-zinc-800 hover:bg-stone-50 dark:hover:bg-zinc-800"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ThemeSwatch theme={t.value} />
-                <span className="text-sm font-medium">{t.label}</span>
-              </div>
-              {t.hint && (
-                <span className="block text-xs text-stone-400 dark:text-zinc-500 mt-1">{t.hint}</span>
-              )}
-            </button>
-          ))}
-        </div>
+        <ThemeToggle labels={themeLabels} classNames={themeToggleClassNames} />
       </div>
 
       {/* Identity */}
@@ -93,9 +75,9 @@ export default function ProfilePage() {
         <div className="text-sm font-medium mb-3">Last 30 days</div>
         {stmt ? (
           <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat label="Balance" value={stmt.balance_api_sats} />
-            <Stat label="Deposited" value={stmt.total_deposited_api_sats} />
-            <Stat label="Consumed" value={stmt.total_consumed_api_sats} />
+            <Stat label="Balance" value={stmt.account_summary?.balance_api_sats} />
+            <Stat label="Deposited" value={stmt.account_summary?.total_deposited_api_sats} />
+            <Stat label="Consumed" value={stmt.account_summary?.total_consumed_api_sats} />
           </div>
         ) : (
           <p className="text-xs text-stone-400 dark:text-zinc-500">No statement available.</p>
@@ -103,7 +85,14 @@ export default function ProfilePage() {
       </div>
 
       {/* Coupons */}
-      <CouponsPanel />
+      <CouponsPanel
+        classNames={couponClassNames}
+        intro="Redeem an operator code once. The discount applies automatically on subsequent paid calls until the per-patron cap or the window expires."
+        empty="No coupons redeemed yet. Operators distribute codes via X, email, the welcome page, or DM — paste a code above to claim its discount."
+        placeholder="FRESHMAN, EARLYBIRD…"
+        redeemLabel="🎟 Redeem"
+        forgetLabel="🗑"
+      />
 
       <div className="flex justify-end">
         <button
@@ -123,6 +112,19 @@ function Stat({ label, value }: { label: string; value?: number }) {
       <div className="text-lg font-semibold tabular-nums">{value?.toLocaleString() ?? "—"}</div>
       <div className="text-xs text-stone-400 dark:text-zinc-500">{label}</div>
     </div>
+  );
+}
+
+function ThemeChoice({ theme }: { theme: Theme }) {
+  const { label, hint } = THEME_LABELS[theme];
+  return (
+    <>
+      <span className="flex items-center gap-2">
+        <ThemeSwatch theme={theme} />
+        <span className="text-sm font-medium">{label}</span>
+      </span>
+      {hint && <span className="block text-xs text-stone-400 dark:text-zinc-500 mt-1">{hint}</span>}
+    </>
   );
 }
 

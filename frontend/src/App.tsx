@@ -10,9 +10,9 @@ import {
   serviceStatus,
   type ServiceStatus,
 } from "@tollbooth-dpyc/web";
-import { DebugPanel, NpubGate } from "@tollbooth-dpyc/web/react";
+import { DebugPanel, NpubGate, WalletPage } from "@tollbooth-dpyc/web/react";
 import Nav from "./components/Nav";
-import WalletPage from "./components/WalletPage";
+import { walletClassNames } from "./lib/accountStyles";
 import ProfilePage from "./components/ProfilePage";
 import Contents from "./components/notebook/Contents";
 import RecentActivity from "./components/notebook/RecentActivity";
@@ -207,7 +207,10 @@ function NotebookApp() {
         <Route path="patent/:ref" element={<PatentDetail />} />
         <Route path="issues/:repo/:number" element={<IssueDetail />} />
         <Route path="symbol" element={<SymbolDetail />} />
-        <Route path="wallet" element={<WalletPage />} />
+        <Route
+          path="wallet"
+          element={<WalletPage classNames={walletClassNames} coupons={false} statement={false} />}
+        />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/notebook" replace />} />
       </Route>

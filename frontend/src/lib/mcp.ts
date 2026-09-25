@@ -2,47 +2,19 @@
  * Cypher's own tools — the intention-graph lab notebook.
  *
  * The connection, the npub-proof envelope, `ProofRequiredError` /
- * `onProofExpired`, identity storage and the standard wheel tools all come
- * from @tollbooth-dpyc/web (configured in main.tsx). What lives here is only
- * what is cypher's:
+ * `onProofExpired`, identity storage and the standard wheel tools (session and
+ * service status, the pricing model, balance, coupons) all come from
+ * @tollbooth-dpyc/web (configured in main.tsx). What lives here is only what
+ * is cypher's:
  *
- *   - a FREE operational tier — the public landing stats, the session and
- *     service health the Front Matter shows, the published pricing model;
+ *   - the FREE public landing stats;
  *   - a METERED intention-graph tier (capabilities, symbols, invariants,
  *     patent tracing, issue provenance, factory resolution stats) — each a
  *     published dynamic tool that debits sats per call and is refunded on
  *     error. The dashboard caches these hard (see lib/graphCache.ts).
  */
 
-import {
-  callTool,
-  checkBalance,
-  getStoredNpub,
-  serviceStatus,
-  type CheckBalanceResult,
-  type ServiceStatus,
-} from "@tollbooth-dpyc/web";
-
-/// Sort direction used by the shared PagedTable header controls.
-export type SortDir = "asc" | "desc";
-
-// ─── Service health (free) ───────────────────────────────────────────────
-
-/// The fields of cypher_service_status the Front Matter's health panel reads,
-/// beyond the package's standard shape.
-export interface ServiceHealth extends ServiceStatus {
-  tollbooth_version?: string;
-  vault_ok?: boolean;
-  courier_ok?: boolean;
-  // The wheel returns this as an object ({mode, patron_credentials_required}),
-  // not a bare string — render its `mode`, never the object itself.
-  patron_auth?: string | { mode?: string; patron_credentials_required?: boolean };
-  durable_jobs?: { enabled?: boolean; backend?: string; [k: string]: unknown };
-}
-
-export function serviceHealth(): Promise<ServiceHealth> {
-  return serviceStatus() as Promise<ServiceHealth>;
-}
+import { callTool } from "@tollbooth-dpyc/web";
 
 /// cypher_public_factory_stats — free, unauthenticated aggregate counts for the
 /// public landing pages. Never returns titles, paths, or npubs. Server-side
@@ -66,74 +38,6 @@ export interface PublicFactoryStats {
 
 export async function publicFactoryStats(): Promise<PublicFactoryStats> {
   return callTool<PublicFactoryStats>("public_factory_stats", {}, { bestEffort: true, timeoutMs: 20_000 });
-}
-
-/// cypher_session_status — the database-health traffic light. Lifecycle is one
-/// of: ready | warming_up | misconfigured | quota_exceeded | not_registered |
-/// no_identity. Free readiness probe; takes an explicit patron_npub.
-export interface SessionStatus {
-  lifecycle?: string;
-  message?: string;
-  operator_npub?: string;
-  patron_npub?: string;
-  [k: string]: unknown;
-}
-
-export async function sessionStatus(): Promise<SessionStatus> {
-  const npub = getStoredNpub();
-  return callTool<SessionStatus>("session_status", npub ? { patron_npub: npub } : {});
-}
-
-// ─── Wallet (the ledger's tranche detail) ────────────────────────────────
-
-export interface CreditTranche {
-  id: string;
-  amount_sats: number;
-  remaining_sats: number;
-  expires_at: string | null;
-  created_at: string | null;
-}
-
-/// check_balance as the Wallet page reads it: the package's shape plus the
-/// tranche breakdown the wheel also returns.
-export interface WalletBalance extends CheckBalanceResult {
-  active_tranches?: number;
-  tranches?: CreditTranche[];
-}
-
-export function walletBalance(): Promise<WalletBalance> {
-  return checkBalance() as Promise<WalletBalance>;
-}
-
-// ─── Pricing model (free) — the published dynamic tool set + prices ─────────
-// get_pricing_model surfaces every registered/published tool, its price_sats,
-// priced flag, price_type, and any constraint chain (per-npub allow-lists).
-// This is how the Query Catalog view learns what dynamic tools exist and what
-// they cost — the "apparatus" register of the notebook.
-
-export interface PricedTool {
-  tool_id?: string;
-  tool_name?: string;
-  name?: string;
-  price_sats?: number;
-  priced?: boolean;
-  price_type?: string;
-  category?: string;
-  chain?: unknown;
-  [k: string]: unknown;
-}
-
-export interface PricingModel {
-  success?: boolean;
-  tools?: PricedTool[];
-  model?: unknown;
-  error?: string;
-  error_code?: string;
-  [k: string]: unknown;
-}
-
-export async function getPricingModel(): Promise<PricingModel> {
-  return callTool<PricingModel>("get_pricing_model", {}, { bestEffort: true });
 }
 
 // ─── INTENTION GRAPH — metered read tools (published dynamic, category=read) ─
@@ -851,56 +755,4 @@ export async function auditQuery(
     owners: asStrList(row.owners),
     derived_from: Array.isArray(row.derived_from) ? row.derived_from : [],
   };
-}
-
-// ─── Coupons (wheel 0.41.0+) ─────────────────────────────────────────────
-
-export interface PatronCoupon {
-  coupon_id: string;
-  name: string;
-  discount_percent: number;
-  valid_from: string;
-  valid_until: string;
-  uses_per_patron: number | null;
-  use_count: number;
-  uses_remaining: number | null;
-  total_uses: number | null;
-  total_remaining: number | null;
-  status: string;
-}
-
-export interface ListMyCouponsResult {
-  success: boolean;
-  count: number;
-  coupons: PatronCoupon[];
-  error?: string;
-}
-
-export interface RedeemCouponResult {
-  success: boolean;
-  coupon_id?: string;
-  name?: string;
-  discount_percent?: number;
-  valid_until?: string;
-  uses_remaining?: number | null;
-  uses_per_patron?: number | null;
-  error?: string;
-}
-
-export interface ForgetCouponResult {
-  success: boolean;
-  coupon_id?: string;
-  error?: string;
-}
-
-export async function listMyCoupons(): Promise<ListMyCouponsResult> {
-  return callTool<ListMyCouponsResult>("list_my_coupons", {});
-}
-
-export async function redeemCoupon(code: string): Promise<RedeemCouponResult> {
-  return callTool<RedeemCouponResult>("redeem_coupon", { code });
-}
-
-export async function forgetCoupon(couponId: string): Promise<ForgetCouponResult> {
-  return callTool<ForgetCouponResult>("forget_coupon", { coupon_id: couponId });
 }

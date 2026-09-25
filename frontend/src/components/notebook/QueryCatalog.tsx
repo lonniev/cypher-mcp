@@ -5,22 +5,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { getPricingModel, type PricedTool } from "../../lib/mcp";
+import { getPricingModel, type ToolPrice } from "@tollbooth-dpyc/web";
 import { Page, SectionLabel, Empty, ErrorNote, faint, muted } from "./ui";
 
-function toolName(t: PricedTool): string {
-  return t.tool_name ?? t.name ?? t.tool_id ?? "(unnamed)";
+function toolName(t: ToolPrice): string {
+  return t.tool_name || t.tool_id || "(unnamed)";
 }
-function price(t: PricedTool): number | null {
+function price(t: ToolPrice): number | null {
   if (typeof t.price_sats === "number") return t.price_sats;
   return null;
 }
-function isFree(t: PricedTool): boolean {
+function isFree(t: ToolPrice): boolean {
   return t.category === "free" || (!t.priced && (t.price_sats ?? 0) === 0);
 }
 
 export default function QueryCatalog() {
-  const [tools, setTools] = useState<PricedTool[] | null>(null);
+  const [tools, setTools] = useState<ToolPrice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
