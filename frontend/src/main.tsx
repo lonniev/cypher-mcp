@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { configureTollbooth } from "@tollbooth-dpyc/web";
+import { configureDebugLog, configureTollbooth } from "@tollbooth-dpyc/web";
 import "./index.css";
 import { bootstrapTheme } from "./lib/theme";
 
@@ -13,6 +13,9 @@ configureTollbooth({
   appName: "Cypher Lab Notebook",
   mcpUrl: import.meta.env.VITE_MCP_URL as string,
 });
+// One activity log for the page — this site's calls and the package's alike —
+// kept across reloads so an error that flips the view can still be copied.
+configureDebugLog({ persist: true });
 
 // Apply the saved theme (dark by default) before first paint — no flash.
 bootstrapTheme();

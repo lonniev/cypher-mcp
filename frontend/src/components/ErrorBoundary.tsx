@@ -9,7 +9,7 @@
 // — reload or not, the message survives.
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { debugPush, debugLogText } from "../lib/debugLog";
+import { debugLogText, debugPush } from "@tollbooth-dpyc/web";
 
 interface Props {
   children: ReactNode;

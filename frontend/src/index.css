@@ -71,7 +71,7 @@
   .cell-mark::before { animation: none; transform: scaleY(1); opacity: 1; }
 }
 
-/* The shared account cards from @tollbooth-dpyc/web, in the notebook's own
+/* The shared account cards and debug panel from @tollbooth-dpyc/web, in the notebook's own
  * stone/zinc/amber. The site's theme is the `.dark` class set by lib/theme.ts,
  * not the OS preference the package keys on, so the light mapping also covers
  * `:root:not([data-theme="light"])` and the dark one comes after it. */
@@ -91,6 +91,9 @@
   --tb-err-bg: var(--color-red-50);
   --tb-err-line: var(--color-red-200);
   --tb-err-ink: var(--color-red-700);
+  --tb-notice-bg: var(--color-purple-50);
+  --tb-notice-line: var(--color-purple-200);
+  --tb-notice-ink: var(--color-purple-800);
 }
 
 :root.dark,
@@ -109,4 +112,7 @@
   --tb-err-bg: color-mix(in oklab, var(--color-red-500) 10%, transparent);
   --tb-err-line: color-mix(in oklab, var(--color-red-500) 30%, transparent);
   --tb-err-ink: var(--color-red-400);
+  --tb-notice-bg: color-mix(in oklab, var(--color-purple-500) 12%, transparent);
+  --tb-notice-line: color-mix(in oklab, var(--color-purple-500) 30%, transparent);
+  --tb-notice-ink: var(--color-purple-300);
 }
