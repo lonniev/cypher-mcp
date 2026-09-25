@@ -10,6 +10,7 @@ import { MeteredBar, MeteredError, muted, faint } from "./ui";
 import { Icon, langIcon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
 import { QUOTES } from "../../lib/quotes";
+import { quoteStyles } from "../../lib/quoteStyles";
 import {
   DossierWrap,
   Dossier,
@@ -56,7 +57,7 @@ export default function ServiceDetail() {
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.loading && !d && <QuoteScroller quotes={QUOTES} spinner heading="Reading the service…" className="py-12" />}
+      {!m.error && m.loading && !d && <QuoteScroller quotes={QUOTES} spinner heading="Reading the service…" classNames={quoteStyles} />}
 
       {!m.error && !m.loading && d && !found && (
         <div className="mt-4 rounded-xl border border-stone-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">

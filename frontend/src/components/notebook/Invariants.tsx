@@ -11,6 +11,7 @@ import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, m
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
 import { QUOTES } from "../../lib/quotes";
+import { quoteStyles } from "../../lib/quoteStyles";
 import { parseIssueRef, initialsOf } from "./dossier";
 
 type Col = "name" | "symbols" | "recent";
@@ -109,7 +110,7 @@ export default function Invariants() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the invariant catalog…" className="py-12" />
+            <QuoteScroller quotes={QUOTES} spinner heading="Reading the invariant catalog…" classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (

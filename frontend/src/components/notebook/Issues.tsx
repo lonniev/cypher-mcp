@@ -11,6 +11,7 @@ import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, m
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
 import { QUOTES } from "../../lib/quotes";
+import { quoteStyles } from "../../lib/quoteStyles";
 import { parseIssueRef, ResolvedPill, WorkingPulse } from "./dossier";
 import { IssueStatusGlyph, IssueStatusPill } from "./IssueStatusGlyph";
 
@@ -125,7 +126,7 @@ export default function Issues() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the issue catalog…" className="py-12" />
+            <QuoteScroller quotes={QUOTES} spinner heading="Reading the issue catalog…" classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (

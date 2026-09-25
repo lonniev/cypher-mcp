@@ -12,6 +12,7 @@ import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, m
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
 import { QUOTES } from "../../lib/quotes";
+import { quoteStyles } from "../../lib/quoteStyles";
 import { parseIssueRef } from "./dossier";
 
 type Col = "ref" | "family" | "grounds" | "recent";
@@ -115,7 +116,7 @@ export default function PatentElements() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the patent schedule…" className="py-12" />
+            <QuoteScroller quotes={QUOTES} spinner heading="Reading the patent schedule…" classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (

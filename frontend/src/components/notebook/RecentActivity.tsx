@@ -14,6 +14,7 @@ import { Page, MeteredBar, MeteredError, LoadPanel, Empty, muted, faint } from "
 import { Icon, type IconName } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
 import { QUOTES } from "../../lib/quotes";
+import { quoteStyles } from "../../lib/quoteStyles";
 
 // Per-kind display + routing. `href` returns the dossier path, or null for kinds
 // with no standalone dossier (Invariant surfaces inside Capability/Symbol pages).
@@ -287,7 +288,7 @@ export default function RecentActivity() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the activity feed…" className="py-12" />
+            <QuoteScroller quotes={QUOTES} spinner heading="Reading the activity feed…" classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} loading={m.loading} />
           ) : filtered.length === 0 ? (

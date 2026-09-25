@@ -9,6 +9,7 @@ import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
 import { QUOTES } from "../../lib/quotes";
+import { quoteStyles } from "../../lib/quoteStyles";
 import { DossierWrap, Dossier, DossierHead, Stamp, BoxScore, Stat, Cells, Cell, Eyebrow, SymbolRow, PatentBadge, initialsOf } from "./dossier";
 
 export default function InvariantDetail() {
@@ -33,7 +34,7 @@ export default function InvariantDetail() {
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.loading && !d && <QuoteScroller quotes={QUOTES} spinner heading="Reading the invariant…" className="py-12" />}
+      {!m.error && m.loading && !d && <QuoteScroller quotes={QUOTES} spinner heading="Reading the invariant…" classNames={quoteStyles} />}
 
       {!m.error && !m.loading && d && !found && (
         <div className="mt-4 rounded-xl border border-stone-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
