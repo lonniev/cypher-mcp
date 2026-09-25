@@ -9,7 +9,7 @@
 
 import type { ReactNode } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import type { ServiceStatus } from "../../lib/mcp";
+import type { ServiceStatus } from "@tollbooth-dpyc/web";
 
 const tab = (to: string, label: string, end = false) => (
   <NavLink

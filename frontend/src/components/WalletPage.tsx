@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  checkBalance,
-  checkPayment,
-  purchaseCredits,
-  type CheckBalanceResult,
-  type PurchaseCreditsResult,
-} from "../lib/mcp";
+import { checkPayment, purchaseCredits, type PurchaseCreditsResult } from "@tollbooth-dpyc/web";
+import { walletBalance, type WalletBalance } from "../lib/mcp";
 
 const card = "rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900";
 const primary =
@@ -13,7 +8,7 @@ const primary =
 const PRESETS = [1000, 5000, 25000];
 
 export default function WalletPage() {
-  const [bal, setBal] = useState<CheckBalanceResult | null>(null);
+  const [bal, setBal] = useState<WalletBalance | null>(null);
   const [amount, setAmount] = useState(1000);
   const [invoice, setInvoice] = useState<PurchaseCreditsResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -22,7 +17,7 @@ export default function WalletPage() {
 
   const refresh = useCallback(async () => {
     try {
-      setBal(await checkBalance());
+      setBal(await walletBalance());
     } catch (e) {
       setError((e as Error).message);
     }
