@@ -1,14 +1,11 @@
 // Loading-screen quotes — on the notebook's themes: factory automation, business
 // efficiency, the merits of organization, systems, measurement, and continuous
-// improvement. Inlined so the loader can never fail on a network hiccup. Real,
-// attributed quotations; kept quotable and tight.
+// improvement. Real, attributed quotations; kept quotable and tight. The
+// scroller that shows them is @tollbooth-dpyc/web's QuoteScroller.
 
-export interface Quote {
-  text: string;
-  author: string;
-}
+import type { Quote } from "@tollbooth-dpyc/web";
 
-export const QUOTES: Quote[] = [
+export const QUOTES: ReadonlyArray<Quote> = [
   // ── Automation & systems ──
   { text: "The first rule of any technology used in a business is that automation applied to an efficient operation will magnify the efficiency.", author: "Bill Gates" },
   { text: "The second is that automation applied to an inefficient operation will magnify the inefficiency.", author: "Bill Gates" },
