@@ -3,16 +3,15 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { consumeReloadRefresh } from "./lib/graphCache";
 import {
   getStoredNpub,
+  hydrateAvatarFromNostr,
   isLoggedIn,
   logOut as mcpLogOut,
   onProofExpired,
   serviceStatus,
   type ServiceStatus,
-} from "./lib/mcp";
-import { hydrateAvatarFromNostr } from "@tollbooth-dpyc/web";
-import { DebugPanel } from "@tollbooth-dpyc/web/react";
+} from "@tollbooth-dpyc/web";
+import { DebugPanel, NpubGate } from "@tollbooth-dpyc/web/react";
 import Nav from "./components/Nav";
-import NpubGate from "./components/NpubGate";
 import WalletPage from "./components/WalletPage";
 import ProfilePage from "./components/ProfilePage";
 import Contents from "./components/notebook/Contents";
@@ -65,8 +64,8 @@ export default function App() {
     serviceStatus().then(setStatus).catch(() => setStatus(null));
   }, []);
 
-  // A metered graph read anywhere can bounce for a lapsed proof. The mcp layer
-  // clears the stale token and fires this; drop back to sign-in so the architect
+  // A metered graph read anywhere can bounce for a lapsed proof. The package
+  // client clears the stale token and fires this; drop back to sign-in so the architect
   // isn't stranded on a page whose data silently won't load. An nsec session
   // re-signs inline, so isLoggedIn() stays true and we leave it alone.
   useEffect(() => {

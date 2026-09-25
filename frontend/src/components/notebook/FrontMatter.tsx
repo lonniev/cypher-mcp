@@ -7,10 +7,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Database, Radio, ShieldCheck, GitBranch } from "lucide-react";
 import {
   getPricingModel,
-  serviceStatus,
+  serviceHealth,
   sessionStatus,
   type PricingModel,
-  type ServiceStatus,
+  type ServiceHealth,
   type SessionStatus,
 } from "../../lib/mcp";
 import { card, faint, muted } from "./ui";
@@ -65,14 +65,14 @@ function Health({ ok, label }: { ok?: boolean; label: string }) {
 }
 
 export default function FrontMatter() {
-  const [svc, setSvc] = useState<ServiceStatus | null>(null);
+  const [svc, setSvc] = useState<ServiceHealth | null>(null);
   const [sess, setSess] = useState<SessionStatus | null>(null);
   const [pricing, setPricing] = useState<PricingModel | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let live = true;
-    Promise.allSettled([serviceStatus(), sessionStatus(), getPricingModel()]).then((r) => {
+    Promise.allSettled([serviceHealth(), sessionStatus(), getPricingModel()]).then((r) => {
       if (!live) return;
       if (r[0].status === "fulfilled") setSvc(r[0].value);
       if (r[1].status === "fulfilled") setSess(r[1].value);

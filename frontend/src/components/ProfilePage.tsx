@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "../App";
 import { useTheme, type Theme } from "../lib/theme";
-import { getAccountStatement, type AccountStatementResult } from "../lib/mcp";
+import { getAccountStatement, type AccountStatementResult } from "@tollbooth-dpyc/web";
 import { NostrProfilePanel, SessionKeyClaim } from "@tollbooth-dpyc/web/react";
 import CouponsPanel from "./CouponsPanel";
 

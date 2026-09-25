@@ -6,12 +6,16 @@ import { configureDebugLog, configureTollbooth } from "@tollbooth-dpyc/web";
 import "./index.css";
 import { bootstrapTheme } from "./lib/theme";
 
-// The shared account pieces (profile, session key, avatar) read who this site
-// is from here. Storage keys stay "cypher:…", so held keys and avatars carry over.
+// The MCP client, sign-in gate and account pieces read who this site is from
+// here. Storage keys stay "cypher:…", so a signed-in architect stays signed in.
 configureTollbooth({
   slug: "cypher",
   appName: "Cypher Lab Notebook",
   mcpUrl: import.meta.env.VITE_MCP_URL as string,
+  // Free operator-wide reads that take no npub/proof envelope — the wheel
+  // rejects an unexpected `npub` kwarg on these.
+  extraBootstrapTools: ["get_pricing_model", "public_factory_stats"],
+  quietTools: ["public_factory_stats"],
 });
 // One activity log for the page — this site's calls and the package's alike —
 // kept across reloads so an error that flips the view can still be copied.
