@@ -4,7 +4,8 @@
 
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { asStrList, listIssues, type IssueSummary, type SortDir } from "../../lib/mcp";
+import { asStrList, listIssues, type IssueSummary } from "../../lib/mcp";
+import type { SortDir } from "@tollbooth-dpyc/web";
 import { useMetered } from "../../lib/graphCache";
 import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";

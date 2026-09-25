@@ -7,12 +7,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Database, Radio, ShieldCheck, GitBranch } from "lucide-react";
 import {
   getPricingModel,
-  serviceHealth,
+  getStoredNpub,
+  serviceStatus,
   sessionStatus,
-  type PricingModel,
-  type ServiceHealth,
-  type SessionStatus,
-} from "../../lib/mcp";
+  type PricingModelResult,
+  type ServiceStatus,
+  type SessionStatusResult,
+} from "@tollbooth-dpyc/web";
 import { card, faint, muted } from "./ui";
 
 interface Light {
@@ -65,14 +66,14 @@ function Health({ ok, label }: { ok?: boolean; label: string }) {
 }
 
 export default function FrontMatter() {
-  const [svc, setSvc] = useState<ServiceHealth | null>(null);
-  const [sess, setSess] = useState<SessionStatus | null>(null);
-  const [pricing, setPricing] = useState<PricingModel | null>(null);
+  const [svc, setSvc] = useState<ServiceStatus | null>(null);
+  const [sess, setSess] = useState<SessionStatusResult | null>(null);
+  const [pricing, setPricing] = useState<PricingModelResult | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let live = true;
-    Promise.allSettled([serviceHealth(), sessionStatus(), getPricingModel()]).then((r) => {
+    Promise.allSettled([serviceStatus(), sessionStatus(getStoredNpub() || undefined), getPricingModel()]).then((r) => {
       if (!live) return;
       if (r[0].status === "fulfilled") setSvc(r[0].value);
       if (r[1].status === "fulfilled") setSess(r[1].value);
@@ -88,13 +89,10 @@ export default function FrontMatter() {
   const tools = pricing?.tools ?? [];
   const pricedCount = tools.filter((t) => t.priced || (t.price_sats ?? 0) > 0).length;
   const version = svc?.version;
-  const sdk = svc?.tollbooth_version ?? svc?.tollbooth_dpyc_version;
-  const durable = svc?.durable_jobs?.enabled;
-  // patron_auth is an object ({mode, patron_credentials_required}) — show its mode.
-  const patronAuth =
-    typeof svc?.patron_auth === "object" && svc.patron_auth
-      ? svc.patron_auth.mode ?? "—"
-      : svc?.patron_auth ?? "—";
+  const sdk = svc?.tollbooth_dpyc_version;
+  // Only a server that runs background jobs reports them; absent reads as "—".
+  const durable = svc?.durable_jobs?.detached_executor_active;
+  const patronAuth = svc?.patron_auth?.mode ?? "—";
 
   return (
     <div className={`${card} p-5`}>
@@ -109,15 +107,15 @@ export default function FrontMatter() {
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <Health ok={svc?.vault_ok} label="Vault" />
-          <Health ok={svc?.courier_ok} label="Secure Courier" />
+          <Health ok={svc?.vault_configured} label="Vault" />
+          <Health ok={svc?.courier_has_vault} label="Secure Courier" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat icon={<Database className="h-4 w-4" />} label="Priced tools" value={loaded ? pricedCount : undefined} sub={`${tools.length} total`} />
         <Stat icon={<GitBranch className="h-4 w-4" />} label="MCP version" value={version ?? "—"} sub={sdk ? `SDK ${sdk}` : ""} isText />
-        <Stat icon={<Radio className="h-4 w-4" />} label="Durable jobs" value={durable == null ? "—" : durable ? "on" : "off"} sub={svc?.durable_jobs?.backend ?? ""} isText />
+        <Stat icon={<Radio className="h-4 w-4" />} label="Durable jobs" value={durable == null ? "—" : durable ? "on" : "off"} sub={svc?.async_jobs?.backend ?? ""} isText />
         <Stat icon={<ShieldCheck className="h-4 w-4" />} label="Patron auth" value={patronAuth} isText />
       </div>
     </div>

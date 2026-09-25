@@ -2,7 +2,8 @@
 @import "@tollbooth-dpyc/web/theme.css";
 @source "../node_modules/@tollbooth-dpyc/web/dist";
 
-/* Dark mode is a CLASS here, toggled on <html> by lib/theme.ts, and v4 does not
+/* Dark mode is a CLASS here, set on <html> by the package's bootstrapTheme /
+ * useTheme (with data-theme and color-scheme alongside it), and v4 does not
  * assume that the way v3's `darkMode: "class"` did — its default is the
  * visitor's OS preference. Without this line all 832 `dark:` classes in this app
  * would quietly start following the operating system and the theme switcher
@@ -26,8 +27,6 @@
     }
   }
 }
-
-/* color-scheme is set imperatively by lib/theme.ts on <html>. */
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
@@ -72,11 +71,10 @@
 }
 
 /* The shared account cards and debug panel from @tollbooth-dpyc/web, in the notebook's own
- * stone/zinc/amber. The site's theme is the `.dark` class set by lib/theme.ts,
- * not the OS preference the package keys on, so the light mapping also covers
- * `:root:not([data-theme="light"])` and the dark one comes after it. */
-:root,
-:root:not([data-theme="light"]) {
+ * stone/zinc/amber. The package's theme always sets data-theme beside the
+ * `dark` class, so its OS-keyed dark block never applies over a light pick,
+ * and these rules — same specificity, imported later — win in both themes. */
+:root {
   --tb-accent: var(--color-amber-600);
   --tb-on-accent: var(--color-white);
   --tb-surface: var(--color-white);
@@ -96,8 +94,7 @@
   --tb-notice-ink: var(--color-purple-800);
 }
 
-:root.dark,
-:root.dark:not([data-theme="light"]) {
+:root.dark {
   --tb-accent: var(--color-amber-600);
   --tb-on-accent: var(--color-white);
   --tb-surface: var(--color-zinc-900);
