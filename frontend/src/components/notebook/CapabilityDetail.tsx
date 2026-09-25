@@ -23,6 +23,7 @@ import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
 import { QUOTES } from "../../lib/quotes";
+import { quoteStyles } from "../../lib/quoteStyles";
 import {
   DossierWrap,
   Dossier,
@@ -98,7 +99,7 @@ export default function CapabilityDetail() {
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.cold && m.loading && <QuoteScroller quotes={QUOTES} spinner heading="Assembling the case file…" className="py-12" />}
+      {!m.error && m.cold && m.loading && <QuoteScroller quotes={QUOTES} spinner heading="Assembling the case file…" classNames={quoteStyles} />}
 
       {explain && (
         <Dossier accent="blue" tab="Capability" tabNo="Case file">

@@ -12,6 +12,7 @@ import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, m
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
 import { QUOTES } from "../../lib/quotes";
+import { quoteStyles } from "../../lib/quoteStyles";
 import { parseIssueRef, initialsOf } from "./dossier";
 
 type Col = "name" | "owners" | "keywords" | "recent";
@@ -171,7 +172,7 @@ export default function Capabilities() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the capability catalog…" className="py-12" />
+            <QuoteScroller quotes={QUOTES} spinner heading="Reading the capability catalog…" classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
