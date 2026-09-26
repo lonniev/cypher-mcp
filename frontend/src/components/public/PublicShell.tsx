@@ -4,71 +4,87 @@
 // feels continuity rather than a theme swap.
 //
 // PrimaryNav is the site-wide top row (Home · Factory · Memory · Join · Lab
-// Notebook). Every page mounts it; notebook secondary registers render BELOW
-// it, never in place of it (#80).
+// Notebook), drawn by the package's SiteNav in the notebook's classes. Every
+// page mounts it; notebook secondary registers render BELOW it, never in place
+// of it (#80).
 
-import type { ReactNode } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
+import { matchesPath, SiteNav, type SiteNavAccount, type SiteNavClassNames, type SiteNavItem } from "@tollbooth-dpyc/web/react";
 
-const tab = (to: string, label: string, end = false) => (
-  <NavLink
-    to={to}
-    end={end}
-    className={({ isActive }) =>
-      `px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-        isActive
-          ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400"
-          : "text-stone-500 hover:text-stone-900 hover:bg-stone-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800"
-      }`
-    }
-  >
-    {label}
-  </NavLink>
+const ITEMS: readonly SiteNavItem[] = [
+  { href: "/", label: "Home", end: true },
+  { href: "/factory", label: "Factory" },
+  { href: "/memory", label: "Memory" },
+  { href: "/join", label: "Join" },
+  { href: "/notebook", label: "Lab Notebook" },
+];
+
+const link =
+  "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-stone-500 hover:text-stone-900 hover:bg-stone-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800";
+const current =
+  "!bg-amber-100 !text-amber-800 dark:!bg-amber-500/15 dark:!text-amber-400";
+const menuRow =
+  "px-3 text-sm text-stone-600 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors";
+
+export const navClassNames: SiteNavClassNames = {
+  root: "relative border-b border-stone-200 dark:border-zinc-800 px-4 py-1.5 flex items-center gap-1.5",
+  nav: "flex items-center",
+  list: "flex items-center gap-1.5 flex-wrap",
+  item: link,
+  active: current,
+  end: "ml-auto flex items-center gap-3",
+  toggle:
+    "inline-flex items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-colors",
+  menu: "absolute left-0 right-0 top-full z-40 border-b border-stone-200 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-950 shadow-lg p-2 space-y-0.5",
+  menuItem: `rounded-lg ${link}`,
+  account: "relative",
+  accountButton: "flex items-center justify-center rounded-full",
+  accountMenu:
+    "absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg overflow-hidden z-40",
+  accountHeader: "px-3 py-2 border-b border-stone-100 dark:border-zinc-800",
+  accountHeading: "text-xs text-stone-400 dark:text-zinc-500",
+  accountNpub: "text-xs font-mono truncate text-stone-600 dark:text-zinc-300",
+  accountLink: menuRow,
+  signOut: `w-full text-left ${menuRow} hover:!bg-red-50 hover:text-red-600 dark:hover:!bg-red-500/10 dark:hover:text-red-400`,
+};
+
+const brand = (
+  <Link to="/" className="flex items-center gap-2 mr-3">
+    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+    <span className="font-serif font-semibold tracking-wide">Cypher</span>
+    <span className="hidden sm:inline text-sm text-stone-400 dark:text-zinc-500">· Factory spokesman</span>
+  </Link>
 );
 
 /// Site-wide primary navigation. Identical items and order on every page.
-/// Pass `trailing` to replace the default Sign-in control (e.g. the signed-in
-/// avatar menu). Lab Notebook is active for any `/notebook/*` path.
-export function PrimaryNav({
-  trailing,
-  showSignIn = true,
-}: {
-  trailing?: ReactNode;
-  showSignIn?: boolean;
-}) {
+/// Signed in, `account` is the avatar menu; signed out, the right side is the
+/// Sign-in link. Lab Notebook is active for any `/notebook/*` path.
+export function PrimaryNav({ account }: { account?: SiteNavAccount }) {
+  const { pathname } = useLocation();
   return (
-    <header className="border-b border-stone-200 dark:border-zinc-800 px-4 py-2.5 flex items-center gap-1.5 flex-wrap">
-      <Link to="/" className="flex items-center gap-2 mr-3">
-        <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-        <span className="font-serif font-semibold tracking-wide">Cypher</span>
-        <span className="hidden sm:inline text-sm text-stone-400 dark:text-zinc-500">
-          · Factory spokesman
-        </span>
-      </Link>
-      {tab("/", "Home", true)}
-      {tab("/factory", "Factory")}
-      {tab("/memory", "Memory")}
-      {tab("/join", "Join")}
-      {tab("/notebook", "Lab Notebook")}
-      {trailing !== undefined ? (
-        trailing
-      ) : (
-        showSignIn && (
+    <SiteNav
+      brand={brand}
+      items={ITEMS}
+      isActive={(href, item) => matchesPath(pathname, href, item.end)}
+      renderLink={({ href, children, ...rest }) => (
+        <Link to={href} {...rest}>
+          {children}
+        </Link>
+      )}
+      account={account}
+      trailing={
+        account ? undefined : (
           <Link
             to="/notebook"
-            className="ml-auto px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-500 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-500 transition-colors"
           >
             Sign in
           </Link>
         )
-      )}
-    </header>
+      }
+      classNames={navClassNames}
+    />
   );
-}
-
-/** @deprecated Prefer PrimaryNav — alias kept so existing imports keep working. */
-export function PublicNav({ showSignIn = true }: { showSignIn?: boolean }) {
-  return <PrimaryNav showSignIn={showSignIn} />;
 }
 
 export function PublicFooter() {
@@ -97,7 +113,6 @@ export function PublicLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
-      <PublicFooter />
     </>
   );
 }

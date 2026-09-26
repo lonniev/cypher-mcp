@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { bootstrapTheme, configureDebugLog, configureTollbooth } from "@tollbooth-dpyc/web";
+import { configureDebugLog, configureTollbooth } from "@tollbooth-dpyc/web";
 import { ErrorBoundary } from "@tollbooth-dpyc/web/react";
 import "./index.css";
 
@@ -19,9 +19,6 @@ configureTollbooth({
 // One activity log for the page — this site's calls and the package's alike —
 // kept across reloads so an error that flips the view can still be copied.
 configureDebugLog({ persist: true });
-
-// Apply the saved theme (dark by default) before first paint — no flash.
-bootstrapTheme();
 
 // A render crash is shown with its stack and saved to the debug log, in the
 // notebook's own stone/zinc/amber; Reload is the one amber action.
