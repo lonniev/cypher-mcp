@@ -1,16 +1,7 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { consumeReloadRefresh } from "./lib/graphCache";
-import {
-  getStoredNpub,
-  hydrateAvatarFromNostr,
-  isLoggedIn,
-  logOut as mcpLogOut,
-  onProofExpired,
-  serviceStatus,
-  type ServiceStatus,
-} from "@tollbooth-dpyc/web";
-import { DebugPanel, NpubGate, WalletPage } from "@tollbooth-dpyc/web/react";
+import { AppShell, WalletPage, type AppShellContext } from "@tollbooth-dpyc/web/react";
 import Nav from "./components/Nav";
 import { walletClassNames } from "./lib/accountStyles";
 import ProfilePage from "./components/ProfilePage";
@@ -38,129 +29,65 @@ import FactoryPage from "./components/public/FactoryPage";
 import MemoryPage from "./components/public/MemoryPage";
 import JoinPage from "./components/public/JoinPage";
 
-interface SessionCtx {
-  npub: string;
-  status: ServiceStatus | null;
-  logOut: () => void;
-}
-
-const Ctx = createContext<SessionCtx | null>(null);
-
-export function useSession(): SessionCtx {
-  const v = useContext(Ctx);
-  if (!v) throw new Error("useSession must be used within <App>");
-  return v;
-}
-
+// The package's AppShell holds the session, the sign-in gate, service_status,
+// the theme and the debug log. The site keeps its routes: the public pages
+// need no sign-in, and the Lab Notebook shows the gate until one is made.
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(isLoggedIn());
-  const [npub, setNpub] = useState(getStoredNpub());
-  const [status, setStatus] = useState<ServiceStatus | null>(null);
-  // Set when a metered read bounced for an expired proof and we re-presented the
-  // gate — rendered as a calm "this is routine" note, not an error.
-  const [reauthNotice, setReauthNotice] = useState("");
+  const site = (shell: AppShellContext) => <Site shell={shell} />;
+  return (
+    <AppShell
+      signedOut={site}
+      footer={<PublicFooter />}
+      classNames={{ root: "bg-stone-50 dark:bg-zinc-950 text-stone-900 dark:text-zinc-100 transition-colors" }}
+    >
+      {site}
+    </AppShell>
+  );
+}
 
-  useEffect(() => {
-    serviceStatus().then(setStatus).catch(() => setStatus(null));
-  }, []);
-
-  // A metered graph read anywhere can bounce for a lapsed proof. The package
-  // client clears the stale token and fires this; drop back to sign-in so the architect
-  // isn't stranded on a page whose data silently won't load. An nsec session
-  // re-signs inline, so isLoggedIn() stays true and we leave it alone.
-  useEffect(() => {
-    return onProofExpired(() => {
-      if (isLoggedIn()) return;
-      setReauthNotice(
-        "Your sign-in expired — that's routine. Sign in again to pick up where you left off.",
-      );
-      setNpub(getStoredNpub());
-      setLoggedIn(false);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (loggedIn && npub) void hydrateAvatarFromNostr(npub);
-  }, [loggedIn, npub]);
+function Site({ shell }: { shell: AppShellContext }) {
+  const signedIn = shell.session.signedIn;
 
   // On a browser reload, the reloaded page's metered queries refetch (see
-  // useMetered). Consume that intent here — this shell effect runs after the
-  // page's own effects (child-first), so the reload refreshes the current page
-  // yet later client-side navigations stay cache-first.
+  // useMetered). Consume that intent here — this effect runs after the page's
+  // own effects (child-first), so the reload refreshes the current page yet
+  // later client-side navigations stay cache-first.
   useEffect(() => {
     consumeReloadRefresh();
   }, []);
 
-  function onLogin() {
-    setReauthNotice("");
-    setNpub(getStoredNpub());
-    setLoggedIn(true);
-  }
-
-  function logOut() {
-    mcpLogOut();
-    setNpub("");
-    setLoggedIn(false);
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50 dark:bg-zinc-950 text-stone-900 dark:text-zinc-100 transition-colors">
-      <Ctx.Provider value={{ npub, status, logOut }}>
-        <BrowserRouter>
-          <Routes>
-            {/* Public factory spokesman — no auth required (#72). */}
-            <Route element={<PublicLayout />}>
-              <Route index element={<HomePage />} />
-              <Route path="factory" element={<FactoryPage />} />
-              <Route path="memory" element={<MemoryPage />} />
-              <Route path="join" element={<JoinPage />} />
-            </Route>
+    <BrowserRouter>
+      <Routes>
+        {/* Public factory spokesman — no auth required (#72). */}
+        <Route element={<PublicLayout />}>
+          <Route index element={<HomePage />} />
+          <Route path="factory" element={<FactoryPage />} />
+          <Route path="memory" element={<MemoryPage />} />
+          <Route path="join" element={<JoinPage />} />
+        </Route>
 
-            {/* Lab Notebook — auth gate; signed-in patrons get the full registers. */}
-            <Route
-              path="notebook/*"
-              element={
-                loggedIn ? (
-                  <NotebookApp />
-                ) : (
-                  <NotebookGate
-                    onLogin={onLogin}
-                    operatorHash={status?.operator_npub_hash}
-                    notice={reauthNotice}
-                  />
-                )
-              }
-            />
+        {/* Lab Notebook — auth gate; signed-in patrons get the full registers. */}
+        <Route path="notebook/*" element={signedIn ? <NotebookApp /> : <NotebookGate gate={shell.gate} />} />
 
-            {/* Convenience: legacy deep links into notebook sections. */}
-            {loggedIn ? (
-              <>
-                <Route path="capabilities/*" element={<Navigate to="/notebook/capabilities" replace />} />
-                <Route path="issues/*" element={<Navigate to="/notebook/issues" replace />} />
-                <Route path="metrics" element={<Navigate to="/notebook/metrics" replace />} />
-                <Route path="wallet" element={<Navigate to="/notebook/wallet" replace />} />
-                <Route path="profile" element={<Navigate to="/notebook/profile" replace />} />
-              </>
-            ) : null}
+        {/* Convenience: legacy deep links into notebook sections. */}
+        {signedIn ? (
+          <>
+            <Route path="capabilities/*" element={<Navigate to="/notebook/capabilities" replace />} />
+            <Route path="issues/*" element={<Navigate to="/notebook/issues" replace />} />
+            <Route path="metrics" element={<Navigate to="/notebook/metrics" replace />} />
+            <Route path="wallet" element={<Navigate to="/notebook/wallet" replace />} />
+            <Route path="profile" element={<Navigate to="/notebook/profile" replace />} />
+          </>
+        ) : null}
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-        <DebugPanel />
-      </Ctx.Provider>
-    </div>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
-function NotebookGate({
-  onLogin,
-  operatorHash,
-  notice,
-}: {
-  onLogin: () => void;
-  operatorHash?: string;
-  notice?: string;
-}) {
+function NotebookGate({ gate }: { gate: ReactNode }) {
   return (
     <>
       <PrimaryNav />
@@ -173,11 +100,8 @@ function NotebookGate({
             pages need no sign-in.
           </p>
         </div>
-        <div className="pb-16">
-          <NpubGate onLogin={onLogin} operatorHash={operatorHash} notice={notice} />
-        </div>
+        <div className="pb-16">{gate}</div>
       </main>
-      <PublicFooter />
     </>
   );
 }
@@ -222,7 +146,6 @@ function NotebookLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
-      <PublicFooter />
     </>
   );
 }

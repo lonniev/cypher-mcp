@@ -6,7 +6,8 @@
 
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ExternalLink, RefreshCw, ShieldCheck, Sparkle, BookOpen, Clock, PlayCircle } from "lucide-react";
+import { RefreshButton } from "@tollbooth-dpyc/web/react";
+import { ExternalLink, ShieldCheck, Sparkle, BookOpen, Clock, PlayCircle } from "lucide-react";
 import { ageLabel } from "../../lib/graphCache";
 import { SINCE_PRESETS } from "../../lib/time";
 
@@ -124,6 +125,10 @@ export function ProvenanceSeal({ provenance }: { provenance?: string }) {
   );
 }
 
+/// The notebook's Refresh: a quiet outlined square that warms to amber.
+export const refreshClass =
+  "inline-flex items-center justify-center rounded-lg border border-stone-300 text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-amber-500/50 dark:hover:text-amber-300";
+
 /// The read header: how fresh the shown data is, and a Refresh to re-run it.
 export function MeteredBar({
   cachedAt,
@@ -142,16 +147,12 @@ export function MeteredBar({
         {loading ? "Reading the graph…" : cachedAt ? `Updated ${ageLabel(cachedAt)}` : "Not yet loaded"}
       </span>
       {note && <span className={faint}>· {note}</span>}
-      <button
-        onClick={onRefresh}
-        disabled={loading}
-        aria-label="Refresh"
-        title="Refresh"
-        className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-stone-300 px-2.5 py-1 font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-amber-500/50 dark:hover:text-amber-300"
-      >
-        <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-        Refresh
-      </button>
+      <RefreshButton
+        onRefresh={onRefresh}
+        busy={loading}
+        iconSize={14}
+        classNames={{ root: `ml-auto ${refreshClass}` }}
+      />
     </div>
   );
 }

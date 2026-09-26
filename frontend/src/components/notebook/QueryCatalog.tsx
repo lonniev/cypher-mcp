@@ -4,9 +4,9 @@
 // machinery that answers everything else.
 
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
 import { getPricingModel, type ToolPrice } from "@tollbooth-dpyc/web";
-import { Page, SectionLabel, Empty, ErrorNote, faint, muted } from "./ui";
+import { RefreshButton } from "@tollbooth-dpyc/web/react";
+import { Page, SectionLabel, Empty, ErrorNote, faint, muted, refreshClass } from "./ui";
 
 function toolName(t: ToolPrice): string {
   return t.tool_name || t.tool_id || "(unnamed)";
@@ -59,13 +59,13 @@ export default function QueryCatalog() {
       title="Query Catalog"
       lede="Every tool the graph service exposes and what it costs — read straight from the operator's live pricing model. Reading this index is itself free."
       actions={
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          className={`inline-flex items-center gap-1.5 rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300`}
-        >
-          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} /> Refresh
-        </button>
+        <RefreshButton
+          onRefresh={load}
+          busy={loading}
+          label="Refresh the catalog"
+          iconSize={14}
+          classNames={{ root: refreshClass }}
+        />
       }
     >
       {error && <ErrorNote>{error}</ErrorNote>}

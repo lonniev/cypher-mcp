@@ -3,6 +3,7 @@
 // cypher's stone/zinc/amber, light and dark.
 
 import type {
+  AccountPageClassNames,
   BuildInfoPanelClassNames,
   CouponsPanelClassNames,
   FundingStatusClassNames,
@@ -139,8 +140,6 @@ export const fundingClassNames: FundingStatusClassNames = {
 
 /// The display time zone, drawn like the notebook's other fields.
 export const timezoneClassNames: TimezonePickerClassNames = {
-  root: "mt-4",
-  label: "block text-sm font-medium mb-1",
   select:
     "w-full max-w-sm rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-zinc-950 border border-stone-300 dark:border-zinc-700 focus:outline-none focus:border-amber-400",
 };
@@ -156,4 +155,17 @@ export const buildInfoClassNames: BuildInfoPanelClassNames = {
   label: "w-28 shrink-0 text-stone-400 dark:text-zinc-500",
   value: "min-w-0 break-all font-mono text-stone-600 dark:text-zinc-300",
   link: "!text-amber-700 hover:underline dark:!text-amber-400",
+};
+
+/// The Profile page: the notebook's frame, each account card in the notebook's
+/// card, and Log out as a quiet red action on the right.
+export const accountPageClassNames: AccountPageClassNames = {
+  root: "page-frame px-4 py-6 space-y-5",
+  heading: "text-lg font-semibold",
+  section: `${card} p-5`,
+  sectionHeading: "text-sm font-medium mb-1",
+  sectionIntro: "text-xs text-stone-500 dark:text-zinc-400 mb-3",
+  actions: "flex justify-end",
+  signOut:
+    "text-sm px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors",
 };

@@ -13,8 +13,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatDate } from "@tollbooth-dpyc/web";
-import { useTimezone } from "@tollbooth-dpyc/web/react";
-import { RefreshCw, AlertTriangle, HelpCircle, ShieldCheck, Sparkle } from "lucide-react";
+import { RefreshButton, useTimezone } from "@tollbooth-dpyc/web/react";
+import { AlertTriangle, HelpCircle, ShieldCheck, Sparkle } from "lucide-react";
 import {
   AUDIT_QUESTIONS,
   auditQuery,
@@ -28,7 +28,7 @@ import {
 } from "../../lib/mcp";
 import { useMetered, readCache } from "../../lib/graphCache";
 import { relTime, toMillis } from "../../lib/time";
-import { Page, SectionLabel, Empty, ErrorNote, faint, muted, card } from "./ui";
+import { Page, SectionLabel, Empty, ErrorNote, faint, muted, card, refreshClass } from "./ui";
 
 function ProvBadge({ term }: { term?: string }) {
   if (!term) return null;
@@ -218,13 +218,13 @@ export default function Audit() {
       title="Audit"
       lede="Six audit questions over the intention graph — one shared envelope. PROV terms ride as badges; contradictions surface as a banner; gaps name what is not asserted."
       actions={
-        <button
-          onClick={() => m.refresh()}
-          disabled={m.loading || !name.trim()}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300"
-        >
-          <RefreshCw className={`h-3 w-3 ${m.loading ? "animate-spin" : ""}`} /> Refresh
-        </button>
+        <RefreshButton
+          onRefresh={() => name.trim() && m.refresh()}
+          busy={m.loading}
+          label="Re-run the audit"
+          iconSize={14}
+          classNames={{ root: refreshClass }}
+        />
       }
     >
       {(m.error || envelope?.error) && <ErrorNote>{m.error || envelope?.error}</ErrorNote>}
