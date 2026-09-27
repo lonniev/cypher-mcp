@@ -9,7 +9,7 @@
 // of it (#80).
 
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { matchesPath, SiteNav, type SiteNavAccount, type SiteNavClassNames, type SiteNavItem } from "@tollbooth-dpyc/web/react";
+import { matchesPath, SiteNav, useAppShell, type SiteNavClassNames, type SiteNavItem } from "@tollbooth-dpyc/web/react";
 
 const ITEMS: readonly SiteNavItem[] = [
   { href: "/", label: "Home", end: true },
@@ -57,10 +57,22 @@ const brand = (
 );
 
 /// Site-wide primary navigation. Identical items and order on every page.
-/// Signed in, `account` is the avatar menu; signed out, the right side is the
+/// It reads the one shared session, so a public page and the notebook never
+/// disagree: signed in, the right side is the avatar menu; signed out, the
 /// Sign-in link. Lab Notebook is active for any `/notebook/*` path.
-export function PrimaryNav({ account }: { account?: SiteNavAccount }) {
+export function PrimaryNav() {
   const { pathname } = useLocation();
+  const { session } = useAppShell();
+  const account = session.signedIn
+    ? {
+        npub: session.npub,
+        links: [
+          { href: "/notebook/profile", label: "Profile & theme" },
+          { href: "/notebook/wallet", label: "Wallet" },
+        ],
+        onSignOut: session.signOut,
+      }
+    : undefined;
   return (
     <SiteNav
       brand={brand}
