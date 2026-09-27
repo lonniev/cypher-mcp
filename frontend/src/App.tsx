@@ -29,6 +29,9 @@ import FactoryPage from "./components/public/FactoryPage";
 import MemoryPage from "./components/public/MemoryPage";
 import JoinPage from "./components/public/JoinPage";
 
+/** The site's own words above the sign-in card. */
+const WELCOME = "The Lab Notebook: the intention graph behind the DPYC™ Agentic Software Factory — capabilities, issues, invariants and the reasons they exist.";
+
 // The package's AppShell holds the session, the sign-in gate, service_status,
 // the theme and the debug log. The site keeps its routes: the public pages
 // need no sign-in, and the Lab Notebook shows the gate until one is made.
@@ -37,6 +40,7 @@ export default function App() {
   return (
     <AppShell
       signedOut={site}
+      gateOptions={{ welcome: WELCOME, linksCredit: false }}
       footer={<PublicFooter />}
       classNames={{ root: "bg-stone-50 dark:bg-zinc-950 text-stone-900 dark:text-zinc-100 transition-colors" }}
     >
