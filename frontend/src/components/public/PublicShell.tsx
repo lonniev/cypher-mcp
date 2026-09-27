@@ -52,7 +52,6 @@ const brand = (
   <Link to="/" className="flex items-center gap-2 mr-3">
     <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
     <span className="font-serif font-semibold tracking-wide">Cypher</span>
-    <span className="hidden sm:inline text-sm text-stone-400 dark:text-zinc-500">· Factory spokesman</span>
   </Link>
 );
 
