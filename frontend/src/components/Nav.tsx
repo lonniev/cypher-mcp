@@ -1,10 +1,7 @@
 import { NavLink } from "react-router-dom";
-import { useAppShell } from "@tollbooth-dpyc/web/react";
 import { PrimaryNav } from "./public/PublicShell";
 
 export default function Nav() {
-  const { session } = useAppShell();
-
   const tab = (to: string, label: string, end = false) => (
     <NavLink
       to={to}
@@ -24,16 +21,7 @@ export default function Nav() {
   return (
     <>
       {/* Primary site nav — same items/order as the public pages (#80). */}
-      <PrimaryNav
-        account={{
-          npub: session.npub,
-          links: [
-            { href: "/notebook/profile", label: "Profile & theme" },
-            { href: "/notebook/wallet", label: "Wallet" },
-          ],
-          onSignOut: session.signOut,
-        }}
-      />
+      <PrimaryNav />
       {/* Secondary notebook registers — subordinate row, does not replace primary. */}
       <nav
         aria-label="Lab Notebook registers"
