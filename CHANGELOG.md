@@ -3,48 +3,7 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
-
-### Fixed — audit_what_derived_from and audit_what_contradicts rejected as_at_ms
-
-Four of the six `audit_*` reads already took `as_at_ms` (default 0 = now). The other two —
-`audit_what_derived_from` and `audit_what_contradicts` — omitted it from both the param schema
-and the Cypher, so callers who had just successfully passed `as_at_ms` to a sibling got a raw
-Pydantic `unexpected_keyword_argument` (and the same rejection via `execute_query_by_key`).
-Those are exactly the questions whose answers change as assertions supersede one another.
-
-Both now declare `as_at_ms` with the same default/semantics and filter assertion (and, for
-contradicts, invariant) `valid_from`/`valid_to` the way their siblings do. `audit_what_changed_since`
-keeps its deliberate `since_ms` window parameter. Re-seed the factory vocabulary to publish the
-updated templates.
-
-### Added — audit-answering named query catalog (PROV-O vocabulary)
-
-Vocabulary and properties for retrospective audit answers — not a schema rewrite,
-no RDF serializer, no rdflib. Seed with `scripts/seed_factory_vocabulary.py`.
-
-- **Assertion props** on Decision / Assertion / Invariant: `role`, `confidence`,
-  `provenance_status` (`suggested` | `asserted` | `authorized` | `superseded`),
-  `generated_at_time`, plus `attributed_to` when known. Makes the Porter/Journeyman
-  split queryable (roles map onto prov:Role).
-- **Effectivity** (`valid_from` / `valid_to`) on Capability, Invariant, Decision,
-  and Assertion — valid time alongside `recent_activity`'s transaction time.
-- **Severity** on Invariant: `Violation` | `Warning` | `Info` (SHACL-ish); default
-  `Violation` preserves today's equal-enforceability semantics.
-- **CONTRADICTS** and **SUPERSEDES** relationship types. `authorize_capability_why`
-  no longer silently overwrites the Journeyman's suggested why — it mints a
-  versioned `:Assertion`, SUPERSEDES prior authorized claims, and CONTRADICTS open
-  suggestions. Both sides stay queryable. `mark_invariant_contradiction` records
-  incompatible invariants the same way. `retire_funding_block` keeps the keep-not-delete
-  discipline and stamps `provenance_status='superseded'`.
-- **Six audit reads** (one question each, shared envelope):
-  `audit_why_exists`, `audit_who_authorized`, `audit_what_derived_from`,
-  `audit_what_guards`, `audit_what_contradicts`, `audit_what_changed_since`.
-  Envelope: `{subject, question, assertions, contradictions, gaps}` with PROV term
-  strings as badges. The `gaps` array is an honest work queue.
-- **FE Audit page** (`/audit`) — capability picker, as-of date (valid time), the six
-  questions, contradictions banner above the answer, confidence bands, effectivity
-  lines, and gaps.
+Changes not yet released live in `changelog.d/`, one file per change — see the README there for why, and `scripts/changelog.py` for what folds them in at release time.
 
 ## [0.8.6] — 2026-08-24
 
