@@ -20,13 +20,13 @@ async def test_make_runner_delegates_to_shared_executor(monkeypatch):
         return {"ok": True}
 
     monkeypatch.setattr(server, "_run_named_query", fake_run)
-    runner = server._make_runner("find_airline_flights")
-    out = await runner({"from_city": "JFK"}, "np", "pf")
+    runner = server._make_runner("find_a_service")
+    out = await runner({"keyword": "vault"}, "np", "pf")
 
     assert out == {"ok": True}
     assert captured == {
-        "key": "find_airline_flights",
-        "params": {"from_city": "JFK"},
+        "key": "find_a_service",
+        "params": {"keyword": "vault"},
         "npub": "np",
         "dpop_token": "pf",
     }
@@ -35,27 +35,27 @@ async def test_make_runner_delegates_to_shared_executor(monkeypatch):
 async def test_register_projects_typed_tool_then_unregister_removes_it():
     rt = server.runtime
     name = rt.register_dynamic_tool(
-        name="find_airline_flights",
+        name="find_a_service",
         param_schema={
-            "from_city": {"type": "string"},
-            "to_city": {"type": "string"},
+            "keyword": {"type": "string", "description": "A word naming the concern."},
+            "limit": {"type": "int", "description": "Most rows to return."},
         },
-        runner=server._make_runner("find_airline_flights"),
-        title="Find airline flights",
+        runner=server._make_runner("find_a_service"),
+        title="Find a service",
         behavior=READS_REMOTE,
-        intent="Find flights between two cities.",
+        intent="Name the service that handles a concern.",
         category="read",
     )
     try:
-        assert name == "cypher_find_airline_flights"
+        assert name == "cypher_find_a_service"
         tools = await server.mcp._list_tools()
         by_name = {t.name: t for t in tools}
-        assert "cypher_find_airline_flights" in by_name
-        props = by_name["cypher_find_airline_flights"].parameters["properties"]
-        assert props["from_city"]["type"] == "string"
-        assert props["to_city"]["type"] == "string"
+        assert "cypher_find_a_service" in by_name
+        props = by_name["cypher_find_a_service"].parameters["properties"]
+        assert props["keyword"]["type"] == "string"
+        assert props["limit"]["type"] == "integer"
     finally:
-        rt.unregister_dynamic_tool("find_airline_flights", _quiet=True)
+        rt.unregister_dynamic_tool("find_a_service", _quiet=True)
 
     after = {t.name for t in await server.mcp._list_tools()}
-    assert "cypher_find_airline_flights" not in after
+    assert "cypher_find_a_service" not in after
