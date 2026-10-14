@@ -7,6 +7,8 @@ shared-executor runner and that a published query projects a typed
 
 from __future__ import annotations
 
+from tollbooth.tool_identity import READS_REMOTE
+
 from cypher_mcp import server
 
 
@@ -39,6 +41,8 @@ async def test_register_projects_typed_tool_then_unregister_removes_it():
             "to_city": {"type": "string"},
         },
         runner=server._make_runner("find_airline_flights"),
+        title="Find airline flights",
+        behavior=READS_REMOTE,
         intent="Find flights between two cities.",
         category="read",
     )
