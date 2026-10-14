@@ -36,8 +36,8 @@ Three conceptual layers:
 > billed answers — an operator adopted by an Authority, AuraDB-backed, with
 > refund-on-raise verified end to end. **Named tools are now live (L3 tool
 > synthesis):** an operator can `publish_tool(key)` to project a query as a
-> first-class, typed tool (e.g. `cypher_find_airline_flights(from_city,
-> to_city)`), priced individually in Pricing Studio. Per-key parametric *pricing
+> first-class, typed tool (e.g. `cypher_which_service_handles(keyword)`),
+> priced individually in Pricing Studio. Per-key parametric *pricing
 > formulas* remain a later step — see [CHANGELOG.md](CHANGELOG.md).
 
 ## Tools
@@ -79,7 +79,7 @@ ever reaches a patron.
 
 `cypher_publish_tool(key)` projects a catalog query as a first-class MCP tool
 named `cypher_<key>` whose flat, typed parameters come from the query's schema —
-e.g. `cypher_find_airline_flights(from_city, to_city)`. An agent then calls it by
+e.g. `cypher_which_service_handles(keyword)`. An agent then calls it by
 name with typed params instead of `execute_query_by_key(key, params)`. Internally
 every named tool funnels through the **same shared executor** (look the stored
 Cypher up by key → parameter-bind → run), so there is one code path and the same

@@ -83,8 +83,8 @@ mcp = FastMCP(
         "3. Author your catalog with `cypher_create_query`, then patrons can "
         "execute by key.\n"
         "4. Optionally `cypher_publish_tool(key)` to expose a query as a "
-        "named, typed tool (e.g. `cypher_find_airline_flights(from_city, "
-        "to_city)`). Published tools start unpriced — set their price in "
+        "named, typed tool (e.g. `cypher_which_service_handles(keyword)`). "
+        "Published tools start unpriced — set their price in "
         "Pricing Studio like any new tool."
     ),
 )
@@ -435,7 +435,7 @@ async def execute_query_by_key(
     You supply the key of an operator-published query plus its parameters.
     The operator owns the query text; you never see or write raw Cypher. If
     the operator has published a query as a named tool (e.g.
-    ``cypher_find_airline_flights``), you can call that directly instead.
+    ``cypher_which_service_handles``), you can call that directly instead.
 
     Billing note: you are charged only for a delivered answer. If the key
     is unknown, the parameters are invalid, or the query fails, the call
@@ -702,7 +702,7 @@ async def publish_tool(
 
     Projects the published query as a first-class tool named ``cypher_<key>``
     whose flat, typed parameters come from the query's param schema (e.g.
-    ``cypher_find_airline_flights(from_city, to_city)``). The tool is registered
+    ``cypher_which_service_handles(keyword)``). The tool is registered
     immediately but starts **unpriced** — it appears in Pricing Studio like any
     new tool; set its price there. Until priced, calls return "not priced yet
     (TBD)". Patrons then call it by name with typed params instead of
