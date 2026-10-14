@@ -1,0 +1,1 @@
+- Every tool carries a title and its behaviour, including each published query tool, whose behaviour is read from its Cypher (a read query reads; a write query adds, overwrites or deletes as its clauses say); `npub` and `dpop_token` use the fleet's shared descriptions; the server reports its own version, website and icon.

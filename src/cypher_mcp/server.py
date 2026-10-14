@@ -23,12 +23,12 @@ Run locally:
 from __future__ import annotations
 
 import logging
-from typing import Annotated, Any
+from typing import Any
 from urllib.parse import quote
 
 from fastmcp import FastMCP
 from fastmcp.server.middleware import Middleware
-from pydantic import Field
+from mcp.types import Icon
 from tollbooth.credential_templates import CredentialTemplate, FieldSpec
 from tollbooth.credential_validators import validate_btcpay_creds
 from tollbooth.dynamic_tools import (
@@ -36,10 +36,21 @@ from tollbooth.dynamic_tools import (
     validate_param_schema,
     validate_params,
 )
+from tollbooth.params import DpopToken, PatronNpub
 from tollbooth.runtime import OperatorRuntime, register_standard_tools
-from tollbooth.tool_identity import STANDARD_IDENTITIES, ToolIdentity
+from tollbooth.tool_identity import (
+    DELETES,
+    READS,
+    READS_REMOTE,
+    REPLACES,
+    STANDARD_IDENTITIES,
+    WRITES,
+    ToolBehavior,
+    ToolIdentity,
+)
 
 from cypher_mcp import __version__, catalog, graph, public_stats
+from cypher_mcp.tool_meta import behavior_for_query, title_for_key
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +60,9 @@ logger = logging.getLogger(__name__)
 
 mcp = FastMCP(
     "cypher-mcp",
+    version=__version__,
+    website_url="https://github.com/lonniev/cypher-mcp",
+    icons=[Icon(src="https://tollbooth-dpyc.com/dpyc-logo.png", mimeType="image/png")],
     instructions=(
         "Cypher MCP — monetized graph answers over Bitcoin Lightning "
         "micropayments. This operator sells operator-authored, parameterized, "
@@ -94,12 +108,20 @@ UNPUBLISH_TOOL_UUID       = "248d328a-f7e0-50a1-b3d9-369d3e4372c0"
 # Pinned via capability_uuid("public_factory_stats"); never regenerate.
 PUBLIC_FACTORY_STATS_UUID = "fbffe21d-3d5f-571d-b962-b0b4329ffa95"
 
+# A key may name a write-mode query, so running one by key may add, overwrite or
+# delete graph data, and a repeat may add again.
+RUNS_ANY_QUERY_REMOTE = ToolBehavior(
+    read_only=False, destructive=True, idempotent=False, open_world=True
+)
+
 _DOMAIN_TOOLS = [
     # The one priced patron tool. Flat starter price; operator reprices in Neon.
     ToolIdentity(
         tool_id=EXECUTE_QUERY_BY_KEY_UUID,
         capability="execute_query_by_key",
         category="read",
+        title="Run a query by key",
+        behavior=RUNS_ANY_QUERY_REMOTE,
         intent="Execute a published, parameterized Cypher query by key.",
         pricing_hint_type="flat",
         pricing_hint_value=5,
@@ -109,36 +131,45 @@ _DOMAIN_TOOLS = [
         tool_id=PUBLIC_FACTORY_STATS_UUID,
         capability="public_factory_stats",
         category="free",
+        title="Public factory stats",
+        behavior=READS_REMOTE,
         intent="Unauthenticated aggregate counts for the public factory landing pages.",
     ),
     # Operator-only authoring plane — restricted (operator-proof) + unpriced.
     ToolIdentity(
         tool_id=CREATE_QUERY_UUID, capability="create_query", category="restricted",
+        title="Create a query", behavior=WRITES,
         intent="Operator-only: add a named Cypher query template to the catalog.",
     ),
     ToolIdentity(
         tool_id=UPDATE_QUERY_UUID, capability="update_query", category="restricted",
+        title="Update a query", behavior=REPLACES,
         intent="Operator-only: update an existing named Cypher query template.",
     ),
     ToolIdentity(
         tool_id=GET_QUERY_UUID, capability="get_query", category="restricted",
+        title="Get a query", behavior=READS,
         intent="Operator-only: fetch one catalog entry (template + schema).",
     ),
     ToolIdentity(
         tool_id=LIST_QUERIES_UUID, capability="list_queries", category="restricted",
+        title="List queries", behavior=READS,
         intent="Operator-only: list the catalog's published query keys.",
     ),
     ToolIdentity(
         tool_id=DELETE_QUERY_UUID, capability="delete_query", category="restricted",
+        title="Delete a query", behavior=DELETES,
         intent="Operator-only: delete a catalog entry.",
     ),
     # Tool-synthesis plane — publish/retire a query as a named, typed tool.
     ToolIdentity(
         tool_id=PUBLISH_TOOL_UUID, capability="publish_tool", category="restricted",
+        title="Publish a query as a tool", behavior=REPLACES,
         intent="Operator-only: expose a catalog query as a named, individually-priced MCP tool.",
     ),
     ToolIdentity(
         tool_id=UNPUBLISH_TOOL_UUID, capability="unpublish_tool", category="restricted",
+        title="Unpublish a query tool", behavior=DELETES,
         intent="Operator-only: remove a previously published named tool.",
     ),
 ]
@@ -270,6 +301,8 @@ async def _materialize_published(vault: Any) -> None:
                 name=key,
                 param_schema=row.get("param_schema") or {},
                 runner=_make_runner(key),
+                title=title_for_key(key),
+                behavior=behavior_for_query(row),
                 intent=row.get("tool_intent") or row.get("description") or "",
                 category="read",
             )
@@ -394,8 +427,8 @@ def _make_runner(key: str):
 async def execute_query_by_key(
     key: str,
     params: dict[str, Any] | None = None,
-    npub: Annotated[str, Field(description="Required. Your Nostr public key (npub1...) for credit billing.")] = "",
-    dpop_token: str = "",
+    npub: PatronNpub = "",
+    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Execute a published, parameterized Cypher query by its key.
 
@@ -473,8 +506,8 @@ async def create_query(
     access_mode: str = "read",
     row_limit: int = 1000,
     timeout_ms: int = 5000,
-    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
-    dpop_token: str = "",
+    npub: PatronNpub = "",
+    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: publish a new named Cypher query template.
 
@@ -489,7 +522,7 @@ async def create_query(
         description: Human-readable description of what the query returns.
         access_mode: 'read' (default) or 'write'.
         row_limit: Max rows returned (default 1000).
-        timeout_ms: Best-effort query timeout (default 5000).
+        timeout_ms: Best-effort query timeout in milliseconds (default 5000).
     """
     param_schema = param_schema or {}
     if errs := validate_param_schema(param_schema):
@@ -522,12 +555,23 @@ async def update_query(
     access_mode: str = "read",
     row_limit: int = 1000,
     timeout_ms: int = 5000,
-    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
-    dpop_token: str = "",
+    npub: PatronNpub = "",
+    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: update an existing named Cypher query template.
 
-    Same shape as create_query, but the key must already exist.
+    Same shape as create_query, but the key must already exist. Every field
+    is replaced with the values given here.
+
+    Args:
+        key: Key of the existing query to replace (e.g. 'holdings_by_sector').
+        cypher_template: Parameterized Cypher using $param placeholders.
+        param_schema: Declared parameters: name -> {"type": string|int|float|
+            bool|list, "required": true|false, "default": ..., "description": ...}.
+        description: Human-readable description of what the query returns.
+        access_mode: 'read' (default) or 'write'.
+        row_limit: Max rows returned (default 1000).
+        timeout_ms: Best-effort query timeout in milliseconds (default 5000).
     """
     param_schema = param_schema or {}
     if errs := validate_param_schema(param_schema):
@@ -585,8 +629,8 @@ async def _browser_edit_url(cypher: str) -> str:
 @runtime.paid_tool(GET_QUERY_UUID)
 async def get_query(
     key: str,
-    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
-    dpop_token: str = "",
+    npub: PatronNpub = "",
+    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: fetch one catalog entry (template + schema + metadata).
 
@@ -595,6 +639,9 @@ async def get_query(
     so the analyst refines it in Neo4j's own UI and saves it back with
     ``update_query``. Omitted if the operator's Neo4j credentials aren't
     delivered yet (best-effort; the raw template is always present to paste).
+
+    Args:
+        key: The catalog query key (see ``list_queries``).
     """
     vault = await _ensure_catalog()
     row = await catalog.get(vault, runtime.operator_npub(), key)
@@ -610,8 +657,8 @@ async def get_query(
 @tool
 @runtime.paid_tool(LIST_QUERIES_UUID)
 async def list_queries(
-    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
-    dpop_token: str = "",
+    npub: PatronNpub = "",
+    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: list this operator's published query keys."""
     vault = await _ensure_catalog()
@@ -623,10 +670,14 @@ async def list_queries(
 @runtime.paid_tool(DELETE_QUERY_UUID)
 async def delete_query(
     key: str,
-    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
-    dpop_token: str = "",
+    npub: PatronNpub = "",
+    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
-    """Operator-only: delete a catalog entry by key."""
+    """Operator-only: delete a catalog entry by key.
+
+    Args:
+        key: The catalog query key to delete (see ``list_queries``).
+    """
     vault = await _ensure_catalog()
     removed = await catalog.delete(vault, runtime.operator_npub(), key)
     if not removed:
@@ -644,8 +695,8 @@ async def delete_query(
 async def publish_tool(
     key: str,
     tool_intent: str = "",
-    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
-    dpop_token: str = "",
+    npub: PatronNpub = "",
+    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: expose a catalog query as a named, typed MCP tool.
 
@@ -678,6 +729,8 @@ async def publish_tool(
         name=key,
         param_schema=row.get("param_schema") or {},
         runner=_make_runner(key),
+        title=title_for_key(key),
+        behavior=behavior_for_query(row),
         intent=intent,
         category="read",
     )
@@ -697,14 +750,17 @@ async def publish_tool(
 @runtime.paid_tool(UNPUBLISH_TOOL_UUID)
 async def unpublish_tool(
     key: str,
-    npub: Annotated[str, Field(description="Required. The operator's npub (npub1...).")] = "",
-    dpop_token: str = "",
+    npub: PatronNpub = "",
+    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: retire a previously published named tool.
 
     The catalog query itself is kept (still runnable via
     ``execute_query_by_key``); only its projected named tool is removed.
     Reconnect to see it disappear from the tool list.
+
+    Args:
+        key: The catalog query key whose named tool to retire.
     """
     vault = await _ensure_catalog()
     operator = runtime.operator_npub()
