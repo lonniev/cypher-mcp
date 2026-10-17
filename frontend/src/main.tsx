@@ -11,6 +11,7 @@ configureTollbooth({
   slug: "cypher",
   appName: "Cypher Lab Notebook",
   mcpUrl: import.meta.env.VITE_MCP_URL as string,
+  operatorUrl: "https://cypher-mcp.fastmcp.app",
   // A free operator-wide read that takes no npub/proof envelope — the wheel
   // rejects an unexpected `npub` kwarg on it.
   extraBootstrapTools: ["public_factory_stats"],
