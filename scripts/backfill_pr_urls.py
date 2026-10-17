@@ -71,7 +71,7 @@ async def _run(url: str, operator_npub: str, operator_nsec: str, dry_run: bool) 
     from fastmcp import Client
     from tollbooth.identity_proof import create_proof
 
-    async with Client(url) as client:
+    async with Client(url, auth="anonymous") as client:
         def proof(capability: str) -> str:
             return create_proof(operator_nsec, f"{SLUG}_{capability}")
 
