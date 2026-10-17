@@ -134,7 +134,7 @@ async def _apply(url: str, operator_npub: str, operator_nsec: str,
     def proof(capability: str) -> str:
         return create_proof(operator_nsec, f"{SLUG}_{capability}")
 
-    async with Client(url) as client:
+    async with Client(url, auth="anonymous") as client:
         async def call(capability: str, args: dict[str, Any]) -> dict[str, Any]:
             # create_proof timestamps at whole-second resolution with a fixed body, so two
             # calls signing for the same tool in the same second mint an identical Nostr

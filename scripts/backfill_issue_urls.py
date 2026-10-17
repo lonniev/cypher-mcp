@@ -107,7 +107,7 @@ async def _run(url: str, operator_npub: str, operator_nsec: str,
 
     resolve = owner_resolver(workspace)
 
-    async with Client(url) as client:
+    async with Client(url, auth="anonymous") as client:
         def proof(capability: str) -> str:
             return create_proof(operator_nsec, f"{SLUG}_{capability}")
 
