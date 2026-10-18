@@ -36,7 +36,7 @@ from tollbooth.dynamic_tools import (
     validate_param_schema,
     validate_params,
 )
-from tollbooth.params import DpopToken, PatronNpub
+from tollbooth.params import PatronNpub
 from tollbooth.runtime import OperatorRuntime, register_standard_tools
 from tollbooth.tool_identity import (
     DELETES,
@@ -353,15 +353,14 @@ async def _run_named_query(
     key: str,
     params: dict[str, Any] | None,
     npub: str,
-    dpop_token: str,
 ) -> dict[str, Any]:
     """Shared executor: resolve a published query by key, validate, run it.
 
     Used by both the generic ``execute_query_by_key`` and every synthesized
     named tool. Raises ``ValueError`` for an unknown key, invalid params, or
     undelivered credentials so the caller's ``@paid_tool`` wrapper rolls back
-    the debit (refund-on-raise). ``npub`` / ``dpop_token`` are taken for parity
-    with the dynamic-tool runner contract; identity gating already happened at
+    the debit (refund-on-raise). ``npub`` is taken for parity with the
+    dynamic-tool runner contract; identity gating already happened at
     the wrapper, and parameters bind as Cypher ``$params`` (never interpolated).
     """
     vault = await _ensure_catalog()
@@ -414,13 +413,11 @@ async def _run_named_query(
 def _make_runner(key: str):
     """Build a dynamic-tool runner bound to a catalog ``key``.
 
-    Matches the wheel's runner contract ``async (params, npub, dpop_token) -> dict``
+    Matches the wheel's runner contract ``async (params, npub) -> dict``
     and funnels through the one shared executor.
     """
-    async def runner(
-        params: dict[str, Any], npub: str, dpop_token: str
-    ) -> dict[str, Any]:
-        return await _run_named_query(key, params, npub, dpop_token)
+    async def runner(params: dict[str, Any], npub: str) -> dict[str, Any]:
+        return await _run_named_query(key, params, npub)
 
     return runner
 
@@ -431,7 +428,6 @@ async def execute_query_by_key(
     key: str,
     params: dict[str, Any] | None = None,
     npub: PatronNpub = "",
-    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Execute a published, parameterized Cypher query by its key.
 
@@ -449,7 +445,7 @@ async def execute_query_by_key(
         params: Parameters for the query — bound as Cypher $params, never
             interpolated. Must match the query's declared schema.
     """
-    return await _run_named_query(key, params, npub, dpop_token)
+    return await _run_named_query(key, params, npub)
 
 
 # ---------------------------------------------------------------------------
@@ -510,7 +506,6 @@ async def create_query(
     row_limit: int = 1000,
     timeout_ms: int = 5000,
     npub: PatronNpub = "",
-    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: publish a new named Cypher query template.
 
@@ -559,7 +554,6 @@ async def update_query(
     row_limit: int = 1000,
     timeout_ms: int = 5000,
     npub: PatronNpub = "",
-    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: update an existing named Cypher query template.
 
@@ -633,7 +627,6 @@ async def _browser_edit_url(cypher: str) -> str:
 async def get_query(
     key: str,
     npub: PatronNpub = "",
-    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: fetch one catalog entry (template + schema + metadata).
 
@@ -661,7 +654,6 @@ async def get_query(
 @runtime.paid_tool(LIST_QUERIES_UUID)
 async def list_queries(
     npub: PatronNpub = "",
-    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: list this operator's published query keys."""
     vault = await _ensure_catalog()
@@ -674,7 +666,6 @@ async def list_queries(
 async def delete_query(
     key: str,
     npub: PatronNpub = "",
-    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: delete a catalog entry by key.
 
@@ -699,7 +690,6 @@ async def publish_tool(
     key: str,
     tool_intent: str = "",
     npub: PatronNpub = "",
-    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: expose a catalog query as a named, typed MCP tool.
 
@@ -754,7 +744,6 @@ async def publish_tool(
 async def unpublish_tool(
     key: str,
     npub: PatronNpub = "",
-    dpop_token: DpopToken = "",
 ) -> dict[str, Any]:
     """Operator-only: retire a previously published named tool.
 

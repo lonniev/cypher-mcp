@@ -15,20 +15,19 @@ from cypher_mcp import server
 async def test_make_runner_delegates_to_shared_executor(monkeypatch):
     captured: dict = {}
 
-    async def fake_run(key, params, npub, dpop_token):
-        captured.update(key=key, params=params, npub=npub, dpop_token=dpop_token)
+    async def fake_run(key, params, npub):
+        captured.update(key=key, params=params, npub=npub)
         return {"ok": True}
 
     monkeypatch.setattr(server, "_run_named_query", fake_run)
     runner = server._make_runner("find_a_service")
-    out = await runner({"keyword": "vault"}, "np", "pf")
+    out = await runner({"keyword": "vault"}, "np")
 
     assert out == {"ok": True}
     assert captured == {
         "key": "find_a_service",
         "params": {"keyword": "vault"},
         "npub": "np",
-        "dpop_token": "pf",
     }
 
 

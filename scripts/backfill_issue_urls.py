@@ -15,7 +15,7 @@ execute_query_by_key -> delete_query), the same one the seed script uses, and
 only fill where the value is currently null (coalesce) so a re-run is safe.
 
 The migration reads the live graph to find the URL-less nodes, so it always needs
-the operator nsec (env OPERATOR_NSEC, or a hidden prompt) to sign the read proof.
+the operator nsec (env OPERATOR_NSEC, or a hidden prompt) to sign its requests.
 --dry-run reads and prints the plan but performs NO writes.
 
 Usage:
@@ -102,29 +102,18 @@ def owner_resolver(workspace: Path):
 
 async def _run(url: str, operator_npub: str, operator_nsec: str,
                workspace: Path, dry_run: bool) -> int:
-    from fastmcp import Client
-    from tollbooth.identity_proof import create_proof
+    from tollbooth.mcp_client import service_client
 
     resolve = owner_resolver(workspace)
 
-    async with Client(url, auth="anonymous") as client:
-        def proof(capability: str) -> str:
-            return create_proof(operator_nsec, f"{SLUG}_{capability}")
+    async with service_client(url, operator_nsec) as client:
 
         async def call(capability: str, args: dict[str, Any]) -> dict[str, Any]:
-            # create_proof signs at whole-second resolution; a repeat within the same
-            # second mints an identical (replayed) event, so re-sign after a tick.
-            data: dict[str, Any] = {}
-            for attempt in range(3):
-                payload = {**args, "npub": operator_npub, "dpop_token": proof(capability)}
-                res = await client.call_tool(f"{SLUG}_{capability}", payload)
-                data = res.data if hasattr(res, "data") else res
-                data = data if isinstance(data, dict) else {"raw": data}
-                if "proof" in str(data.get("error", "")).lower() and attempt < 2:
-                    await asyncio.sleep(1.1)
-                    continue
-                return data
-            return data
+            # The connection signs every request with the operator's key (NIP-98),
+            # so a call names only the npub.
+            res = await client.call_tool(f"{SLUG}_{capability}", {**args, "npub": operator_npub})
+            data = res.data if hasattr(res, "data") else res
+            return data if isinstance(data, dict) else {"raw": data}
 
         # 1. Enumerate every issue via the PUBLISHED, priced list_issues tool — it
         #    returns each issue's url, so we filter for the empty ones. Using the real
@@ -228,7 +217,7 @@ def main() -> int:
         print("--operator-npub (or OPERATOR_NPUB) is required.", file=sys.stderr)
         return 2
 
-    # Even --dry-run reads the live graph, which requires a signed operator proof.
+    # Even --dry-run reads the live graph, which requires a request signed by the operator.
     operator_nsec = os.environ.get("OPERATOR_NSEC", "")
     if not operator_nsec:
         import getpass
