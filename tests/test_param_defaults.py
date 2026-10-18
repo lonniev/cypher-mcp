@@ -65,7 +65,7 @@ async def _run(params: dict[str, Any] | None) -> dict[str, Any]:
         patch.object(server.runtime, "load_credentials", AsyncMock(return_value=_CREDS)),
         patch.object(server.graph, "run_named", AsyncMock(side_effect=fake_run_named)),
     ):
-        await server._run_named_query("audit_why_exists", params, "npub1", "tok")
+        await server._run_named_query("audit_why_exists", params, "npub1")
     return captured
 
 

@@ -15,7 +15,7 @@ allow-list so you can replicate it in Pricing Studio, and ``--gate`` applies it
 programmatically via ``set_pricing_model`` if you prefer.
 
 Nothing here writes an nsec anywhere: the operator nsec is used transiently to sign
-one-shot kind-27235 proofs and is never logged or persisted.
+each request (NIP-98) and is never logged or persisted.
 
 Usage:
     # preview everything without calling the server or needing an nsec:
@@ -128,28 +128,15 @@ def apply_gate_and_price(model: dict[str, Any], npubs: dict[str, str],
 
 async def _apply(url: str, operator_npub: str, operator_nsec: str,
                  npubs: dict[str, str], gate: bool, price: bool = False) -> int:
-    from fastmcp import Client
-    from tollbooth.identity_proof import create_proof
+    from tollbooth.mcp_client import service_client
 
-    def proof(capability: str) -> str:
-        return create_proof(operator_nsec, f"{SLUG}_{capability}")
-
-    async with Client(url, auth="anonymous") as client:
+    async with service_client(url, operator_nsec) as client:
         async def call(capability: str, args: dict[str, Any]) -> dict[str, Any]:
-            # create_proof timestamps at whole-second resolution with a fixed body, so two
-            # calls signing for the same tool in the same second mint an identical Nostr
-            # event (same id) and the server's replay guard rejects the second as seen.
-            # Re-sign after the second ticks over — a fresh timestamp gives a fresh id.
-            for attempt in range(3):
-                payload = {**args, "npub": operator_npub, "dpop_token": proof(capability)}
-                res = await client.call_tool(f"{SLUG}_{capability}", payload)
-                data = res.data if hasattr(res, "data") else res
-                data = data if isinstance(data, dict) else {"raw": data}
-                if "proof" in str(data.get("error", "")).lower() and attempt < 2:
-                    await asyncio.sleep(1.1)
-                    continue
-                return data
-            return data
+            # The connection signs every request with the operator's key (NIP-98),
+            # so a call names only the npub.
+            res = await client.call_tool(f"{SLUG}_{capability}", {**args, "npub": operator_npub})
+            data = res.data if hasattr(res, "data") else res
+            return data if isinstance(data, dict) else {"raw": data}
 
         # 1 + 2: author and publish each write template (idempotent). The published
         # tools appear in Pricing Studio unpriced — price them there. Starting
@@ -183,8 +170,8 @@ async def _apply(url: str, operator_npub: str, operator_nsec: str,
                 d = res.data if hasattr(res, "data") else res
                 return d if isinstance(d, dict) else {"raw": d}
             # get/set_pricing_model have their OWN signatures — get takes no auth, set takes
-            # model_json + dpop_token (proof). NEITHER takes npub, so call them directly
-            # rather than through the npub-adding call() helper.
+            # model_json alone (the signed connection proves the operator). NEITHER takes
+            # npub, so call them directly rather than through the npub-adding call() helper.
             model_res = _data(await client.call_tool(f"{SLUG}_get_pricing_model", {}))
             model = model_res.get("pricing_model") or model_res.get("model") or model_res
             # npubs drive the allow-list; empty (price-only) => empty chain => ungated.
@@ -192,7 +179,6 @@ async def _apply(url: str, operator_npub: str, operator_nsec: str,
             model = apply_gate_and_price(model, npubs if gate else {}, set_prices=price)
             r = _data(await client.call_tool(f"{SLUG}_set_pricing_model", {
                 "model_json": json.dumps(model),
-                "dpop_token": proof("set_pricing_model"),
             }))
             label = (f"gated to {list(npubs.values())}, prices preserved" if gate
                      else "priced, ungated")

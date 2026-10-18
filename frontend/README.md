@@ -21,10 +21,11 @@ same-origin `/mcp` → `https://cypher-mcp.fastmcp.app/mcp`.
 Identity is a Nostr npub. Two interchangeable tactics, transparent to callers
 (`src/lib/mcp.ts`, `inlineProof.ts`, `sessionNsec.ts`, `NpubGate.tsx`):
 
-- **nsec in browser** — a session key signs a fresh kind-27235 inline proof per
-  metered call, scoped to the runtime tool name. The nsec never leaves the tab.
-- **npub + DM login** — a Secure Courier challenge DM; the replay `dpop_token`
-  is cached and sent verbatim. Returning users skip the DM.
+- **nsec in browser** — a session key signs every request (NIP-98). The nsec
+  never leaves the tab.
+- **npub + DM login** — a Secure Courier challenge DM proves the npub into this
+  tab's OAuth connection, which then proves it on every call. Returning users
+  skip the DM while the connection holds it.
 
 The nsec is never sent to the backend. A lapsed proof bounces the user back to
 sign-in with a calm re-auth notice.

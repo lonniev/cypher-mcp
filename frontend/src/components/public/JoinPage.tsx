@@ -72,7 +72,7 @@ export default function JoinPage() {
         <Step
           n="2"
           title="Prove you control it"
-          body="When you call a paid tool, this operator sends a signed challenge to your npub over Nostr. Reply from your client; the reply proves the key is yours. Keep the dpop_token the tool returns — it is cached so you are not challenged on every call."
+          body="When you call a paid tool, this operator sends a signed challenge to your npub over Nostr. Reply from your client; the reply proves the key is yours, and your connection keeps that proof so you are not challenged on every call."
         />
         <Step
           n="3"
