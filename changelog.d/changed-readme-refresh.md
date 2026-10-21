@@ -1,1 +1,0 @@
-- README now matches the code: adoption (`request_adoption`, then the Authority owner approves) is the only way in, the deploy config is `fastmcp.json`, the factory vocabulary is described without a count that rots, the seeding script signs each request (NIP-98), and `cypher_public_factory_stats` plus the `frontend/` notebook are documented.
