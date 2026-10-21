@@ -1,1 +1,0 @@
-- The named-tool example in the server instructions, docstrings and README is `cypher_which_service_handles(keyword)`, a query the catalog really publishes; the retired airline example is gone.

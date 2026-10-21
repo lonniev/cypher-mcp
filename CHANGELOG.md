@@ -5,6 +5,70 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Changes not yet released live in `changelog.d/`, one file per change — see the README there for why, and `scripts/changelog.py` for what folds them in at release time.
 
+## [0.9.0] — 2026-10-21
+
+### Added
+
+Vocabulary and properties for retrospective audit answers — not a schema rewrite,
+no RDF serializer, no rdflib. Seed with `scripts/seed_factory_vocabulary.py`.
+
+- **Assertion props** on Decision / Assertion / Invariant: `role`, `confidence`,
+  `provenance_status` (`suggested` | `asserted` | `authorized` | `superseded`),
+  `generated_at_time`, plus `attributed_to` when known. Makes the Porter/Journeyman
+  split queryable (roles map onto prov:Role).
+- **Effectivity** (`valid_from` / `valid_to`) on Capability, Invariant, Decision,
+  and Assertion — valid time alongside `recent_activity`'s transaction time.
+- **Severity** on Invariant: `Violation` | `Warning` | `Info` (SHACL-ish); default
+  `Violation` preserves today's equal-enforceability semantics.
+- **CONTRADICTS** and **SUPERSEDES** relationship types. `authorize_capability_why`
+  no longer silently overwrites the Journeyman's suggested why — it mints a
+  versioned `:Assertion`, SUPERSEDES prior authorized claims, and CONTRADICTS open
+  suggestions. Both sides stay queryable. `mark_invariant_contradiction` records
+  incompatible invariants the same way. `retire_funding_block` keeps the keep-not-delete
+  discipline and stamps `provenance_status='superseded'`.
+- **Six audit reads** (one question each, shared envelope):
+  `audit_why_exists`, `audit_who_authorized`, `audit_what_derived_from`,
+  `audit_what_guards`, `audit_what_contradicts`, `audit_what_changed_since`.
+  Envelope: `{subject, question, assertions, contradictions, gaps}` with PROV term
+  strings as badges. The `gaps` array is an honest work queue.
+- **FE Audit page** (`/audit`) — capability picker, as-of date (valid time), the six
+  questions, contradictions banner above the answer, confidence bands, effectivity
+  lines, and gaps.
+
+### Changed
+
+- Connections authenticate as holders (tollbooth-dpyc 0.101.1 holder bearer): connecting from Claude.ai is an Authorization Code flow with no login page, each npub proven through a connection stays with it, and tool calls pass only `npub`. The web app reaches the MCP through the shared proxy (web 1.8.2) as an anonymous caller; the maintenance scripts send `Bearer anonymous`.
+
+- Every tool carries a title and its behaviour, including each published query tool, whose behaviour is read from its Cypher (a read query reads; a write query adds, overwrites or deletes as its clauses say); `npub` and `dpop_token` use the fleet's shared descriptions; the server reports its own version, website and icon.
+
+- Pins tollbooth-dpyc 0.102.0: a request signed with an npub's own key (NIP-98) acts as that npub with no grant.
+
+- Pins tollbooth-dpyc 0.102.1: a request signed with an npub's own key (NIP-98) acts as that npub with no grant.
+
+- README now matches the code: adoption (`request_adoption`, then the Authority owner approves) is the only way in, the deploy config is `fastmcp.json`, the factory vocabulary is described without a count that rots, the seeding script signs each request (NIP-98), and `cypher_public_factory_stats` plus the `frontend/` notebook are documented.
+
+- Dependencies refreshed to current releases (mcp/fastmcp 1.27.2/3.4.7 → 2.3.0/4.1.0; frontend minor/patch). No service stays on old transitive versions.
+
+- The named-tool example in the server instructions, docstrings and README is `cypher_which_service_handles(keyword)`, a query the catalog really publishes; the retired airline example is gone.
+
+- Tools take only `npub`; the connection proves it (a request signed with the npub's key, or an OAuth connection that holds it after the DM). The `dpop_token` argument is gone, and the Courier phrase is `nonce`. Pins tollbooth-dpyc 0.103.0.
+- cypher scripts sign each request with the operator key instead of passing a proof argument.
+
+- The web app moves to @tollbooth-dpyc/web 1.9.0: a tab that holds the signed-in key signs each request, and DM sign-in connects to the operator as a holder (one quick redirect, no login page) — no proof rides in tool arguments.
+
+### Fixed
+
+Four of the six `audit_*` reads already took `as_at_ms` (default 0 = now). The other two —
+`audit_what_derived_from` and `audit_what_contradicts` — omitted it from both the param schema
+and the Cypher, so callers who had just successfully passed `as_at_ms` to a sibling got a raw
+Pydantic `unexpected_keyword_argument` (and the same rejection via `execute_query_by_key`).
+Those are exactly the questions whose answers change as assertions supersede one another.
+
+Both now declare `as_at_ms` with the same default/semantics and filter assertion (and, for
+contradicts, invariant) `valid_from`/`valid_to` the way their siblings do. `audit_what_changed_since`
+keeps its deliberate `since_ms` window parameter. Re-seed the factory vocabulary to publish the
+updated templates.
+
 ## [0.8.6] — 2026-08-24
 
 ### Security — track tollbooth-dpyc 0.88.1 (cryptography floor raised to >=49.0.0)
