@@ -50,6 +50,10 @@ Three conceptual layers:
   for a delivered answer — an unknown key, invalid parameters, or a failed
   query rolls back the debit (refund-on-raise).
 
+**Free:** `cypher_public_factory_stats` — aggregate counts only (no titles,
+paths or npubs), cached in-process, for the unauthenticated landing pages of
+the read-only Cypher Lab Notebook front end in [`frontend/`](frontend/README.md).
+
 Plus the standard DPYC surface from the wheel: `cypher_check_balance`,
 `cypher_check_price`, `cypher_purchase_credits`, Secure Courier, npub proof,
 Oracle delegation, account statements, constraint-based dynamic pricing, etc.
@@ -95,9 +99,10 @@ primitive can back a synthesized tool with a REST call, SQL, or a stored prompt.
 
 ## Onboarding (operator)
 
-1. **Request adoption** from an Authority (the deferred courtship —
-   `request_adoption`) or be registered directly. Either way the Authority
-   provisions an isolated Neon tenant automatically.
+1. **Request adoption** from an Authority (`cypher_request_adoption`, signed
+   with the operator's key). Adoption is the only way in: once the Authority's
+   owner approves the request, the Authority provisions an isolated Neon
+   tenant automatically. `cypher_adoption_status` reports progress.
 2. Deliver operator secrets via Secure Courier
    (`cypher_request_credential_channel`, service `cypher-operator`):
    - `neo4j_uri`, `neo4j_user`, `neo4j_password` — the graph store
@@ -113,7 +118,7 @@ pytest -v
 python -m cypher_mcp.server   # needs TOLLBOOTH_NOSTR_OPERATOR_NSEC
 ```
 
-Deployed on Prefect Horizon (FastMCP runtime); see `.fastmcp.yaml`. The only
+Deployed on Prefect Horizon (FastMCP runtime); see `fastmcp.json`. The only
 env var required to boot is `TOLLBOOTH_NOSTR_OPERATOR_NSEC` — every other
 secret arrives via Secure Courier.
 
@@ -133,6 +138,11 @@ secret arrives via Secure Courier.
 | [thebrain-mcp](https://github.com/lonniev/thebrain-mcp) | TheBrain personal knowledge graph (operational example) |
 | [excalibur-mcp](https://github.com/lonniev/excalibur-mcp) | X/Twitter posting (operational example) |
 | [taxsort-mcp](https://github.com/lonniev/taxsort-mcp) | Tax classification + Cloudflare Pages UI (operational example) |
+| [goodearth-mcp](https://github.com/lonniev/goodearth-mcp) | Region-scoped farm climate analytics (operational example) |
+| [beesknees-mcp](https://github.com/lonniev/beesknees-mcp) | Multiplayer race to the queen (operational example) |
+| [roastify-mcp](https://github.com/lonniev/roastify-mcp) | Roastify coffee catalog and packaging artwork (operational example) |
+| [ChartRemotely-mcp](https://github.com/lonniev/ChartRemotely-mcp) | Remote desktop charting via a patron's own agent (operational example) |
+| [tollbooth-web](https://github.com/lonniev/tollbooth-web) | Shared browser SDK for operator front ends |
 | [tollbooth-oauth2-collector](https://github.com/lonniev/tollbooth-oauth2-collector) | OAuth2 callback handler — shared advocate service |
 | [stablecoin.myshopify.com](https://stablecoin.myshopify.com) | DPYC merch and Austrian economics |
 
@@ -184,7 +194,7 @@ then fading to the background.
 cypher-mcp is the graph substrate for the DPYC Software Factory: its agents (Porter =
 Service Desk, Journeyman = Engineering) read and write an institutional-memory graph here
 **without ever holding a raw Cypher tool**. They call a fixed vocabulary of
-operator-authored, parameterized templates — currently 43 (25 *write*, 18 *read*) —
+operator-authored, parameterized templates — *write* templates and *read* templates —
 published as typed `cypher_<key>` tools.
 
 - **Write templates** capture the memory: `record_triage`, `note_rejection`,
@@ -219,13 +229,14 @@ python scripts/seed_factory_vocabulary.py --dry-run \
     --porter-npub npub1ymg... --journeyman-npub npub1m5q...
 ```
 
-Apply against the live operator (operator nsec used transiently to sign one-shot kind-27235
-proofs — never logged or written to disk). Add `--gate` (with both npubs) to also apply the
+Apply against the live operator (the operator nsec, read from `OPERATOR_NSEC` or a hidden
+prompt, is used transiently to sign each request (NIP-98) — never logged or written to disk). Add `--gate` (with both npubs) to also apply the
 per-npub allow-list programmatically instead of in Pricing Studio:
 
 ```bash
 python scripts/seed_factory_vocabulary.py \
-    --url https://cypher-mcp.fastmcp.app/mcp --operator-npub npub1fuhq0...
+    --url https://cypher-mcp.fastmcp.app/mcp --operator-npub npub1fuhq0... \
+    --porter-npub npub1ymg... --journeyman-npub npub1m5q...
 ```
 
 The vocabulary itself lives in `scripts/factory_vocabulary.py` (data, no I/O) and is covered
