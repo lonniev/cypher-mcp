@@ -1,9 +1,8 @@
 import { useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { consumeReloadRefresh } from "./lib/graphCache";
-import { AppShell, WalletPage, type AppShellContext } from "@tollbooth-dpyc/web/react";
+import { AppShell, Wallet, type AppShellContext } from "@tollbooth-dpyc/web/react";
 import Nav from "./components/Nav";
-import { walletClassNames } from "./lib/accountStyles";
 import ProfilePage from "./components/ProfilePage";
 import Contents from "./components/notebook/Contents";
 import RecentActivity from "./components/notebook/RecentActivity";
@@ -134,7 +133,11 @@ function NotebookApp() {
         <Route path="symbol" element={<SymbolDetail />} />
         <Route
           path="wallet"
-          element={<WalletPage classNames={walletClassNames} coupons={false} statement={false} />}
+          element={
+            <div className="page-frame px-4 py-6">
+              <Wallet />
+            </div>
+          }
         />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/notebook" replace />} />
