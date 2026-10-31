@@ -4,7 +4,6 @@ import { AccountPage, PatronFundingStatus, useAppShell } from "@tollbooth-dpyc/w
 import {
   accountPageClassNames,
   buildInfoClassNames,
-  couponClassNames,
   fundingClassNames,
   themeToggleClassNames,
   timezoneClassNames,
@@ -40,16 +39,6 @@ export default function ProfilePage() {
         intro: "The notebook defaults to dark. Your choice is saved on this device.",
         labels: themeLabels,
         classNames: themeToggleClassNames,
-      }}
-      coupons={{
-        classNames: couponClassNames,
-        intro:
-          "Redeem an operator code once. The discount applies automatically on subsequent paid calls until the per-patron cap or the window expires.",
-        empty:
-          "No coupons redeemed yet. Operators distribute codes via X, email, the welcome page, or DM — paste a code above to claim its discount.",
-        placeholder: "FRESHMAN, EARLYBIRD…",
-        redeemLabel: "🎟 Redeem",
-        forgetLabel: "🗑",
       }}
       build={{
         status,
