@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { execSync } from 'child_process'
 import { readFileSync } from 'fs'
+import { agentGuide } from '@tollbooth-dpyc/web/agent-guide'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
@@ -23,7 +24,19 @@ function resolveCommit(): string {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(), tailwindcss(),
+    agentGuide({
+      name: "Cypher",
+      summary: "Monetized graph answers: named Cypher queries over the intention graph that remembers why each part of the Tollbooth DPYC network exists.",
+      site: "https://cypher.tollbooth-dpyc.com",
+      mcpUrl: "https://cypher-mcp.fastmcp.app/mcp",
+      toolPrefix: "cypher",
+      source: "https://github.com/lonniev/cypher-mcp",
+      registryName: "io.github.lonniev/cypher-mcp",
+      body: "agent-guide.md",
+    }),
+  ],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_COMMIT__: JSON.stringify(resolveCommit()),
