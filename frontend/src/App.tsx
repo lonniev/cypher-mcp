@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { consumeReloadRefresh } from "./lib/graphCache";
 import { AppShell, Wallet, type AppShellContext } from "@tollbooth-dpyc/web/react";
 import Nav from "./components/Nav";
+import Opening from "./components/Opening";
 import { PublicLayout, PrimaryNav, PublicFooter } from "./components/public/PublicShell";
 import HomePage from "./components/public/HomePage";
 
@@ -63,7 +64,6 @@ function Site({ shell }: { shell: AppShellContext }) {
 
   return (
     <BrowserRouter>
-      <Suspense fallback={<p className="page-frame px-6 py-12 text-sm text-stone-400 dark:text-zinc-500">Opening…</p>}>
       <Routes>
         {/* Public factory spokesman — no auth required (#72). */}
         <Route element={<PublicLayout />}>
@@ -89,7 +89,6 @@ function Site({ shell }: { shell: AppShellContext }) {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      </Suspense>
     </BrowserRouter>
   );
 }
@@ -155,7 +154,7 @@ function NotebookLayout() {
     <>
       <Nav />
       <main className="flex-1">
-        <Outlet />
+        <Opening><Outlet /></Opening>
       </main>
     </>
   );
