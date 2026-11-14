@@ -1,32 +1,35 @@
-import { useEffect, type ReactNode } from "react";
+import { lazy, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { consumeReloadRefresh } from "./lib/graphCache";
 import { AppShell, Wallet, type AppShellContext } from "@tollbooth-dpyc/web/react";
 import Nav from "./components/Nav";
-import ProfilePage from "./components/ProfilePage";
-import Contents from "./components/notebook/Contents";
-import RecentActivity from "./components/notebook/RecentActivity";
-import Capabilities from "./components/notebook/Capabilities";
-import CapabilityDetail from "./components/notebook/CapabilityDetail";
-import Issues from "./components/notebook/Issues";
-import PullRequests from "./components/notebook/PullRequests";
-import PullRequestDetail from "./components/notebook/PullRequestDetail";
-import Concordance from "./components/notebook/Concordance";
-import Metrics from "./components/notebook/Metrics";
-import QueryCatalog from "./components/notebook/QueryCatalog";
-import Audit from "./components/notebook/Audit";
-import ServiceDetail from "./components/notebook/ServiceDetail";
-import PatentDetail from "./components/notebook/PatentDetail";
-import PatentElements from "./components/notebook/PatentElements";
-import Invariants from "./components/notebook/Invariants";
-import InvariantDetail from "./components/notebook/InvariantDetail";
-import IssueDetail from "./components/notebook/IssueDetail";
-import SymbolDetail from "./components/notebook/SymbolDetail";
+import Opening from "./components/Opening";
 import { PublicLayout, PrimaryNav, PublicFooter } from "./components/public/PublicShell";
 import HomePage from "./components/public/HomePage";
-import FactoryPage from "./components/public/FactoryPage";
-import MemoryPage from "./components/public/MemoryPage";
-import JoinPage from "./components/public/JoinPage";
+
+// Each page past the home page is its own chunk, fetched the first time it opens.
+const ProfilePage = lazy(() => import("./components/ProfilePage"));
+const Contents = lazy(() => import("./components/notebook/Contents"));
+const RecentActivity = lazy(() => import("./components/notebook/RecentActivity"));
+const Capabilities = lazy(() => import("./components/notebook/Capabilities"));
+const CapabilityDetail = lazy(() => import("./components/notebook/CapabilityDetail"));
+const Issues = lazy(() => import("./components/notebook/Issues"));
+const PullRequests = lazy(() => import("./components/notebook/PullRequests"));
+const PullRequestDetail = lazy(() => import("./components/notebook/PullRequestDetail"));
+const Concordance = lazy(() => import("./components/notebook/Concordance"));
+const Metrics = lazy(() => import("./components/notebook/Metrics"));
+const QueryCatalog = lazy(() => import("./components/notebook/QueryCatalog"));
+const Audit = lazy(() => import("./components/notebook/Audit"));
+const ServiceDetail = lazy(() => import("./components/notebook/ServiceDetail"));
+const PatentDetail = lazy(() => import("./components/notebook/PatentDetail"));
+const PatentElements = lazy(() => import("./components/notebook/PatentElements"));
+const Invariants = lazy(() => import("./components/notebook/Invariants"));
+const InvariantDetail = lazy(() => import("./components/notebook/InvariantDetail"));
+const IssueDetail = lazy(() => import("./components/notebook/IssueDetail"));
+const SymbolDetail = lazy(() => import("./components/notebook/SymbolDetail"));
+const FactoryPage = lazy(() => import("./components/public/FactoryPage"));
+const MemoryPage = lazy(() => import("./components/public/MemoryPage"));
+const JoinPage = lazy(() => import("./components/public/JoinPage"));
 
 /** The site's own words above the sign-in card. */
 const WELCOME = "The Lab Notebook: the intention graph behind the DPYC™ Agentic Software Factory — capabilities, issues, invariants and the reasons they exist.";
@@ -151,7 +154,7 @@ function NotebookLayout() {
     <>
       <Nav />
       <main className="flex-1">
-        <Outlet />
+        <Opening><Outlet /></Opening>
       </main>
     </>
   );

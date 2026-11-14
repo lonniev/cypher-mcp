@@ -9,6 +9,7 @@
 // of it (#80).
 
 import { Link, Outlet, useLocation } from "react-router-dom";
+import Opening from "../Opening";
 import { matchesPath, SiteNav, useAppShell, type SiteNavClassNames, type SiteNavItem } from "@tollbooth-dpyc/web/react";
 
 const ITEMS: readonly SiteNavItem[] = [
@@ -122,7 +123,7 @@ export function PublicLayout() {
     <>
       <PrimaryNav />
       <main className="flex-1">
-        <Outlet />
+        <Opening><Outlet /></Opening>
       </main>
     </>
   );
