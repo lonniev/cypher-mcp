@@ -5,13 +5,14 @@
 
 import { useEffect, useState } from "react";
 import { formatDateTime } from "@tollbooth-dpyc/web";
-import { useTimezone } from "@tollbooth-dpyc/web/react";
+import { useLanguageLocale, useTimezone } from "@tollbooth-dpyc/web/react";
+import { useT } from "../../i18n";
 import {
   publicFactoryStats,
   type PublicFactoryStats,
   type ResolutionStat,
 } from "../../lib/mcp";
-import { RESOLVED_VIA } from "../../lib/factoryModel";
+import { resolvedVia } from "../../lib/factoryModel";
 
 const BROWSER_TTL_MS = 60_000;
 let browserCache: { at: number; data: PublicFactoryStats } | null = null;
@@ -38,6 +39,9 @@ export default function LiveStats({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<PublicFactoryStats | null>(browserCache?.data ?? null);
   const [err, setErr] = useState("");
   const [, zone] = useTimezone();
+  const t = useT();
+  const locale = useLanguageLocale();
+  const num = (n: number) => n.toLocaleString(locale);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,21 +60,21 @@ export default function LiveStats({ compact = false }: { compact?: boolean }) {
   if (err && !data) {
     return (
       <p className="text-xs text-stone-400 dark:text-zinc-500">
-        Live counts unavailable right now — the graph may be warming up.
+        {t("public.stats.unavailable")}
       </p>
     );
   }
 
   if (!data) {
     return (
-      <p className="text-xs text-stone-400 dark:text-zinc-500">Reading the factory ledger…</p>
+      <p className="text-xs text-stone-400 dark:text-zinc-500">{t("public.stats.loading")}</p>
     );
   }
 
   if (!data.available) {
     return (
       <p className="text-xs text-stone-400 dark:text-zinc-500">
-        Live counts will appear once this operator&apos;s graph is online.
+        {t("public.stats.offline")}
       </p>
     );
   }
@@ -84,23 +88,23 @@ export default function LiveStats({ compact = false }: { compact?: boolean }) {
   return (
     <div className="space-y-4">
       <div className={`grid gap-3 ${compact ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"}`}>
-        <Tile label="Capabilities" value={data.capability_count} />
-        <Tile label="Invariants" value={data.invariant_count} />
-        <Tile label="Issues triaged" value={data.issue_count} />
-        <Tile label="Services" value={data.service_count} />
-        {!compact && <Tile label="Symbols anchored" value={data.symbol_count} />}
+        <Tile label={t("public.stats.capabilities")} value={data.capability_count} num={num} />
+        <Tile label={t("public.stats.invariants")} value={data.invariant_count} num={num} />
+        <Tile label={t("public.stats.issues")} value={data.issue_count} num={num} />
+        <Tile label={t("public.stats.services")} value={data.service_count} num={num} />
+        {!compact && <Tile label={t("public.stats.symbols")} value={data.symbol_count} num={num} />}
       </div>
 
       {totalRes > 0 && (
         <div className="rounded-xl border border-stone-200 bg-white/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
           <div className="mb-2 flex items-baseline justify-between gap-3">
-            <div className="text-sm font-medium">How code was found</div>
+            <div className="text-sm font-medium">{t("public.stats.howFound")}</div>
             <div className="text-xs text-stone-400 dark:text-zinc-500">
-              {totalRes.toLocaleString()} resolutions · graph {graphPct}% · wide-grep {widePct}%
+              {t("public.stats.mix", { total: num(totalRes), graph: graphPct, wide: widePct })}
             </div>
           </div>
           <div className="flex h-3 overflow-hidden rounded-full bg-stone-100 dark:bg-zinc-800">
-            {RESOLVED_VIA.map((v) => {
+            {resolvedVia(t).map((v) => {
               const n = viaN(data.resolution, v.key);
               const w = pct(n, totalRes);
               if (!w) return null;
@@ -114,12 +118,12 @@ export default function LiveStats({ compact = false }: { compact?: boolean }) {
             })}
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            {RESOLVED_VIA.map((v) => {
+            {resolvedVia(t).map((v) => {
               const n = viaN(data.resolution, v.key);
               return (
                 <div key={v.key} className="text-xs">
                   <div className="font-mono text-stone-700 dark:text-zinc-200">
-                    {v.title} · {n.toLocaleString()}
+                    {v.title} · {num(n)}
                   </div>
                   <div className="text-stone-400 dark:text-zinc-500">{v.gloss}</div>
                 </div>
@@ -131,19 +135,19 @@ export default function LiveStats({ compact = false }: { compact?: boolean }) {
 
       {data.last_activity_ms ? (
         <p className="text-[11px] text-stone-400 dark:text-zinc-500">
-          Last graph activity {formatDateTime(new Date(data.last_activity_ms).toISOString(), zone)} · aggregates only, no titles or paths
+          {t("public.stats.lastActivity", { when: formatDateTime(new Date(data.last_activity_ms).toISOString(), zone) })}
         </p>
       ) : null}
     </div>
   );
 }
 
-function Tile({ label, value }: { label: string; value?: number }) {
+function Tile({ label, value, num }: { label: string; value?: number; num: (n: number) => string }) {
   return (
     <div className="rounded-xl border border-stone-200 bg-white/70 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/70">
       <div className="text-[11px] uppercase tracking-widest text-stone-400 dark:text-zinc-500">{label}</div>
       <div className="mt-1 font-serif text-2xl font-semibold tabular-nums">
-        {(value ?? 0).toLocaleString()}
+        {num(value ?? 0)}
       </div>
     </div>
   );

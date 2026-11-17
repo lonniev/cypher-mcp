@@ -9,12 +9,14 @@
 
 import { useLiveIssueStatus, ghStatusLook } from "../../lib/githubStatus";
 import { Tip } from "./dossier";
+import { useT } from "../../i18n";
 
 /// A bare colored dot for a card corner or an inline chip.
 export function PrStatusDot({ url, size = 8 }: { url?: string; size?: number }) {
   const live = useLiveIssueStatus(url);
+  const t = useT();
   if (!live) return null;
-  const look = ghStatusLook(live);
+  const look = ghStatusLook(live, t);
   return (
     <Tip text={look.label}>
       <span
@@ -29,8 +31,9 @@ export function PrStatusDot({ url, size = 8 }: { url?: string; size?: number }) 
 /// The inline dot + word form ("Merged", "Open pull request"), for a metadata row.
 export function PrStatusPill({ url }: { url?: string }) {
   const live = useLiveIssueStatus(url);
+  const t = useT();
   if (!live) return null;
-  const look = ghStatusLook(live);
+  const look = ghStatusLook(live, t);
   return (
     <span className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 font-mono text-[10.5px] text-stone-600 dark:text-zinc-300">
       <span className={`inline-block h-1.5 w-1.5 rounded-full ${look.dot}`} /> {look.label}

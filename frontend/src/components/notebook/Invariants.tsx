@@ -11,18 +11,20 @@ import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import { parseIssueRef, initialsOf } from "./dossier";
+import { useT, type Translate } from "../../i18n";
 
 type Col = "name" | "symbols" | "recent";
-const SORTS: { col: Col; label: string }[] = [
-  { col: "recent", label: "Recent" },
-  { col: "name", label: "A–Z" },
-  { col: "symbols", label: "Guards" },
+const sorts = (t: Translate): { col: Col; label: string }[] => [
+  { col: "recent", label: t("notebook.sort.recent") },
+  { col: "name", label: t("notebook.sort.az") },
+  { col: "symbols", label: t("notebook.sort.guards") },
 ];
 
 export default function Invariants() {
+  const t = useT();
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("name");
@@ -58,7 +60,7 @@ export default function Invariants() {
   const jumpRef = parseIssueRef(q);
 
   return (
-    <Page eyebrow="Register" title="Invariants" lede="The fleet's enforceable business logic — human-authored rules a change must not violate. Each guards a bounded set of symbols; a symbol that drifts outside the set trips the alarm.">
+    <Page eyebrow={t("notebook.register")} title={t("notebook.contents.invariants.title")} lede={t("notebook.invs.lede")}>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
 
@@ -76,28 +78,28 @@ export default function Invariants() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Filter by name, rule, or patent numeral — or paste a GitHub URL / repo#123 to open it"
+                placeholder={t("notebook.invs.filter")}
                 spellCheck={false}
                 className={`w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-9 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 ${jumpRef ? "pr-40" : "pr-3"}`}
               />
               {jumpRef && (
                 <button type="submit" className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md bg-amber-100 px-2 py-1 font-mono text-[11px] font-medium text-amber-800 transition-colors hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25">
-                  Open {jumpRef.repo}#{jumpRef.number} <Icon name="open" size={12} />
+                  {t("notebook.openRef", { ref: `${jumpRef.repo}#${jumpRef.number}` })} <Icon name="open" size={12} />
                 </button>
               )}
             </form>
             <Link to="/notebook/concordance" className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300">
-              <Icon name="swap" size={16} /> Elastic search
+              <Icon name="swap" size={16} /> {t("notebook.caps.elastic")}
             </Link>
           </div>
 
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className={`text-xs ${faint}`}>{m.data ? `${filtered.length} of ${rows.length} invariants` : "not loaded"}</span>
+              <span className={`text-xs ${faint}`}>{m.data ? t("notebook.invs.shown", { shown: filtered.length, count: rows.length }) : t("notebook.notLoaded")}</span>
               <SinceFilter value={since} onChange={setSince} />
             </div>
             <div className="flex items-center gap-1">
-              {SORTS.map((s) => (
+              {sorts(t).map((s) => (
                 <button
                   key={s.col}
                   onClick={() => (sortCol === s.col ? setDir((d) => (d === "asc" ? "desc" : "asc")) : (setSortCol(s.col), setDir(s.col === "name" ? "asc" : "desc")))}
@@ -111,11 +113,11 @@ export default function Invariants() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the invariant catalog…" classNames={quoteStyles} />
+            <QuoteScroller quotes={quotes()} spinner heading={t("notebook.invs.reading")} classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
-            <Empty>No invariants match this filter.</Empty>
+            <Empty>{t("notebook.invs.none")}</Empty>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {filtered.map((v) => (
@@ -135,7 +137,7 @@ export default function Invariants() {
                       </div>
                       {v.provenance === "human-authored" && (
                         <span className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[10px] text-emerald-700 dark:text-emerald-300">
-                          <Icon name="verified" size={11} /> Doctrine
+                          <Icon name="verified" size={11} /> {t("notebook.doctrine")}
                         </span>
                       )}
                     </div>
@@ -143,7 +145,7 @@ export default function Invariants() {
                   {v.rule && <div className={`line-clamp-2 text-[12.5px] leading-snug ${muted}`}>{v.rule}</div>}
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="inline-flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">
-                      <Icon name="symbol" size={11} /> {v.symbol_count ?? 0} guarded
+                      <Icon name="symbol" size={11} /> {t("notebook.invs.guarded", { count: v.symbol_count ?? 0 })}
                     </span>
                     {(v.patents ?? []).map((p) => (
                       <Link
@@ -158,7 +160,7 @@ export default function Invariants() {
                   </div>
                   {toMillis(v.updated_at) != null && (
                     <div className={`mt-auto flex items-center gap-1 pt-0.5 text-[10.5px] ${faint}`}>
-                      <Icon name="history" size={11} /> authored {relTime(toMillis(v.updated_at))}
+                      <Icon name="history" size={11} /> {t("notebook.invs.authored", { when: relTime(toMillis(v.updated_at)) })}
                     </div>
                   )}
                 </Link>

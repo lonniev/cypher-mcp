@@ -22,7 +22,7 @@ import { useSwipeNav } from "../../lib/useSwipeNav";
 import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import {
   DossierWrap,
@@ -40,6 +40,7 @@ import {
   Pager,
   initialsOf,
 } from "./dossier";
+import { useT } from "../../i18n";
 
 interface Bundle {
   explain: CapabilityExplain;
@@ -57,6 +58,7 @@ function issueLinkFromUrl(url?: string, number?: number): string | null {
 }
 
 export default function CapabilityDetail() {
+  const t = useT();
   const { name = "" } = useParams();
   const decoded = decodeURIComponent(name);
   const nav = useNavigate();
@@ -93,104 +95,104 @@ export default function CapabilityDetail() {
     <DossierWrap swipe={swipe}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <Link to="/notebook/capabilities" className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
-          <Icon name="back" size={15} /> Register
+          <Icon name="back" size={15} /> {t("notebook.register")}
         </Link>
-        <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label="capability" />
+        <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label={t("notebook.cap.one")} />
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.cold && m.loading && <QuoteScroller quotes={QUOTES} spinner heading="Assembling the case file…" classNames={quoteStyles} />}
+      {!m.error && m.cold && m.loading && <QuoteScroller quotes={quotes()} spinner heading={t("notebook.dossier.assembling")} classNames={quoteStyles} />}
 
       {explain && (
-        <Dossier accent="blue" tab="Capability" tabNo="Case file">
+        <Dossier accent="blue" tab={t("notebook.cap.tab")} tabNo={t("notebook.dossier.caseFile")}>
           <DossierHead
             crest={initialsOf(decoded)}
-            role="Capability · intention graph"
+            role={t("notebook.cap.role")}
             roleIcon="verified"
             title={decoded}
             tags={(b?.pack?.keywords ?? explain.owners ?? []).slice(0, 6)}
-            tagHref={(t) => `/concordance?q=${encodeURIComponent(t)}`}
+            tagHref={(tag) => `/concordance?q=${encodeURIComponent(tag)}`}
             stamp={
               doctrine ? (
-                <Stamp tone="good" icon="verified" label="Human-authored" sub="Doctrine" tip="A human wrote this rationale — an agent physically can't forge it. Treat it as doctrine." />
+                <Stamp tone="good" icon="verified" label={t("notebook.seal.human")} sub={t("notebook.doctrine")} tip={t("notebook.cap.humanTip")} />
               ) : explain.inferred_why ? (
-                <Stamp tone="warn" icon="info" label="Agent-inferred" sub="Unverified" tip="An agent suggested this rationale. It awaits an operator's review — advice, not doctrine." />
+                <Stamp tone="warn" icon="info" label={t("notebook.stamp.inferred")} sub={t("notebook.stamp.unverified")} tip={t("notebook.cap.inferredTip")} />
               ) : undefined
             }
           />
 
           <BoxScore>
-            <Stat icon="dns" num={explain.owners?.length ?? 0} label="Owners" drill="cap-owners" tip="Services that own this capability." />
-            <Stat icon="groups" num={explain.consumers?.length ?? 0} label="Consumers" drill="cap-consumers" tip="Services that depend on this capability." />
-            <Stat icon="symbol" num={b?.symbols.length ?? 0} label="Symbols" accent drill="cap-symbols" tip="Code symbols that implement it — the grep scope for a fix." />
-            <Stat icon="bookmark" num={b?.patents.length ?? 0} label="Patents" drill="cap-patents" tip="Filed patent elements that ground its rationale." />
-            <Stat icon="history" num={precedents.length} label="Issues" drill="cap-precedents" tip="Issues raised against this capability. Each opens its own issue dossier." />
-            <Stat icon="verified" num={invariants.length} label="Invariants" drill="cap-invariants" tip="Rules the fleet must not violate." />
+            <Stat icon="dns" num={explain.owners?.length ?? 0} label={t("notebook.sort.owners")} drill="cap-owners" tip={t("notebook.cap.ownersTip")} />
+            <Stat icon="groups" num={explain.consumers?.length ?? 0} label={t("notebook.cap.consumers")} drill="cap-consumers" tip={t("notebook.cap.consumersTip")} />
+            <Stat icon="symbol" num={b?.symbols.length ?? 0} label={t("notebook.conc.symbols")} accent drill="cap-symbols" tip={t("notebook.cap.symbolsTip")} />
+            <Stat icon="bookmark" num={b?.patents.length ?? 0} label={t("notebook.nav.patents")} drill="cap-patents" tip={t("notebook.cap.patentsTip")} />
+            <Stat icon="history" num={precedents.length} label={t("notebook.nav.issues")} drill="cap-precedents" tip={t("notebook.cap.issuesTip")} />
+            <Stat icon="verified" num={invariants.length} label={t("notebook.nav.invariants")} drill="cap-invariants" tip={t("notebook.cap.invariantsTip")} />
           </BoxScore>
 
           {/* Rationale */}
           <div className="border-b border-stone-200 px-6 py-5 dark:border-zinc-800">
-            <Eyebrow icon="quote">Rationale</Eyebrow>
+            <Eyebrow icon="quote">{t("notebook.cap.rationale")}</Eyebrow>
             {doctrine ? (
               <>
                 <blockquote className="border-l-[3px] border-amber-500 pl-4 font-serif text-[17px] leading-relaxed">{explain.why}</blockquote>
                 <div className="mt-2.5 flex items-center gap-1.5 font-mono text-[12px] text-stone-500 dark:text-zinc-400">
                   <Icon name="verified" className="text-[14px] text-emerald-600 dark:text-emerald-400" />
-                  Operator · human-authored
+                  {t("notebook.cap.operatorHuman")}
                 </div>
               </>
             ) : explain.inferred_why ? (
               <>
                 <blockquote className="border-l-[3px] border-amber-400 pl-4 font-serif text-[17px] leading-relaxed">{explain.inferred_why}</blockquote>
-                <p className={`mt-2 text-xs ${muted}`}>No human rationale is authorized yet — an agent's suggestion, awaiting review.</p>
+                <p className={`mt-2 text-xs ${muted}`}>{t("notebook.cap.awaiting")}</p>
               </>
             ) : (
-              <p className={`text-sm ${muted}`}>No rationale recorded yet.</p>
+              <p className={`text-sm ${muted}`}>{t("notebook.cap.noRationale")}</p>
             )}
           </div>
 
           <Cells>
             <Cell id="cap-symbols">
-              <Eyebrow icon="symbol" count={b?.symbols.length ?? 0} info="The code that implements this capability — the grep scope for a fix. Each links to its owning service; copy the FQN or open it on GitHub.">Symbols</Eyebrow>
+              <Eyebrow icon="symbol" count={b?.symbols.length ?? 0} info={t("notebook.cap.symbolsInfo")}>{t("notebook.conc.symbols")}</Eyebrow>
               {b && b.symbols.length > 0 ? (
                 <div className="flex flex-col gap-2.5">
                   {b.symbols.map((s, i) => {
-                    const fqn = s.symbol ?? s.fqn ?? "(unnamed)";
+                    const fqn = s.symbol ?? s.fqn ?? t("notebook.recent.unnamed");
                     return <SymbolRow key={fqn + i} fqn={fqn} file={s.file ?? s.file_path} lang={s.lang} sha={s.verified_at_sha} copyValue={fqn} />;
                   })}
                 </div>
               ) : (
-                <p className={`text-sm ${muted}`}>No symbols bound yet.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.cap.noSymbols")}</p>
               )}
             </Cell>
 
             <Cell id="cap-patents">
-              <Eyebrow icon="bookmark" count={b?.patents.length ?? 0} info="Filed patent reference numerals that ground this capability's rationale. Each opens the patent element.">Patents</Eyebrow>
+              <Eyebrow icon="bookmark" count={b?.patents.length ?? 0} info={t("notebook.cap.patentsInfo")}>{t("notebook.nav.patents")}</Eyebrow>
               {b && b.patents.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {b.patents.map((p) => (p.ref != null ? <PatentBadge key={p.ref} refNum={p.ref} name={p.name} /> : null))}
                 </div>
               ) : (
-                <p className={`text-sm ${muted}`}>Not yet traced to a patent element.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.cap.noPatents")}</p>
               )}
             </Cell>
 
             <Cell id="cap-owners">
-              <Eyebrow icon="dns" count={explain.owners?.length ?? 0} info="Services that own and provide this capability. Each badge opens that service.">Owners</Eyebrow>
+              <Eyebrow icon="dns" count={explain.owners?.length ?? 0} info={t("notebook.cap.ownersInfo")}>{t("notebook.sort.owners")}</Eyebrow>
               <div className="flex flex-wrap gap-1.5">
                 {(explain.owners ?? []).length ? explain.owners!.map((o) => <RepoBadge key={o} repo={o} />) : <span className={`text-sm ${muted}`}>—</span>}
               </div>
             </Cell>
 
             <Cell id="cap-consumers">
-              <Eyebrow icon="groups" count={explain.consumers?.length ?? 0} info="Services that depend on this capability. Each badge opens that service.">Consumers</Eyebrow>
+              <Eyebrow icon="groups" count={explain.consumers?.length ?? 0} info={t("notebook.cap.consumersInfo")}>{t("notebook.cap.consumers")}</Eyebrow>
               <div className="flex flex-wrap gap-1.5">
                 {(explain.consumers ?? []).length ? explain.consumers!.map((c) => <RepoBadge key={c} repo={c} />) : <span className={`text-sm ${muted}`}>—</span>}
               </div>
             </Cell>
 
             <Cell id="cap-invariants" span>
-              <Eyebrow icon="verified" count={invariants.length} info="Human-authored rules the fleet must not violate — a drift alarm fires if one is broken.">Invariants</Eyebrow>
+              <Eyebrow icon="verified" count={invariants.length} info={t("notebook.cap.invariantsInfo")}>{t("notebook.nav.invariants")}</Eyebrow>
               {invariants.length ? (
                 <ul className="flex flex-col gap-2">
                   {invariants.map((inv, i) => (
@@ -201,12 +203,12 @@ export default function CapabilityDetail() {
                   ))}
                 </ul>
               ) : (
-                <p className={`text-sm ${muted}`}>No invariant guards this capability yet.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.cap.noInvariants")}</p>
               )}
             </Cell>
 
             <Cell id="cap-precedents" span>
-              <Eyebrow icon="history" count={precedents.length || undefined} info="Issues raised against this capability (the ABOUT_CAPABILITY edge). Each opens its own issue dossier.">Issues</Eyebrow>
+              <Eyebrow icon="history" count={precedents.length || undefined} info={t("notebook.cap.issuesInfo")}>{t("notebook.nav.issues")}</Eyebrow>
               {precedents.length ? (
                 <ul className="flex flex-col gap-2">
                   {precedents.map((pr, i) => {
@@ -229,7 +231,7 @@ export default function CapabilityDetail() {
                   })}
                 </ul>
               ) : (
-                <p className={`text-sm ${muted}`}>No issues have been raised against this capability yet.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.cap.noIssues")}</p>
               )}
             </Cell>
           </Cells>

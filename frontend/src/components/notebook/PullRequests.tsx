@@ -13,20 +13,22 @@ import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import { parseIssueRef } from "./dossier";
 import { PrStatusDot, PrStatusPill } from "./PrStatus";
+import { useT, type Translate } from "../../i18n";
 
 type Col = "recent" | "number" | "repo" | "state";
-const SORTS: { col: Col; label: string }[] = [
-  { col: "recent", label: "Recent" },
-  { col: "number", label: "Number" },
-  { col: "repo", label: "Service" },
-  { col: "state", label: "State" },
+const sorts = (t: Translate): { col: Col; label: string }[] => [
+  { col: "recent", label: t("notebook.sort.recent") },
+  { col: "number", label: t("notebook.sort.number") },
+  { col: "repo", label: t("notebook.sort.service") },
+  { col: "state", label: t("notebook.sort.state") },
 ];
 
 export default function PullRequests() {
+  const t = useT();
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("recent");
@@ -69,7 +71,7 @@ export default function PullRequests() {
   const jumpRef = parseIssueRef(q);
 
   return (
-    <Page eyebrow="Register" title="Pull Requests" lede="Every change in flight and the intention it enforces — open, draft, or merged. A PR fixes an issue and, through it, enforces a capability. Open one to see the whole trace.">
+    <Page eyebrow={t("notebook.register")} title={t("notebook.contents.pulls.title")} lede={t("notebook.pulls.lede")}>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
 
@@ -87,7 +89,7 @@ export default function PullRequests() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Filter by number, title, service, author, capability — or paste a GitHub PR URL / repo#123 to open it"
+                placeholder={t("notebook.pulls.filter")}
                 spellCheck={false}
                 className={`w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-9 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 ${jumpRef ? "pr-40" : "pr-3"}`}
               />
@@ -96,7 +98,7 @@ export default function PullRequests() {
                   type="submit"
                   className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md bg-amber-100 px-2 py-1 font-mono text-[11px] font-medium text-amber-800 transition-colors hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25"
                 >
-                  Open {jumpRef.repo}#{jumpRef.number} <Icon name="open" size={12} />
+                  {t("notebook.openRef", { ref: `${jumpRef.repo}#${jumpRef.number}` })} <Icon name="open" size={12} />
                 </button>
               )}
             </form>
@@ -104,17 +106,17 @@ export default function PullRequests() {
               to="/notebook/issues"
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300"
             >
-              <Icon name="history" size={16} /> Issues
+              <Icon name="history" size={16} /> {t("notebook.nav.issues")}
             </Link>
           </div>
 
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className={`text-xs ${faint}`}>{m.data ? `${filtered.length} of ${rows.length} pull requests` : "not loaded"}</span>
+              <span className={`text-xs ${faint}`}>{m.data ? t("notebook.pulls.shown", { shown: filtered.length, count: rows.length }) : t("notebook.notLoaded")}</span>
               <SinceFilter value={since} onChange={setSince} />
             </div>
             <div className="flex items-center gap-1">
-              {SORTS.map((s) => (
+              {sorts(t).map((s) => (
                 <button
                   key={s.col}
                   onClick={() => (sortCol === s.col ? setDir((dd) => (dd === "asc" ? "desc" : "asc")) : (setSortCol(s.col), setDir(s.col === "recent" || s.col === "number" ? "desc" : "asc")))}
@@ -128,11 +130,11 @@ export default function PullRequests() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the pull-request catalog…" classNames={quoteStyles} />
+            <QuoteScroller quotes={quotes()} spinner heading={t("notebook.pulls.reading")} classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
-            <Empty>No pull requests match this filter.</Empty>
+            <Empty>{t("notebook.pulls.none")}</Empty>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {filtered.map((p) => (
@@ -154,7 +156,7 @@ export default function PullRequests() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug text-stone-900 group-hover:text-amber-700 dark:text-zinc-50 dark:group-hover:text-amber-300">
-                          {p.title?.trim() || `Pull request #${p.number}`}
+                          {p.title?.trim() || t("notebook.pulls.numbered", { number: p.number ?? "" })}
                         </h3>
                         <Icon name="open" size={15} className="mt-0.5 shrink-0 text-stone-300 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-500 dark:text-zinc-600" />
                       </div>
@@ -166,7 +168,7 @@ export default function PullRequests() {
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <PrStatusPill url={p.url} />
-                    {p.draft && <span className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">draft</span>}
+                    {p.draft && <span className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">{t("notebook.pulls.draft")}</span>}
                     {p.head_ref && (
                       <span className="inline-flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">
                         <Icon name="swap" size={10} /> {p.head_ref}
@@ -174,19 +176,19 @@ export default function PullRequests() {
                     )}
                     {(p.fixes_issues?.length ?? 0) > 0 && (
                       <span className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">
-                        fixes {p.fixes_issues!.map((n) => `#${n}`).join(" ")}
+                        {t("notebook.pulls.fixes", { issues: p.fixes_issues!.map((n) => `#${n}`).join(" ") })}
                       </span>
                     )}
                   </div>
                   {p.capabilities!.length > 0 && (
                     <div className={`text-xs ${muted}`}>
                       <Icon name="verified" size={12} className="mr-1 text-stone-400 dark:text-zinc-500" />
-                      enforces {p.capabilities!.join(" · ")}
+                      {t("notebook.pulls.enforces", { capabilities: p.capabilities!.join(" · ") })}
                     </div>
                   )}
                   {toMillis(p.updated_at) != null && (
                     <div className={`mt-auto flex items-center gap-1 pt-0.5 text-[10.5px] ${faint}`}>
-                      <Icon name="history" size={11} /> updated {relTime(toMillis(p.updated_at))}
+                      <Icon name="history" size={11} /> {t("notebook.updated", { when: relTime(toMillis(p.updated_at)) })}
                     </div>
                   )}
                 </Link>

@@ -9,7 +9,7 @@ import { useMetered } from "../../lib/graphCache";
 import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon, langIcon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import {
   DossierWrap,
@@ -25,6 +25,8 @@ import {
   CopyButton,
   initialsOf,
 } from "./dossier";
+import { Tx } from "@tollbooth-dpyc/web/react";
+import { useT, WORDS } from "../../i18n";
 
 /// The short name at the tail of an fqn (after :: and .) for the crest.
 function shortName(fqn: string): string {
@@ -33,6 +35,7 @@ function shortName(fqn: string): string {
 }
 
 export default function SymbolDetail() {
+  const t = useT();
   const [params] = useSearchParams();
   const nav = useNavigate();
   const fqn = params.get("fqn") ?? "";
@@ -54,56 +57,56 @@ export default function SymbolDetail() {
     <DossierWrap>
       <div className="mb-3 flex items-center justify-between gap-3">
         <button onClick={() => nav(-1)} className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
-          <Icon name="back" size={15} /> Back
+          <Icon name="back" size={15} /> {t("notebook.back")}
         </button>
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.loading && !d && <QuoteScroller quotes={QUOTES} spinner heading="Reading the symbol…" classNames={quoteStyles} />}
+      {!m.error && m.loading && !d && <QuoteScroller quotes={quotes()} spinner heading={t("notebook.sym.reading")} classNames={quoteStyles} />}
 
       {!m.error && !m.loading && d && !found && (
         <div className="mt-4 rounded-xl border border-stone-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
           <Icon name="close" size={22} className="mx-auto mb-2 text-stone-300 dark:text-zinc-600" />
-          <div className="font-serif text-lg font-semibold">No such symbol in the graph</div>
+          <div className="font-serif text-lg font-semibold">{t("notebook.sym.notFound")}</div>
           <p className={`mx-auto mt-1.5 max-w-md break-all text-sm ${muted}`}>
-            <span className="font-mono text-stone-600 dark:text-zinc-300">{fqn}</span> hasn't been indexed into the intention graph.
+            <Tx ns={WORDS} k="notebook.sym.notIndexed" vars={{ ref: fqn }} components={{ ref: <span className="font-mono text-stone-600 dark:text-zinc-300" /> }} />
           </p>
         </div>
       )}
 
       {found && (
-        <Dossier accent="blue" tab="Symbol" tabNo="Case file">
+        <Dossier accent="blue" tab={t("notebook.sym.tab")} tabNo={t("notebook.dossier.caseFile")}>
           <DossierHead
             crest={initialsOf(shortName(fqn))}
-            role={<>{[d!.lang, ...services].filter(Boolean).join(" · ") || "code symbol"}</>}
+            role={<>{[d!.lang, ...services].filter(Boolean).join(" · ") || t("notebook.sym.codeSymbol")}</>}
             roleIcon={langIcon(d!.lang, d!.file)}
             title={fqn}
             stamp={
               d!.verified_at_sha ? (
-                <Stamp tone="good" icon="verified" label="Verified" sub={d!.verified_at_sha.slice(0, 8)} tip="Journeyman-verified against this commit SHA." />
+                <Stamp tone="good" icon="verified" label={t("notebook.seal.verified")} sub={d!.verified_at_sha.slice(0, 8)} tip={t("notebook.symbol.verifiedAt")} />
               ) : undefined
             }
           />
 
           <BoxScore>
-            <Stat icon="dns" num={services.length} label="Services" drill="sym-services" tip="Services this symbol belongs to." />
-            <Stat icon="verified" num={caps.length} label="Capabilities" accent drill="sym-caps" tip="Capabilities this symbol realizes." />
-            <Stat icon="history" num={issues.length} label="Issues" drill="sym-issues" tip="Issues this symbol root-caused." />
-            <Stat icon="quote" num={decisions.length} label="Decisions" drill="sym-decisions" tip="Decisions attached to this symbol." />
-            <Stat icon="bookmark" num={invariants.length} label="Invariants" drill="sym-invariants" tip="Invariants that guard this symbol." />
+            <Stat icon="dns" num={services.length} label={t("public.stats.services")} drill="sym-services" tip={t("notebook.sym.servicesTip")} />
+            <Stat icon="verified" num={caps.length} label={t("notebook.nav.capabilities")} accent drill="sym-caps" tip={t("notebook.sym.capsTip")} />
+            <Stat icon="history" num={issues.length} label={t("notebook.nav.issues")} drill="sym-issues" tip={t("notebook.sym.issuesTip")} />
+            <Stat icon="quote" num={decisions.length} label={t("notebook.issue.decisions")} drill="sym-decisions" tip={t("notebook.sym.decisionsTip")} />
+            <Stat icon="bookmark" num={invariants.length} label={t("notebook.nav.invariants")} drill="sym-invariants" tip={t("notebook.sym.invsTip")} />
           </BoxScore>
 
           {/* File anchor */}
           <div className="flex flex-wrap items-center gap-3 border-b border-stone-200 px-6 py-4 dark:border-zinc-800">
             <Icon name={langIcon(d!.lang, d!.file)} size={16} className="text-[#35618e] dark:text-[#6e9bc9]" />
-            <span className="font-mono text-[13px] text-stone-700 dark:text-zinc-200">{d!.file ?? "(no file anchor)"}</span>
+            <span className="font-mono text-[13px] text-stone-700 dark:text-zinc-200">{d!.file ?? t("notebook.sym.noFile")}</span>
             {d!.verified_at_sha && <span className="font-mono text-[11px] text-[#35618e] dark:text-[#6e9bc9]">@{d!.verified_at_sha.slice(0, 8)}</span>}
-            <span className="ml-auto"><CopyButton value={fqn} label="Copy fully-qualified name" /></span>
+            <span className="ml-auto"><CopyButton value={fqn} label={t("notebook.symbol.copyFqn")} /></span>
           </div>
 
           <Cells>
             <Cell id="sym-caps">
-              <Eyebrow icon="verified" count={caps.length} info="Capabilities this symbol implements — the reverse of a capability's Symbols cell.">Realizes</Eyebrow>
+              <Eyebrow icon="verified" count={caps.length} info={t("notebook.sym.realizesInfo")}>{t("notebook.sym.realizes")}</Eyebrow>
               {caps.length ? (
                 <div className="flex flex-wrap gap-2">
                   {caps.map((c) => (
@@ -113,21 +116,21 @@ export default function SymbolDetail() {
                   ))}
                 </div>
               ) : (
-                <p className={`text-sm ${muted}`}>Not bound to a capability.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.sym.noCap")}</p>
               )}
             </Cell>
 
             <Cell id="sym-services">
-              <Eyebrow icon="dns" count={services.length} info="The service(s) this symbol is indexed into.">Belongs to</Eyebrow>
+              <Eyebrow icon="dns" count={services.length} info={t("notebook.sym.belongsInfo")}>{t("notebook.sym.belongs")}</Eyebrow>
               {services.length ? (
                 <div className="flex flex-wrap gap-1.5">{services.map((s) => <RepoBadge key={s} repo={s} />)}</div>
               ) : (
-                <p className={`text-sm ${muted}`}>Not indexed into a service.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.sym.noService")}</p>
               )}
             </Cell>
 
             <Cell id="sym-issues" span>
-              <Eyebrow icon="history" count={issues.length} info="Issues whose root cause is this symbol.">Root cause of</Eyebrow>
+              <Eyebrow icon="history" count={issues.length} info={t("notebook.sym.rootInfo")}>{t("notebook.sym.root")}</Eyebrow>
               {issues.length ? (
                 <ul className="flex flex-col gap-2">
                   {issues.map((i, k) => (
@@ -145,12 +148,12 @@ export default function SymbolDetail() {
                   ))}
                 </ul>
               ) : (
-                <p className={`text-sm ${muted}`}>Not the recorded root cause of any issue.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.sym.noRoot")}</p>
               )}
             </Cell>
 
             <Cell id="sym-decisions">
-              <Eyebrow icon="quote" count={decisions.length || undefined} info="Rationale bound directly to this symbol.">Decisions</Eyebrow>
+              <Eyebrow icon="quote" count={decisions.length || undefined} info={t("notebook.sym.decisionsInfo")}>{t("notebook.issue.decisions")}</Eyebrow>
               {decisions.length ? (
                 <ul className="flex flex-col gap-3">
                   {decisions.map((dec, k) => (
@@ -166,12 +169,12 @@ export default function SymbolDetail() {
                   ))}
                 </ul>
               ) : (
-                <p className={`text-sm ${muted}`}>No decision attached.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.sym.noDecision")}</p>
               )}
             </Cell>
 
             <Cell id="sym-invariants">
-              <Eyebrow icon="bookmark" count={invariants.length || undefined} info="Invariants that must hold at this symbol.">Guarded by</Eyebrow>
+              <Eyebrow icon="bookmark" count={invariants.length || undefined} info={t("notebook.sym.guardedInfo")}>{t("notebook.sym.guarded")}</Eyebrow>
               {invariants.length ? (
                 <ul className="flex flex-col gap-2">
                   {invariants.map((inv, k) => (
@@ -182,7 +185,7 @@ export default function SymbolDetail() {
                   ))}
                 </ul>
               ) : (
-                <p className={`text-sm ${muted}`}>No invariant guards this symbol.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.sym.noGuard")}</p>
               )}
             </Cell>
           </Cells>

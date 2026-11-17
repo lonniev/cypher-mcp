@@ -15,7 +15,7 @@ import { PrStatusDot, PrStatusPill } from "./PrStatus";
 import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import {
   DossierWrap,
@@ -29,8 +29,11 @@ import {
   Eyebrow,
   Pager,
 } from "./dossier";
+import { Tx } from "@tollbooth-dpyc/web/react";
+import { useT, WORDS } from "../../i18n";
 
 export default function PullRequestDetail() {
+  const t = useT();
   const { repo = "", number = "" } = useParams();
   const decodedRepo = decodeURIComponent(repo);
   const num = Number(number);
@@ -67,37 +70,44 @@ export default function PullRequestDetail() {
     const open = live ? live.state === "open" : d?.state === "open";
     const merged = live?.reason === "merged" || (!live && !!d?.merged_at);
     if (merged)
-      return <Stamp tone="good" icon="delivered" label="Merged" sub="Pull request" tip="Merged — this change is enacted. The Enforces cell shows the intention it served." />;
+      return <Stamp tone="good" icon="delivered" label={t("notebook.gh.merged")} sub={t("notebook.pr.one")} tip={t("notebook.pr.mergedTip")} />;
     if (open)
-      return <Stamp tone="warn" icon="pullrequest" label={d?.draft ? "Draft" : "Open"} sub="Pull request" tip={d?.draft ? "A draft — in progress, not yet up for review." : "Open — a change in flight. Watch it here before it lands."} />;
-    return <Stamp tone="warn" ink="text-rose-700 border-rose-600/60 dark:text-rose-400" icon="close" label="Closed" sub="Not merged" tip="Closed without merging — the change was not enacted." />;
+      return <Stamp tone="warn" icon="pullrequest" label={d?.draft ? t("notebook.pr.draft") : t("notebook.pr.open")} sub={t("notebook.pr.one")} tip={d?.draft ? t("notebook.pr.draftTip") : t("notebook.pr.openTip")} />;
+    return <Stamp tone="warn" ink="text-rose-700 border-rose-600/60 dark:text-rose-400" icon="close" label={t("notebook.pr.closed")} sub={t("notebook.pr.notMerged")} tip={t("notebook.pr.closedTip")} />;
   })();
 
   return (
     <DossierWrap swipe={swipe}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <Link to="/notebook/pulls" className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
-          <Icon name="back" size={15} /> Pull Requests
+          <Icon name="back" size={15} /> {t("notebook.nav.pulls")}
         </Link>
-        <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label="pull request" />
+        <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label={t("notebook.pr.lower")} />
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.loading && !d && <QuoteScroller quotes={QUOTES} spinner heading="Pulling the case file…" classNames={quoteStyles} />}
+      {!m.error && m.loading && !d && <QuoteScroller quotes={quotes()} spinner heading={t("notebook.issue.pulling")} classNames={quoteStyles} />}
 
       {!m.error && !m.loading && d && !found && (
         <div className="mt-4 rounded-xl border border-stone-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
           <Icon name="close" size={22} className="mx-auto mb-2 text-stone-300 dark:text-zinc-600" />
-          <div className="font-serif text-lg font-semibold">No such pull request in the graph</div>
+          <div className="font-serif text-lg font-semibold">{t("notebook.pr.notFound")}</div>
           <p className={`mx-auto mt-1.5 max-w-md text-sm ${muted}`}>
-            <span className="font-mono text-stone-600 dark:text-zinc-300">{decodedRepo}#{num}</span> hasn't been mirrored into the intention graph. Check the number, or start from a real one on the{" "}
-            <Link to="/notebook/pulls" className="text-amber-700 hover:underline dark:text-amber-300">Pull Requests register</Link>.
+            <Tx
+              ns={WORDS}
+              k="notebook.pr.notFoundBody"
+              vars={{ ref: `${decodedRepo}#${num}` }}
+              components={{
+                ref: <span className="font-mono text-stone-600 dark:text-zinc-300" />,
+                register: <Link to="/notebook/pulls" className="text-amber-700 hover:underline dark:text-amber-300" />,
+              }}
+            />
           </p>
         </div>
       )}
 
       {found && (
-        <Dossier accent="blue" tab="Pull Request" tabNo={`Case file №${num}`}>
+        <Dossier accent="blue" tab={t("notebook.pr.tab")} tabNo={t("notebook.dossier.caseFileNo", { number: num })}>
           <DossierHead
             crest={`#${num}`}
             crestBadge={
@@ -114,20 +124,20 @@ export default function PullRequestDetail() {
               </>
             }
             roleIcon="pullrequest"
-            title={d.title ?? `Pull request #${num}`}
+            title={d.title ?? t("notebook.pulls.numbered", { number: num })}
             tags={[d.head_ref, d.base_ref].filter(Boolean) as string[]}
             stamp={stamp}
           />
 
           <BoxScore>
-            <Stat icon="verified" num={caps.length} label="Enforces" accent drill="pr-enforces" tip="The capabilities this PR enforces — the intention it enacts, traced through the issue it fixes." />
-            <Stat icon="history" num={fixes.length} label="Fixes" drill="pr-fixes" tip="The issue(s) this PR resolves." />
-            <Stat icon="github" num={d.url ? 1 : 0} label="Record" drill="pr-record" tip="Open the live pull request on GitHub." />
+            <Stat icon="verified" num={caps.length} label={t("notebook.pr.enforces")} accent drill="pr-enforces" tip={t("notebook.pr.enforcesTip")} />
+            <Stat icon="history" num={fixes.length} label={t("notebook.pr.fixes")} drill="pr-fixes" tip={t("notebook.pr.fixesTip")} />
+            <Stat icon="github" num={d.url ? 1 : 0} label={t("notebook.issue.record")} drill="pr-record" tip={t("notebook.pr.recordTip")} />
           </BoxScore>
 
           <Cells>
             <Cell id="pr-enforces" span>
-              <Eyebrow icon="verified" count={caps.length || undefined} info="The capabilities this PR enforces, derived from the issue it fixes (FIXES -> Issue -> ABOUT_CAPABILITY). The intention this change enacts.">Enforces intention</Eyebrow>
+              <Eyebrow icon="verified" count={caps.length || undefined} info={t("notebook.pr.enforcesInfo")}>{t("notebook.pr.enforcesIntention")}</Eyebrow>
               {caps.length ? (
                 <div className="flex flex-wrap gap-2">
                   {caps.map((c) => (
@@ -143,13 +153,13 @@ export default function PullRequestDetail() {
                 </div>
               ) : (
                 <p className={`text-sm ${muted}`}>
-                  No capability traced yet — this PR fixes an issue that isn't linked to a capability, or fixes none.
+                  {t("notebook.pr.noCaps")}
                 </p>
               )}
             </Cell>
 
             <Cell id="pr-fixes" span>
-              <Eyebrow icon="history" count={fixes.length || undefined} info="The issue(s) this PR resolves, via the FIXES edge. Each opens its own issue dossier.">Fixes issues</Eyebrow>
+              <Eyebrow icon="history" count={fixes.length || undefined} info={t("notebook.pr.fixesInfo")}>{t("notebook.pr.fixesIssues")}</Eyebrow>
               {fixes.length ? (
                 <ul className="flex flex-col gap-2">
                   {fixes.map((f, i) =>
@@ -166,20 +176,20 @@ export default function PullRequestDetail() {
                   )}
                 </ul>
               ) : (
-                <p className={`text-sm ${muted}`}>No issue linked — the fix PR was recorded without a FIXES edge.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.pr.noIssue")}</p>
               )}
             </Cell>
 
             <Cell id="pr-record" span>
-              <Eyebrow icon="open" info="Open the live pull request on GitHub.">Record</Eyebrow>
+              <Eyebrow icon="open" info={t("notebook.pr.recordTip")}>{t("notebook.issue.record")}</Eyebrow>
               <div className="flex flex-wrap items-center gap-3">
                 <PrStatusPill url={d.url} />
                 {d.url ? (
                   <a href={d.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
-                    <Icon name="pullrequest" className="text-[14px]" /> PR #{num} <Icon name="open" className="text-[13px]" />
+                    <Icon name="pullrequest" className="text-[14px]" /> {t("notebook.pr.short", { number: num })} <Icon name="open" className="text-[13px]" />
                   </a>
                 ) : (
-                  <span className={`text-sm ${muted}`}>No PR URL recorded.</span>
+                  <span className={`text-sm ${muted}`}>{t("notebook.pr.noUrl")}</span>
                 )}
                 {d.head_ref && (
                   <span className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">

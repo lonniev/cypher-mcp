@@ -8,16 +8,17 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { RefreshButton } from "@tollbooth-dpyc/web/react";
 import { ExternalLink, ShieldCheck, Sparkle, BookOpen, Clock, PlayCircle } from "lucide-react";
-import { ageLabel } from "../../lib/graphCache";
-import { SINCE_PRESETS } from "../../lib/time";
+import { relTime, sincePresets } from "../../lib/time";
+import { useT } from "../../i18n";
 
 /// "Added since" window filter — segmented presets over the graph timestamps.
 export function SinceFilter({ value, onChange }: { value: number; onChange: (days: number) => void }) {
+  const t = useT();
   return (
     <div className="inline-flex items-center gap-1.5">
       <Clock className="h-3.5 w-3.5 text-stone-400 dark:text-zinc-500" />
       <div className="inline-flex items-center gap-0.5 rounded-lg border border-stone-200 p-0.5 dark:border-zinc-800">
-        {SINCE_PRESETS.map((p) => (
+        {sincePresets(t).map((p) => (
           <button
             key={p.days}
             onClick={() => onChange(p.days)}
@@ -94,33 +95,34 @@ export function SectionLabel({ children }: { children: ReactNode }) {
 /// is doctrine (an agent cannot forge it); its inferred "why" is unverified
 /// advice. Render the two unmistakably differently.
 export function ProvenanceSeal({ provenance }: { provenance?: string }) {
+  const t = useT();
   const p = (provenance ?? "").toLowerCase();
   if (p.includes("human")) {
     return (
       <span
-        title="Human-authored — doctrine. An agent physically cannot write this."
+        title={t("notebook.seal.humanTitle")}
         className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
       >
-        <ShieldCheck className="h-3 w-3" /> Human-authored
+        <ShieldCheck className="h-3 w-3" /> {t("notebook.seal.human")}
       </span>
     );
   }
   if (p.includes("journeyman") || p.includes("verified")) {
     return (
       <span
-        title="Journeyman-verified against a commit SHA."
+        title={t("notebook.seal.verifiedTitle")}
         className="inline-flex items-center gap-1 rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-300"
       >
-        <ShieldCheck className="h-3 w-3" /> Verified
+        <ShieldCheck className="h-3 w-3" /> {t("notebook.seal.verified")}
       </span>
     );
   }
   return (
     <span
-      title="Agent-inferred and unverified — treat as advice, not doctrine."
+      title={t("notebook.seal.inferredTitle")}
       className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
     >
-      <Sparkle className="h-3 w-3" /> Agent-inferred · unverified
+      <Sparkle className="h-3 w-3" /> {t("notebook.seal.inferred")}
     </span>
   );
 }
@@ -141,10 +143,11 @@ export function MeteredBar({
   onRefresh: () => void;
   note?: string;
 }) {
+  const t = useT();
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
       <span className={faint}>
-        {loading ? "Reading the graph…" : cachedAt ? `Updated ${ageLabel(cachedAt)}` : "Not yet loaded"}
+        {loading ? t("notebook.bar.reading") : cachedAt ? t("notebook.bar.updated", { when: relTime(cachedAt) }) : t("notebook.bar.notLoaded")}
       </span>
       {note && <span className={faint}>· {note}</span>}
       <RefreshButton
@@ -191,16 +194,17 @@ export function XRef({ to, children }: { to: string; children: ReactNode }) {
 /// The "set your filters, then query" state — a register shows this on tab entry
 /// so the user can choose a window before running the read.
 export function LoadPanel({ onLoad, loading }: { onLoad: () => void; loading?: boolean }) {
+  const t = useT();
   return (
     <div className={`${card} flex flex-col items-center gap-3 px-6 py-10 text-center`}>
-      <p className={`max-w-sm text-sm ${muted}`}>Set your filters above, then query the graph.</p>
+      <p className={`max-w-sm text-sm ${muted}`}>{t("notebook.load.prompt")}</p>
       <button
         onClick={onLoad}
         disabled={loading}
         className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-500 disabled:opacity-40"
       >
         <PlayCircle className={`h-4 w-4 ${loading ? "animate-pulse" : ""}`} />
-        Query
+        {t("notebook.load.query")}
       </button>
     </div>
   );
@@ -226,16 +230,17 @@ export function ErrorNote({ children }: { children: ReactNode }) {
 /// A read error, rendered with intent. An empty-balance error becomes a Top-up
 /// call to action (a real block, not an apology); everything else shows the message.
 export function MeteredError({ error }: { error: string }) {
+  const t = useT();
   const broke = /insufficient balance|required for|0 sats available/i.test(error);
   if (broke) {
     return (
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
-        <span className="text-sm font-medium text-amber-800 dark:text-amber-300">Your balance is empty.</span>
+        <span className="text-sm font-medium text-amber-800 dark:text-amber-300">{t("notebook.broke.empty")}</span>
         <Link
           to="/notebook/wallet"
           className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-500"
         >
-          Top up
+          {t("notebook.broke.topUp")}
         </Link>
       </div>
     );

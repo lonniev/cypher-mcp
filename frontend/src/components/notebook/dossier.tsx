@@ -9,6 +9,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Icon, langIcon, type IconName } from "./icons";
 import { relTime } from "../../lib/time";
 import type { SwipeNav } from "../../lib/useSwipeNav";
+import { useT, type Translate } from "../../i18n";
 
 // ─── Live work heartbeat ─────────────────────────────────────────────────────
 // An agent stamps `activity`/`worked_by`/`activity_since` at the START of its
@@ -32,16 +33,23 @@ export function isWorking(a?: Activity): boolean {
 }
 
 /// A live "🔧 Journeyman fixing · 3m ago" pill. Renders nothing when idle.
+/// The activity the graph stores ("triaging", "fixing", "reviewing"), in the reader's language.
+function activityWord(t: Translate, activity: string): string {
+  return activity === "triaging" || activity === "fixing" || activity === "reviewing" ? t(`notebook.work.${activity}`) : activity;
+}
+
 export function WorkingPulse({ a, className = "" }: { a?: Activity; className?: string }) {
+  const t = useT();
   if (!isWorking(a)) return null;
-  const who = a!.worked_by ? a!.worked_by.charAt(0).toUpperCase() + a!.worked_by.slice(1) : "An agent";
+  const who = a!.worked_by ? a!.worked_by.charAt(0).toUpperCase() + a!.worked_by.slice(1) : t("notebook.work.someone");
+  const activity = activityWord(t, a!.activity!);
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 ${className}`}
-      title={`${who} is ${a!.activity} this issue`}
+      title={t("notebook.work.title", { who, activity })}
     >
       <Icon name="working" size={12} className="animate-spin" />
-      {who} {a!.activity}
+      {t("notebook.work.pulse", { who, activity })}
       {a!.activity_since ? <span className="font-normal opacity-70">· {relTime(a!.activity_since)}</span> : null}
     </span>
   );
@@ -58,6 +66,7 @@ export function parseIssueRef(s: string): { repo: string; number: number } | nul
 
 /// Start from a known GitHub issue or PR — paste a URL or type `repo#123`.
 export function IssueJump({ compact }: { compact?: boolean }) {
+  const t = useT();
   const nav = useNavigate();
   const [v, setV] = useState("");
   const parsed = parseIssueRef(v);
@@ -74,13 +83,13 @@ export function IssueJump({ compact }: { compact?: boolean }) {
         <input
           value={v}
           onChange={(e) => setV(e.target.value)}
-          placeholder={compact ? "GitHub issue/PR URL or repo#123" : "Start from a GitHub issue or PR — paste its URL, or type repo#123"}
+          placeholder={compact ? t("notebook.jump.short") : t("notebook.jump.long")}
           spellCheck={false}
           className="w-full rounded-lg border border-stone-300 bg-white py-2 pl-9 pr-3 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950"
         />
       </div>
       <button type="submit" disabled={!parsed} className="rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300">
-        Open
+        {t("notebook.jump.open")}
       </button>
     </form>
   );
@@ -133,7 +142,9 @@ const iconBtnIdle =
   "border-stone-200 text-stone-500 hover:border-amber-400 hover:text-amber-600 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-amber-400";
 
 /// Copy a value to the clipboard; flashes a check.
-export function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
+export function CopyButton({ value, label: labelProp }: { value: string; label?: string }) {
+  const t = useT();
+  const label = labelProp ?? t("notebook.copy");
   const [ok, setOk] = useState(false);
   return (
     <button
@@ -180,15 +191,16 @@ export function DossierWrap({ children, swipe }: { children: ReactNode; swipe?: 
 
 /// Prev · n/N · Next pager — the visible affordance for the swipe/arrow gesture.
 export function Pager({ index, total, onPrev, onNext, label }: { index: number; total: number; onPrev?: () => void; onNext?: () => void; label: string }) {
+  const t = useT();
   if (total <= 1 || index < 0) return null;
   const btn = "grid h-7 w-7 place-items-center rounded-md border border-stone-200 text-stone-500 transition-colors enabled:hover:border-amber-400 enabled:hover:text-amber-600 disabled:opacity-30 dark:border-zinc-700 dark:text-zinc-400 dark:enabled:hover:text-amber-400";
   return (
     <div className="flex items-center gap-1.5 text-xs">
-      <button type="button" disabled={!onPrev} onClick={onPrev} aria-label={`Previous ${label}`} className={btn}>
+      <button type="button" disabled={!onPrev} onClick={onPrev} aria-label={t("notebook.pager.previous", { what: label })} className={btn}>
         <Icon name="back" size={15} />
       </button>
       <span className="font-mono tabular-nums text-stone-400 dark:text-zinc-500">{index + 1} / {total}</span>
-      <button type="button" disabled={!onNext} onClick={onNext} aria-label={`Next ${label}`} className={btn}>
+      <button type="button" disabled={!onNext} onClick={onNext} aria-label={t("notebook.pager.next", { what: label })} className={btn}>
         <Icon name="back" size={15} className="rotate-180" />
       </button>
     </div>
@@ -253,6 +265,7 @@ export function DossierHead({
   tagHref?: (tag: string) => string;
   stamp?: ReactNode;
 }) {
+  const t = useT();
   const tagCls =
     "inline-flex items-center gap-1 rounded border border-stone-200 bg-stone-50 px-2 py-0.5 font-mono text-[11px] text-stone-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400";
   return (
@@ -269,13 +282,13 @@ export function DossierHead({
         </h2>
         {tags && tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {tags.map((t) =>
+            {tags.map((tag) =>
               tagHref ? (
-                <Link key={t} to={tagHref(t)} title={`Look up “${t}” in the concordance`} className={`${tagCls} transition-colors hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-300`}>
-                  <Icon name="tag" size={11} className="opacity-70" /> {t}
+                <Link key={tag} to={tagHref(tag)} title={t("notebook.tag.lookUp", { tag })} className={`${tagCls} transition-colors hover:border-amber-400 hover:text-amber-700 dark:hover:text-amber-300`}>
+                  <Icon name="tag" size={11} className="opacity-70" /> {tag}
                 </Link>
               ) : (
-                <span key={t} className={tagCls}>{t}</span>
+                <span key={tag} className={tagCls}>{tag}</span>
               ),
             )}
           </div>
@@ -407,26 +420,27 @@ export function SymbolRow({
   ghHref?: string;
   copyValue?: string;
 }) {
+  const t = useT();
   const nameCls = "min-w-0 truncate font-mono text-[13px]";
   return (
     <div className="flex items-center gap-2.5">
       <Icon name={langIcon(lang, file)} size={15} className="text-[#35618e] dark:text-[#6e9bc9]" />
-      <Link to={`/notebook/symbol?fqn=${encodeURIComponent(fqn)}`} title="Open the symbol's dossier" className={`${nameCls} hover:text-amber-700 hover:underline dark:hover:text-amber-300`}>
+      <Link to={`/notebook/symbol?fqn=${encodeURIComponent(fqn)}`} title={t("notebook.symbol.open")} className={`${nameCls} hover:text-amber-700 hover:underline dark:hover:text-amber-300`}>
         {fqn}
       </Link>
       {(file || sha) && (
         <span className="shrink-0 font-mono text-[11px] text-stone-400 dark:text-zinc-500">
           {file}
           {sha && (
-            <Tip text="Journeyman-verified at this commit SHA.">
+            <Tip text={t("notebook.symbol.verifiedAt")}>
               <span tabIndex={0} className="ml-1.5 cursor-help text-[#35618e] dark:text-[#6e9bc9]">@{sha.slice(0, 7)}</span>
             </Tip>
           )}
         </span>
       )}
       <span className="ml-auto flex shrink-0 gap-1.5">
-        {copyValue && <CopyButton value={copyValue} label="Copy fully-qualified name" />}
-        <IconLink href={ghHref} name="github" label="Open on GitHub" />
+        {copyValue && <CopyButton value={copyValue} label={t("notebook.symbol.copyFqn")} />}
+        <IconLink href={ghHref} name="github" label={t("notebook.openOnGitHub")} />
       </span>
     </div>
   );
