@@ -11,10 +11,12 @@ test runner in this repo, and the defect is purely copy.
 
 from pathlib import Path
 
+from fe_words import CATALOG, page
+
 ROOT = Path(__file__).resolve().parent.parent
-MEMORY_PAGE = (ROOT / "frontend/src/components/public/MemoryPage.tsx").read_text()
-FACTORY_MODEL = (ROOT / "frontend/src/lib/factoryModel.ts").read_text()
-SURFACE = MEMORY_PAGE + "\n" + FACTORY_MODEL
+MEMORY_PAGE = page("components/public/MemoryPage.tsx")
+FACTORY_MODEL = page("lib/factoryModel.ts")
+SURFACE = MEMORY_PAGE + "\n" + FACTORY_MODEL + "\n" + "\n".join(v for k, v in CATALOG.items() if k.startswith("model."))
 
 
 def _header(text: str = MEMORY_PAGE) -> str:
@@ -90,10 +92,10 @@ class TestMemoryPageLeadsWithPurpose:
             )
         ), "ResolvedVia section never makes the cost of search concrete first"
         # The three values still appear in the shared model the section renders.
-        assert 'key: "graph"' in FACTORY_MODEL
-        assert 'key: "scoped-grep"' in FACTORY_MODEL
-        assert 'key: "wide-grep"' in FACTORY_MODEL
-        assert "RESOLVED_VIA" in MEMORY_PAGE
+        assert '["graph", "graph"]' in FACTORY_MODEL
+        assert '["scoped-grep", "scopedGrep"]' in FACTORY_MODEL
+        assert '["wide-grep", "wideGrep"]' in FACTORY_MODEL
+        assert "resolvedVia(t)" in MEMORY_PAGE
 
     def test_authority_section_establishes_the_hazard_before_the_literal(self):
         # Hazard (confident guess recorded as fact) before any Cypher-literal mechanism.

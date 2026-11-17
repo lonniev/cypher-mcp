@@ -15,11 +15,13 @@ No frontend test runner in this repo; these are source contracts over the FE.
 import re
 from pathlib import Path
 
+from fe_words import english
+
 ROOT = Path(__file__).resolve().parent.parent
 FE = ROOT / "frontend/src"
 
 PUBLIC_SHELL = (FE / "components/public/PublicShell.tsx").read_text()
-NAV = (FE / "components/Nav.tsx").read_text()
+NAV = english((FE / "components/Nav.tsx").read_text())
 APP = (FE / "App.tsx").read_text()
 INDEX_CSS = (FE / "index.css").read_text()
 UI = (FE / "components/notebook/ui.tsx").read_text()
