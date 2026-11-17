@@ -5,11 +5,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getPricingModel, type ToolPrice } from "@tollbooth-dpyc/web";
-import { RefreshButton } from "@tollbooth-dpyc/web/react";
+import { RefreshButton, useLanguageLocale } from "@tollbooth-dpyc/web/react";
+import { useT } from "../../i18n";
 import { Page, SectionLabel, Empty, ErrorNote, faint, muted, refreshClass } from "./ui";
 
 function toolName(t: ToolPrice): string {
-  return t.tool_name || t.tool_id || "(unnamed)";
+  return t.tool_name || t.tool_id || "—";
 }
 function price(t: ToolPrice): number | null {
   if (typeof t.price_sats === "number") return t.price_sats;
@@ -20,6 +21,8 @@ function isFree(t: ToolPrice): boolean {
 }
 
 export default function QueryCatalog() {
+  const t = useT();
+  const locale = useLanguageLocale();
   const [tools, setTools] = useState<ToolPrice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,7 +34,7 @@ export default function QueryCatalog() {
     try {
       const r = await getPricingModel();
       setTools(r.tools ?? []);
-      if (!r.tools) setError(r.error ?? "The pricing model returned no tool list.");
+      if (!r.tools) setError(r.error ?? t("notebook.catalog.noList"));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -47,22 +50,22 @@ export default function QueryCatalog() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return rows
-      .filter((t) => (needle ? toolName(t).toLowerCase().includes(needle) || (t.category ?? "").includes(needle) : true))
+      .filter((tool) => (needle ? toolName(tool).toLowerCase().includes(needle) || (tool.category ?? "").includes(needle) : true))
       .sort((a, b) => toolName(a).localeCompare(toolName(b)));
   }, [rows, q]);
 
-  const pricedCount = rows.filter((t) => !isFree(t)).length;
+  const pricedCount = rows.filter((tool) => !isFree(tool)).length;
 
   return (
     <Page
-      eyebrow="Apparatus · Free"
-      title="Query Catalog"
-      lede="Every tool the graph service exposes and what it costs — read straight from the operator's live pricing model. Reading this index is itself free."
+      eyebrow={t("notebook.catalog.eyebrow")}
+      title={t("notebook.contents.catalog.title")}
+      lede={t("notebook.catalog.lede")}
       actions={
         <RefreshButton
           onRefresh={load}
           busy={loading}
-          label="Refresh the catalog"
+          label={t("notebook.catalog.refresh")}
           iconSize={14}
           classNames={{ root: refreshClass }}
         />
@@ -76,52 +79,52 @@ export default function QueryCatalog() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Filter tools…"
+              placeholder={t("notebook.catalog.filter")}
               className="flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950"
             />
             <span className={`text-xs ${faint}`}>
-              {rows.length} tools · {pricedCount} priced
+              {t("notebook.catalog.count", { count: rows.length, priced: pricedCount })}
             </span>
           </div>
 
           {loading && !tools ? (
-            <Empty>Reading the pricing model…</Empty>
+            <Empty>{t("notebook.catalog.reading")}</Empty>
           ) : filtered.length === 0 ? (
-            <Empty>No tools match that filter.</Empty>
+            <Empty>{t("notebook.catalog.none")}</Empty>
           ) : (
             <>
-              <SectionLabel>Published & registered tools</SectionLabel>
+              <SectionLabel>{t("notebook.catalog.published")}</SectionLabel>
               <div className="overflow-x-auto rounded-lg border border-stone-200 dark:border-zinc-800">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-stone-200 text-left text-[11px] font-mono uppercase tracking-widest text-stone-400 dark:border-zinc-800 dark:text-zinc-500">
-                      <th className="px-3 py-2">Tool</th>
-                      <th className="px-3 py-2">Category</th>
-                      <th className="px-3 py-2 text-right">Price</th>
+                      <th className="px-3 py-2">{t("notebook.catalog.tool")}</th>
+                      <th className="px-3 py-2">{t("notebook.catalog.category")}</th>
+                      <th className="px-3 py-2 text-right">{t("notebook.catalog.price")}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((t, i) => (
+                    {filtered.map((tool, i) => (
                       <tr
-                        key={(t.tool_id ?? toolName(t)) + i}
+                        key={(tool.tool_id ?? toolName(tool)) + i}
                         className="border-b border-stone-100 last:border-0 dark:border-zinc-900"
                       >
                         <td className="px-3 py-2 align-top">
                           <span className="font-mono text-[13px] text-stone-800 dark:text-zinc-100">
-                            {toolName(t)}
+                            {toolName(tool)}
                           </span>
-                          {t.price_type && (
-                            <span className={`ml-2 text-[11px] ${faint}`}>{t.price_type}</span>
+                          {tool.price_type && (
+                            <span className={`ml-2 text-[11px] ${faint}`}>{tool.price_type}</span>
                           )}
                         </td>
-                        <td className={`px-3 py-2 align-top text-xs ${muted}`}>{t.category ?? "—"}</td>
+                        <td className={`px-3 py-2 align-top text-xs ${muted}`}>{tool.category ?? "—"}</td>
                         <td className="px-3 py-2 text-right align-top tabular-nums">
-                          {isFree(t) ? (
-                            <span className="text-emerald-600 dark:text-emerald-400">free</span>
-                          ) : price(t) != null ? (
-                            <span>{price(t)!.toLocaleString()} sats</span>
+                          {isFree(tool) ? (
+                            <span className="text-emerald-600 dark:text-emerald-400">{t("notebook.catalog.free")}</span>
+                          ) : price(tool) != null ? (
+                            <span>{t("notebook.catalog.sats", { count: price(tool)!, n: price(tool)!.toLocaleString(locale) })}</span>
                           ) : (
-                            <span className={faint}>unpriced</span>
+                            <span className={faint}>{t("notebook.catalog.unpriced")}</span>
                           )}
                         </td>
                       </tr>

@@ -8,12 +8,10 @@ This is a content contract over the FE source strings — there is no frontend
 test runner in this repo, and the defect is purely copy.
 """
 
-from pathlib import Path
+from fe_words import CATALOG, page
 
-ROOT = Path(__file__).resolve().parent.parent
-JOIN_PAGE = (ROOT / "frontend/src/components/public/JoinPage.tsx").read_text()
-HOME_PAGE = (ROOT / "frontend/src/components/public/HomePage.tsx").read_text()
-FACTORY_MODEL = (ROOT / "frontend/src/lib/factoryModel.ts").read_text()
+JOIN_PAGE = page("components/public/JoinPage.tsx")
+HOME_PAGE = page("components/public/HomePage.tsx")
 
 
 def _header(text: str = JOIN_PAGE) -> str:
@@ -117,10 +115,9 @@ class TestJoinPageOwnIdentity:
 class TestScoutRoleBlurb:
     def test_crew_blurb_is_not_visitor_on_ramp(self):
         # Shared roster copy must not teach "Scout = how visitors join".
-        # Locate the Scout role blurb in factoryModel.
-        idx = FACTORY_MODEL.find('name: "Scout"')
-        assert idx >= 0, "Scout role missing from CREW"
-        snippet = FACTORY_MODEL[idx : idx + 280]
+        # The Scout role's blurb, as the shared roster says it.
+        snippet = CATALOG.get("model.crew.scout", "")
+        assert snippet, "Scout role missing from the crew's words"
         assert "On-ramp" not in snippet and "on-ramp" not in snippet, (
             "Scout crew blurb still calls Scout the on-ramp"
         )
@@ -130,7 +127,7 @@ def _between_header_and_steps(text: str = JOIN_PAGE) -> str:
     """Prose after the lede header and before the Step 1/2/3 cards (#87)."""
     header_end = text.find("</header>")
     assert header_end >= 0, "Join page has no </header>"
-    steps = text.find('title="Create or bring an npub"')
+    steps = text.find("Create or bring an npub")
     assert steps >= 0, "Join page missing Step 1 card"
     return text[header_end:steps]
 

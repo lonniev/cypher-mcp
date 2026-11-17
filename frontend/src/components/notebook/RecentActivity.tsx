@@ -9,11 +9,12 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { recentActivity, type RecentActivity, type ActivityKind } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
-import { SINCE_PRESETS, sinceLabel, relTime, toMillis } from "../../lib/time";
+import { sincePresets, sinceLabel, relTime, toMillis } from "../../lib/time";
+import { useT } from "../../i18n";
 import { Page, MeteredBar, MeteredError, LoadPanel, Empty, muted, faint } from "./ui";
 import { Icon, type IconName } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 
 // Per-kind display + routing. `href` returns the dossier path, or null for kinds
@@ -81,6 +82,7 @@ function meta(kind: string): { icon: IconName; tint: string; href: (r: RecentAct
 
 /// One activity row — a Link when the kind has a dossier, an inert div otherwise.
 function Row({ r }: { r: RecentActivity }) {
+  const t = useT();
   const m = meta(r.kind);
   const href = m.href(r);
   const ts = toMillis(r.updated_at);
@@ -107,7 +109,7 @@ function Row({ r }: { r: RecentActivity }) {
           )}
         </div>
         <div className="mt-0.5 truncate font-serif text-[15px] font-medium text-stone-900 dark:text-zinc-50">
-          {r.label?.trim() || (r.key ? `#${r.key}` : "(unnamed)")}
+          {r.label?.trim() || (r.key ? `#${r.key}` : t("notebook.recent.unnamed"))}
         </div>
       </div>
       <div className={`flex shrink-0 items-center gap-1.5 pl-2 text-[10.5px] ${faint}`}>
@@ -122,7 +124,7 @@ function Row({ r }: { r: RecentActivity }) {
 
   if (!href) {
     return (
-      <div className={shell} title="Shown within the entries it guards — no standalone page.">
+      <div className={shell} title={t("notebook.recent.noPage")}>
         {inner}
       </div>
     );
@@ -147,6 +149,7 @@ function Row({ r }: { r: RecentActivity }) {
 export default function RecentActivity() {
   // Same rolling-window vocabulary as every other filter (24h · 7d · 30d · 90d ·
   // Any time). `since` is a day count; 0 = any time.
+  const t = useT();
   const [since, setSince] = useState(7);
   const [kindFilter, setKindFilter] = useState<ActivityKind | "all">("all");
   const [q, setQ] = useState("");
@@ -219,9 +222,9 @@ export default function RecentActivity() {
 
   return (
     <Page
-      eyebrow="Register"
-      title="Recently Changed"
-      lede="Everything the knowledge base learned in a window — capabilities, issues, pull requests, symbols, invariants, patent elements, and services — newest first. Pick a range, then open any entry's dossier."
+      eyebrow={t("notebook.register")}
+      title={t("notebook.contents.recent.title")}
+      lede={t("notebook.recent.lede")}
     >
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
@@ -232,7 +235,7 @@ export default function RecentActivity() {
               order as every other filter: shortest first, "Any time" far right. */}
           <div className="mb-4 inline-flex flex-wrap items-center gap-1">
             <Icon name="history" size={15} className="mr-1 text-stone-400 dark:text-zinc-500" />
-            {SINCE_PRESETS.map((p) => (
+            {sincePresets(t).map((p) => (
               <button
                 key={p.days}
                 onClick={() => setSince(p.days)}
@@ -251,7 +254,7 @@ export default function RecentActivity() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Filter by name, service, or type…"
+              placeholder={t("notebook.recent.filter")}
               className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950"
             />
           </div>
@@ -267,7 +270,7 @@ export default function RecentActivity() {
                     : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-zinc-800 dark:text-zinc-300"
                 }`}
               >
-                All {rows.length}
+                {t("notebook.recent.all", { count: rows.length })}
               </button>
               {presentKinds.map((k) => (
                 <button
@@ -284,15 +287,15 @@ export default function RecentActivity() {
           )}
 
           <div className="mb-3 text-xs">
-            <span className={faint}>{m.data ? `${filtered.length} of ${rows.length} in ${sinceLabel(since).toLowerCase()}` : "not loaded"}</span>
+            <span className={faint}>{m.data ? t("notebook.recent.shown", { shown: filtered.length, count: rows.length, window: sinceLabel(t, since) }) : t("notebook.notLoaded")}</span>
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the activity feed…" classNames={quoteStyles} />
+            <QuoteScroller quotes={quotes()} spinner heading={t("notebook.recent.reading")} classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} loading={m.loading} />
           ) : filtered.length === 0 ? (
-            <Empty>{rows.length === 0 ? "Nothing changed in this window." : "No entries match this filter."}</Empty>
+            <Empty>{rows.length === 0 ? t("notebook.recent.nothing") : t("notebook.noMatch")}</Empty>
           ) : (
             <div className="space-y-3">
               {/* Expand/collapse every kind region at once. */}
@@ -302,7 +305,7 @@ export default function RecentActivity() {
                   className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[11px] text-stone-500 transition-colors hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                 >
                   <Icon name="chevron" size={12} className={`transition-transform ${allCollapsed ? "" : "rotate-90"}`} />
-                  {allCollapsed ? "Expand all" : "Collapse all"}
+                  {allCollapsed ? t("notebook.expandAll") : t("notebook.collapseAll")}
                 </button>
               </div>
 

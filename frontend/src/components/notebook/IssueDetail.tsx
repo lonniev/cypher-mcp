@@ -14,7 +14,7 @@ import { PrStatusDot } from "./PrStatus";
 import { MeteredBar, MeteredError, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import {
   DossierWrap,
@@ -33,8 +33,11 @@ import {
   WorkingPulse,
   isWorking,
 } from "./dossier";
+import { Tx } from "@tollbooth-dpyc/web/react";
+import { useT, WORDS } from "../../i18n";
 
 export default function IssueDetail() {
+  const t = useT();
   const { repo = "", number = "" } = useParams();
   const decodedRepo = decodeURIComponent(repo);
   const num = Number(number);
@@ -75,7 +78,7 @@ export default function IssueDetail() {
   // Live GitHub state fused with the graph disposition → one lifecycle status, shared
   // by the crest glyph and the disposition stamp so they never disagree.
   const live = useLiveIssueStatus(d?.issue_url);
-  const life = issueLifecycle(live, d?.disposition);
+  const life = issueLifecycle(live, d?.disposition, t);
   const symbols = d?.root_cause_symbols ?? [];
   const decisions = d?.decisions ?? [];
   const rejections = d?.rejections ?? [];
@@ -105,27 +108,34 @@ export default function IssueDetail() {
     <DossierWrap swipe={swipe}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <Link to="/notebook/issues" className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
-          <Icon name="back" size={15} /> Issues
+          <Icon name="back" size={15} /> {t("notebook.nav.issues")}
         </Link>
-        <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label="issue" />
+        <Pager index={idx} total={siblings.length} onPrev={goPrev} onNext={goNext} label={t("notebook.issue.one")} />
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.loading && !d && <QuoteScroller quotes={QUOTES} spinner heading="Pulling the case file…" classNames={quoteStyles} />}
+      {!m.error && m.loading && !d && <QuoteScroller quotes={quotes()} spinner heading={t("notebook.issue.pulling")} classNames={quoteStyles} />}
 
       {!m.error && !m.loading && d && !found && (
         <div className="mt-4 rounded-xl border border-stone-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
           <Icon name="close" size={22} className="mx-auto mb-2 text-stone-300 dark:text-zinc-600" />
-          <div className="font-serif text-lg font-semibold">No such issue in the graph</div>
+          <div className="font-serif text-lg font-semibold">{t("notebook.issue.notFound")}</div>
           <p className={`mx-auto mt-1.5 max-w-md text-sm ${muted}`}>
-            <span className="font-mono text-stone-600 dark:text-zinc-300">{decodedRepo}#{num}</span> hasn't been triaged into the intention graph. Check the number, or start from a real one on the{" "}
-            <Link to="/notebook/issues" className="text-amber-700 hover:underline dark:text-amber-300">Issues register</Link>.
+            <Tx
+              ns={WORDS}
+              k="notebook.issue.notFoundBody"
+              vars={{ ref: `${decodedRepo}#${num}` }}
+              components={{
+                ref: <span className="font-mono text-stone-600 dark:text-zinc-300" />,
+                register: <Link to="/notebook/issues" className="text-amber-700 hover:underline dark:text-amber-300" />,
+              }}
+            />
           </p>
         </div>
       )}
 
       {found && (
-        <Dossier accent="amber" tab="Issue" tabNo={`Case file №${num}`}>
+        <Dossier accent="amber" tab={t("notebook.issue.tab")} tabNo={t("notebook.dossier.caseFileNo", { number: num })}>
           <DossierHead
             crest={`#${num}`}
             crestBadge={<IssueStatusGlyph url={d.issue_url} disposition={d.disposition} className="-right-2 -top-2" size={18} />}
@@ -138,7 +148,7 @@ export default function IssueDetail() {
               </>
             }
             roleIcon="github"
-            title={d.title ?? `Issue #${num}`}
+            title={d.title ?? t("notebook.issues.numbered", { number: num })}
             tags={[d.classification].filter(Boolean) as string[]}
             stamp={
               d.disposition ? (
@@ -147,16 +157,8 @@ export default function IssueDetail() {
                   ink={life.stamp}
                   icon={life.icon}
                   label={life.label}
-                  sub="Status"
-                  tip={
-                    life.kind === "done"
-                      ? "Closed and delivered — the dossier records the whole chain."
-                      : life.kind === "delegated"
-                        ? "Handed to a peer service. The Routing cell shows where and why."
-                        : life.kind === "declined"
-                          ? "Closed as not planned."
-                          : "In progress in the Service Desk workflow."
-                  }
+                  sub={t("notebook.sort.status")}
+                  tip={t(`notebook.issue.stampTip.${life.kind}`)}
                 />
               ) : undefined
             }
@@ -169,16 +171,16 @@ export default function IssueDetail() {
           )}
 
           <BoxScore>
-            <Stat icon="symbol" num={symbols.length} label="Root cause" accent drill="issue-rootcause" tip="The code symbol found at fault." />
-            <Stat icon="quote" num={decisions.length} label="Decisions" drill="issue-decisions" tip="Recorded rationale for the fix." />
-            <Stat icon="close" num={rejections.length} label="Rejections" drill="issue-rejections" tip="Triage paths that were ruled out." />
-            <Stat icon="verified" num={caps.length} label="Capabilities" drill="issue-capability" tip="The capabilities this issue was raised against." />
-            <Stat icon="github" num={(d.issue_url ? 1 : 0) + (d.prs?.length ?? 0) + (d.repo_url ? 1 : 0)} label="Record" drill="issue-record" tip="Links to the live GitHub issue, the pull request(s) that fix it, and the repository." />
+            <Stat icon="symbol" num={symbols.length} label={t("notebook.issue.rootCause")} accent drill="issue-rootcause" tip={t("notebook.issue.rootCauseTip")} />
+            <Stat icon="quote" num={decisions.length} label={t("notebook.issue.decisions")} drill="issue-decisions" tip={t("notebook.issue.decisionsTip")} />
+            <Stat icon="close" num={rejections.length} label={t("notebook.issue.rejections")} drill="issue-rejections" tip={t("notebook.issue.rejectionsTip")} />
+            <Stat icon="verified" num={caps.length} label={t("notebook.nav.capabilities")} drill="issue-capability" tip={t("notebook.issue.capsTip")} />
+            <Stat icon="github" num={(d.issue_url ? 1 : 0) + (d.prs?.length ?? 0) + (d.repo_url ? 1 : 0)} label={t("notebook.issue.record")} drill="issue-record" tip={t("notebook.issue.recordTip")} />
             {d.resolved_via && (
               <div className="min-w-[92px] flex-1 border-r border-stone-200 px-3.5 py-3 text-center last:border-r-0 dark:border-zinc-800">
                 <ResolvedPill mode={d.resolved_via} />
                 <div className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.13em] text-stone-400 dark:text-zinc-500">
-                  <Annotate text="How the Service Desk located the code — graph is cheapest (no grep), wide-grep the costliest.">Resolved via</Annotate>
+                  <Annotate text={t("notebook.issue.resolvedTip")}>{t("notebook.issue.resolvedVia")}</Annotate>
                 </div>
               </div>
             )}
@@ -186,14 +188,14 @@ export default function IssueDetail() {
 
           {d.actionable_text && (
             <div className="border-b border-stone-200 px-6 py-5 dark:border-zinc-800">
-              <Eyebrow icon="quote">The brief</Eyebrow>
+              <Eyebrow icon="quote">{t("notebook.issue.brief")}</Eyebrow>
               <blockquote className="border-l-[3px] border-[#35618e] pl-4 text-[15px] leading-relaxed dark:border-[#6e9bc9]">{d.actionable_text}</blockquote>
             </div>
           )}
 
           <Cells>
             <Cell id="issue-capability">
-              <Eyebrow icon="swap" count={caps.length || undefined} info="The capabilities this issue was raised against. Center a capability instead and this issue becomes one of its cells — the grammar inverts.">Capabilities</Eyebrow>
+              <Eyebrow icon="swap" count={caps.length || undefined} info={t("notebook.issue.capsInfo")}>{t("notebook.nav.capabilities")}</Eyebrow>
               {caps.length ? (
                 <div className="flex flex-wrap gap-2">
                   {caps.map((c) => (
@@ -208,26 +210,26 @@ export default function IssueDetail() {
                   ))}
                 </div>
               ) : (
-                <p className={`text-sm ${muted}`}>No capability linked to this issue yet.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.issue.noCaps")}</p>
               )}
             </Cell>
 
             <Cell id="issue-rootcause">
-              <Eyebrow icon="symbol" count={`${symbols.length} symbol${symbols.length === 1 ? "" : "s"}`} info="The symbol the Service Desk pinned as the fault. Links to its owning service.">Root cause</Eyebrow>
+              <Eyebrow icon="symbol" count={t("notebook.issue.symbols", { count: symbols.length })} info={t("notebook.issue.rootCauseInfo")}>{t("notebook.issue.rootCause")}</Eyebrow>
               {symbols.length ? (
                 <div className="flex flex-col gap-2.5">
                   {symbols.map((s, i) => {
-                    const fqn = s.symbol ?? s.fqn ?? "(unnamed)";
+                    const fqn = s.symbol ?? s.fqn ?? t("notebook.recent.unnamed");
                     return <SymbolRow key={fqn + i} fqn={fqn} file={s.file ?? s.file_path} lang={s.lang} sha={s.verified_at_sha} copyValue={fqn} />;
                   })}
                 </div>
               ) : (
-                <p className={`text-sm ${muted}`}>No root-cause symbol linked.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.issue.noRootCause")}</p>
               )}
             </Cell>
 
             <Cell id="issue-decisions">
-              <Eyebrow icon="quote" count={decisions.length || undefined} info="Why the fix was made this way. A human-authored decision is doctrine.">Decisions</Eyebrow>
+              <Eyebrow icon="quote" count={decisions.length || undefined} info={t("notebook.issue.decisionsInfo")}>{t("notebook.issue.decisions")}</Eyebrow>
               {decisions.length ? (
                 <ul className="flex flex-col gap-3">
                   {decisions.map((dec, i) => (
@@ -244,12 +246,12 @@ export default function IssueDetail() {
                   ))}
                 </ul>
               ) : (
-                <p className={`text-sm ${muted}`}>No decision recorded.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.issue.noDecision")}</p>
               )}
             </Cell>
 
             <Cell id="issue-rejections">
-              <Eyebrow icon="history" count={rejections.length || undefined} info="Triage directions the Porter considered and ruled out — the road not taken.">Rejections</Eyebrow>
+              <Eyebrow icon="history" count={rejections.length || undefined} info={t("notebook.issue.rejectionsInfo")}>{t("notebook.issue.rejections")}</Eyebrow>
               {rejections.length ? (
                 <ul className="flex flex-col gap-2">
                   {rejections.map((r, i) => (
@@ -260,16 +262,16 @@ export default function IssueDetail() {
                   ))}
                 </ul>
               ) : (
-                <p className={`text-sm ${muted}`}>No rejections — accepted on first triage.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.issue.noRejections")}</p>
               )}
             </Cell>
 
             {(routeRej.length > 0 || passedRepos.length > 0) && (
               <Cell id="issue-routing" span>
-                <Eyebrow icon="swap" count={passedRepos.length || undefined} info="Repos that declined an escalation of this issue, and why. The Porter re-routes to a repo NOT in this set — never back to one that already passed.">Routing</Eyebrow>
+                <Eyebrow icon="swap" count={passedRepos.length || undefined} info={t("notebook.issue.routingInfo")}>{t("notebook.issue.routing")}</Eyebrow>
                 {standoff && (
                   <div className="mb-3 flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-[13px] font-medium text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
-                    <Icon name="close" size={16} /> Routing standoff — escalated to a human for arbitration.
+                    <Icon name="close" size={16} /> {t("notebook.issue.standoff")}
                   </div>
                 )}
                 <ul className="flex flex-col gap-2">
@@ -279,9 +281,9 @@ export default function IssueDetail() {
                       {r.from_repo ? (
                         <Link to={`/notebook/services/${encodeURIComponent(r.from_repo)}`} className="shrink-0 font-mono text-[12.5px] text-amber-700 hover:underline dark:text-amber-300">{r.from_repo}</Link>
                       ) : (
-                        <span className="shrink-0 font-mono text-[12.5px] text-stone-500">a repo</span>
+                        <span className="shrink-0 font-mono text-[12.5px] text-stone-500">{t("notebook.issue.aRepo")}</span>
                       )}
-                      <span className={muted}>declined — {r.reason}</span>
+                      <span className={muted}>{t("notebook.issue.declined", { reason: r.reason ?? "" })}</span>
                     </li>
                   ))}
                 </ul>
@@ -289,14 +291,14 @@ export default function IssueDetail() {
             )}
 
             <Cell id="issue-record" span>
-              <Eyebrow icon="open" info="Open the pull request(s) that fix this issue, the live GitHub issue, or the repository.">Record</Eyebrow>
+              <Eyebrow icon="open" info={t("notebook.issue.recordInfo")}>{t("notebook.issue.record")}</Eyebrow>
               <div className="flex flex-wrap items-center gap-3">
                 {d.issue_url ? (
                   <a href={d.issue_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
-                    <Icon name="github" className="text-[14px]" /> Issue #{num} <Icon name="open" className="text-[13px]" />
+                    <Icon name="github" className="text-[14px]" /> {t("notebook.issues.numbered", { number: num })} <Icon name="open" className="text-[13px]" />
                   </a>
                 ) : (
-                  <span className={`text-sm ${muted}`}>No linked issue URL.</span>
+                  <span className={`text-sm ${muted}`}>{t("notebook.issue.noUrl")}</span>
                 )}
                 {/* Fix PR(s) — the enactment. Each chip opens the PR's OWN dossier (the
                     intention it enforces), with a live GitHub status dot. */}
@@ -308,13 +310,13 @@ export default function IssueDetail() {
                       className="inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 font-mono text-[11.5px] text-indigo-700 transition-colors hover:border-indigo-400 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:border-indigo-400/50"
                     >
                       <PrStatusDot url={pr.url} />
-                      <Icon name="pullrequest" className="text-[14px]" /> PR #{pr.number} <Icon name="open" className="text-[13px]" />
+                      <Icon name="pullrequest" className="text-[14px]" /> {t("notebook.pr.short", { number: pr.number })} <Icon name="open" className="text-[13px]" />
                     </Link>
                   ) : null,
                 )}
                 {d.repo_url && (
                   <a href={d.repo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 font-mono text-[11.5px] text-stone-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:text-amber-300">
-                    <Icon name="github" className="text-[14px]" /> Repository <Icon name="open" className="text-[13px]" />
+                    <Icon name="github" className="text-[14px]" /> {t("notebook.repository")} <Icon name="open" className="text-[13px]" />
                   </a>
                 )}
               </div>

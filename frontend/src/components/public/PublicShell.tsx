@@ -10,14 +10,15 @@
 
 import { Link, Outlet, useLocation } from "react-router-dom";
 import Opening from "../Opening";
-import { matchesPath, SiteNav, useAppShell, type SiteNavClassNames, type SiteNavItem } from "@tollbooth-dpyc/web/react";
+import { LanguageChooser, matchesPath, SiteNav, Tx, useAppShell, type SiteNavClassNames, type SiteNavItem } from "@tollbooth-dpyc/web/react";
+import { useT, WORDS, type Translate } from "../../i18n";
 
-const ITEMS: readonly SiteNavItem[] = [
-  { href: "/", label: "Home", end: true },
-  { href: "/factory", label: "Factory" },
-  { href: "/memory", label: "Memory" },
-  { href: "/join", label: "Join" },
-  { href: "/notebook", label: "Lab Notebook" },
+const items = (t: Translate): readonly SiteNavItem[] => [
+  { href: "/", label: t("ui.nav.home"), end: true },
+  { href: "/factory", label: t("ui.nav.factory") },
+  { href: "/memory", label: t("ui.nav.memory") },
+  { href: "/join", label: t("ui.nav.join") },
+  { href: "/notebook", label: t("ui.nav.notebook") },
 ];
 
 const link =
@@ -63,12 +64,13 @@ const brand = (
 export function PrimaryNav() {
   const { pathname } = useLocation();
   const { session } = useAppShell();
+  const t = useT();
   const account = session.signedIn
     ? {
         npub: session.npub,
         links: [
-          { href: "/notebook/profile", label: "Profile & theme" },
-          { href: "/notebook/wallet", label: "Wallet" },
+          { href: "/notebook/profile", label: t("ui.nav.profile") },
+          { href: "/notebook/wallet", label: t("ui.nav.wallet") },
         ],
         onSignOut: session.signOut,
       }
@@ -76,7 +78,7 @@ export function PrimaryNav() {
   return (
     <SiteNav
       brand={brand}
-      items={ITEMS}
+      items={items(t)}
       isActive={(href, item) => matchesPath(pathname, href, item.end)}
       renderLink={({ href, children, ...rest }) => (
         <Link to={href} {...rest}>
@@ -90,7 +92,7 @@ export function PrimaryNav() {
             to="/notebook"
             className="px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-500 transition-colors"
           >
-            Sign in
+            {t("ui.nav.signIn")}
           </Link>
         )
       }
@@ -99,21 +101,33 @@ export function PrimaryNav() {
   );
 }
 
+/** The language row in the footer, where every visitor can reach it, signed in or not. */
+const languageLook = {
+  root: "flex flex-wrap justify-center gap-1.5 pt-2",
+  chip: "rounded-full border border-stone-200 px-2.5 py-0.5 text-xs text-stone-500 hover:bg-stone-100 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900",
+  active: "border-amber-400! text-amber-700! dark:border-amber-500/50! dark:text-amber-300!",
+};
+
 export function PublicFooter() {
   return (
     <footer className="border-t border-stone-100 px-4 py-3 text-center text-xs text-stone-400 dark:border-zinc-900 dark:text-zinc-600">
       <div>
-        Monetized with{" "}
-        <a
-          href="https://tollbooth-dpyc.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-amber-600/80 hover:underline dark:text-amber-400/80"
-        >
-          Tollbooth DPYC™
-        </a>{" "}
-        · Apache-2.0 · Patent Pending (US Prov. 64/045,999)
+        <Tx
+          ns={WORDS}
+          k="ui.footer.monetized"
+          components={{
+            dpyc: (
+              <a
+                href="https://tollbooth-dpyc.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-amber-600/80 hover:underline dark:text-amber-400/80"
+              />
+            ),
+          }}
+        />
       </div>
+      <LanguageChooser classNames={languageLook} />
     </footer>
   );
 }

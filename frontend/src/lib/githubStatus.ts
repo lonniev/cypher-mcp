@@ -9,6 +9,7 @@
 // degrades to null — the dossier renders exactly as before, just without a dot.
 
 import { useEffect, useState } from "react";
+import type { Translate } from "../i18n";
 
 export type GhState = "open" | "closed";
 export type GhReason = "completed" | "not_planned" | "merged" | "reopened" | null;
@@ -83,10 +84,10 @@ export function useLiveIssueStatus(url?: string): LiveIssueStatus | null {
 
 /// The GitHub palette made literal: green = open, purple = done (completed
 /// issue / merged PR), gray = closed-not-planned, rose = a PR closed unmerged.
-export function ghStatusLook(s: LiveIssueStatus): { dot: string; label: string } {
-  if (s.state === "open") return { dot: "bg-emerald-500", label: s.isPr ? "Open pull request" : "Open on GitHub" };
-  if (s.reason === "merged") return { dot: "bg-violet-500", label: "Merged" };
-  if (s.isPr) return { dot: "bg-rose-500", label: "Closed — not merged" };
-  if (s.reason === "not_planned") return { dot: "bg-stone-400 dark:bg-zinc-500", label: "Closed — not planned" };
-  return { dot: "bg-violet-500", label: "Closed — completed" };
+export function ghStatusLook(s: LiveIssueStatus, t: Translate): { dot: string; label: string } {
+  if (s.state === "open") return { dot: "bg-emerald-500", label: s.isPr ? t("notebook.gh.openPr") : t("notebook.gh.open") };
+  if (s.reason === "merged") return { dot: "bg-violet-500", label: t("notebook.gh.merged") };
+  if (s.isPr) return { dot: "bg-rose-500", label: t("notebook.gh.notMerged") };
+  if (s.reason === "not_planned") return { dot: "bg-stone-400 dark:bg-zinc-500", label: t("notebook.gh.notPlanned") };
+  return { dot: "bg-violet-500", label: t("notebook.gh.completed") };
 }

@@ -11,20 +11,22 @@ import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import { parseIssueRef, ResolvedPill, WorkingPulse } from "./dossier";
 import { IssueStatusGlyph, IssueStatusPill } from "./IssueStatusGlyph";
+import { useT, type Translate } from "../../i18n";
 
 type Col = "recent" | "number" | "repo" | "disposition";
-const SORTS: { col: Col; label: string }[] = [
-  { col: "recent", label: "Recent" },
-  { col: "number", label: "Number" },
-  { col: "repo", label: "Service" },
-  { col: "disposition", label: "Status" },
+const sorts = (t: Translate): { col: Col; label: string }[] => [
+  { col: "recent", label: t("notebook.sort.recent") },
+  { col: "number", label: t("notebook.sort.number") },
+  { col: "repo", label: t("notebook.sort.service") },
+  { col: "disposition", label: t("notebook.sort.status") },
 ];
 
 export default function Issues() {
+  const t = useT();
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("recent");
@@ -68,7 +70,7 @@ export default function Issues() {
   const jumpRef = parseIssueRef(q);
 
   return (
-    <Page eyebrow="Register" title="Issues" lede="Every issue the Service Desk has triaged. Filter here, open a known issue directly, or run elastic search in the Concordance.">
+    <Page eyebrow={t("notebook.register")} title={t("notebook.contents.issues.title")} lede={t("notebook.issues.lede")}>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
 
@@ -86,7 +88,7 @@ export default function Issues() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Filter by number, title, service, capability — or paste a GitHub URL / repo#123 to open it"
+                placeholder={t("notebook.issues.filter")}
                 spellCheck={false}
                 className={`w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-9 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 ${jumpRef ? "pr-40" : "pr-3"}`}
               />
@@ -95,7 +97,7 @@ export default function Issues() {
                   type="submit"
                   className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md bg-amber-100 px-2 py-1 font-mono text-[11px] font-medium text-amber-800 transition-colors hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25"
                 >
-                  Open {jumpRef.repo}#{jumpRef.number} <Icon name="open" size={12} />
+                  {t("notebook.openRef", { ref: `${jumpRef.repo}#${jumpRef.number}` })} <Icon name="open" size={12} />
                 </button>
               )}
             </form>
@@ -103,17 +105,17 @@ export default function Issues() {
               to="/notebook/concordance"
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300"
             >
-              <Icon name="swap" size={16} /> Elastic search
+              <Icon name="swap" size={16} /> {t("notebook.caps.elastic")}
             </Link>
           </div>
 
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className={`text-xs ${faint}`}>{m.data ? `${filtered.length} of ${rows.length} issues` : "not loaded"}</span>
+              <span className={`text-xs ${faint}`}>{m.data ? t("notebook.issues.shown", { shown: filtered.length, count: rows.length }) : t("notebook.notLoaded")}</span>
               <SinceFilter value={since} onChange={setSince} />
             </div>
             <div className="flex items-center gap-1">
-              {SORTS.map((s) => (
+              {sorts(t).map((s) => (
                 <button
                   key={s.col}
                   onClick={() => (sortCol === s.col ? setDir((d) => (d === "asc" ? "desc" : "asc")) : (setSortCol(s.col), setDir(s.col === "recent" || s.col === "number" ? "desc" : "asc")))}
@@ -127,11 +129,11 @@ export default function Issues() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the issue catalog…" classNames={quoteStyles} />
+            <QuoteScroller quotes={quotes()} spinner heading={t("notebook.issues.reading")} classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
-            <Empty>No issues match this filter.</Empty>
+            <Empty>{t("notebook.issues.none")}</Empty>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {filtered.map((i) => (
@@ -151,7 +153,7 @@ export default function Issues() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug text-stone-900 group-hover:text-amber-700 dark:text-zinc-50 dark:group-hover:text-amber-300">
-                          {i.title?.trim() || i.actionable_text?.trim() || `Issue #${i.number}`}
+                          {i.title?.trim() || i.actionable_text?.trim() || t("notebook.issues.numbered", { number: i.number ?? "" })}
                         </h3>
                         <Icon name="open" size={15} className="mt-0.5 shrink-0 text-stone-300 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-500 dark:text-zinc-600" />
                       </div>
@@ -178,7 +180,7 @@ export default function Issues() {
                   )}
                   {toMillis(i.updated_at) != null && (
                     <div className={`mt-auto flex items-center gap-1 pt-0.5 text-[10.5px] ${faint}`}>
-                      <Icon name="history" size={11} /> triaged {relTime(toMillis(i.updated_at))}
+                      <Icon name="history" size={11} /> {t("notebook.issues.triaged", { when: relTime(toMillis(i.updated_at)) })}
                     </div>
                   )}
                 </Link>

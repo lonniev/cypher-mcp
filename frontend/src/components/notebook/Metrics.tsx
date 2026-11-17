@@ -8,6 +8,8 @@
 import { factoryResolutionStats, type ResolutionStat } from "../../lib/mcp";
 import { useMetered } from "../../lib/graphCache";
 import { Page, MeteredBar, SectionLabel, Empty, MeteredError, card, faint, muted } from "./ui";
+import { useLanguageLocale } from "@tollbooth-dpyc/web/react";
+import { useT, type MessageKey } from "../../i18n";
 
 // Semantic ordering + palette: cheapest resolution first, costliest last.
 const ORDER = ["graph", "scoped-grep", "wide-grep"];
@@ -15,28 +17,32 @@ const ORDER = ["graph", "scoped-grep", "wide-grep"];
 interface Tone {
   bar: string;
   text: string;
-  gloss: string;
+  /** The key of the path's explanation (shared with the public pages). */
+  gloss: MessageKey | null;
 }
 const TONES: Record<string, Tone> = {
   graph: {
     bar: "bg-emerald-500",
     text: "text-emerald-700 dark:text-emerald-300",
-    gloss: "Answered from the graph alone — no grep. The cheapest path.",
+    gloss: "model.via.graph",
   },
   "scoped-grep": {
     bar: "bg-amber-500",
     text: "text-amber-700 dark:text-amber-300",
-    gloss: "The graph narrowed a grep to a handful of files.",
+    gloss: "model.via.scopedGrep",
   },
   "wide-grep": {
     bar: "bg-rose-500",
     text: "text-rose-700 dark:text-rose-300",
-    gloss: "The graph missed; the whole repo was re-tokenized. The metric to drive down.",
+    gloss: "model.via.wideGrep",
   },
 };
-const FALLBACK: Tone = { bar: "bg-zinc-400", text: "text-stone-600 dark:text-zinc-300", gloss: "" };
+const FALLBACK: Tone = { bar: "bg-zinc-400", text: "text-stone-600 dark:text-zinc-300", gloss: null };
 
 export default function Metrics() {
+  const t = useT();
+  const locale = useLanguageLocale();
+  const num = (n: number) => n.toLocaleString(locale);
   const m = useMetered<ResolutionStat[]>(
     "metrics:resolution",
     factoryResolutionStats,
@@ -57,29 +63,29 @@ export default function Metrics() {
 
   return (
     <Page
-      eyebrow="Register · Ledger"
-      title="Factory Metrics"
-      lede="Every issue the Service Desk resolves records HOW its code was found. The greener that mix, the more the intention graph is paying for itself in tokens it saves."
+      eyebrow={t("notebook.metrics.eyebrow")}
+      title={t("notebook.contents.metrics.title")}
+      lede={t("notebook.metrics.lede")}
     >
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
 
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.cold && m.loading && <Empty>Reading the resolution ledger…</Empty>}
+      {!m.error && m.cold && m.loading && <Empty>{t("notebook.metrics.reading")}</Empty>}
 
       {m.data && (total === 0 ? (
-        <Empty>No resolutions recorded yet — the ledger fills as the Service Desk triages issues.</Empty>
+        <Empty>{t("notebook.metrics.none")}</Empty>
       ) : (
         <div className="space-y-8">
           {/* Headline tiles */}
           <div className="grid grid-cols-3 gap-3">
-            <Tile label="Resolutions" value={total.toLocaleString()} sub="issues located" />
-            <Tile label="From the graph" value={`${graphPct}%`} sub={`${graphN.toLocaleString()} issues`} tone="text-emerald-700 dark:text-emerald-300" />
-            <Tile label="Wide-grep" value={`${widePct}%`} sub={`${wideN.toLocaleString()} issues`} tone="text-rose-700 dark:text-rose-300" />
+            <Tile label={t("notebook.metrics.resolutions")} value={num(total)} sub={t("notebook.metrics.located")} />
+            <Tile label={t("notebook.metrics.fromGraph")} value={`${graphPct}%`} sub={t("notebook.metrics.issues", { count: graphN, n: num(graphN) })} tone="text-emerald-700 dark:text-emerald-300" />
+            <Tile label="wide-grep" value={`${widePct}%`} sub={t("notebook.metrics.issues", { count: wideN, n: num(wideN) })} tone="text-rose-700 dark:text-rose-300" />
           </div>
 
           {/* Single semantic distribution bar */}
           <section>
-            <SectionLabel>Resolution mix</SectionLabel>
+            <SectionLabel>{t("notebook.metrics.mix")}</SectionLabel>
             <div
               className="flex h-8 w-full overflow-hidden rounded-lg border border-stone-200 dark:border-zinc-800"
               role="img"
@@ -105,7 +111,7 @@ export default function Metrics() {
 
           {/* Per-mode breakdown ledger */}
           <section>
-            <SectionLabel>By resolution path</SectionLabel>
+            <SectionLabel>{t("notebook.metrics.byPath")}</SectionLabel>
             <div className={`${card} divide-y divide-stone-100 dark:divide-zinc-800`}>
               {sorted.map((s) => {
                 const tone = TONES[s.resolved_via ?? ""] ?? FALLBACK;
@@ -115,10 +121,10 @@ export default function Metrics() {
                     <span className={`h-3 w-3 shrink-0 rounded-full ${tone.bar}`} />
                     <div className="min-w-0 flex-1">
                       <div className={`font-mono text-sm font-medium ${tone.text}`}>{s.resolved_via}</div>
-                      {tone.gloss && <div className={`text-[11px] ${muted}`}>{tone.gloss}</div>}
+                      {tone.gloss && <div className={`text-[11px] ${muted}`}>{t(tone.gloss)}</div>}
                     </div>
                     <div className="text-right">
-                      <div className="tabular-nums text-lg font-semibold">{(s.n ?? 0).toLocaleString()}</div>
+                      <div className="tabular-nums text-lg font-semibold">{num(s.n ?? 0)}</div>
                       <div className={`text-[11px] ${faint}`}>{pct}%</div>
                     </div>
                   </div>

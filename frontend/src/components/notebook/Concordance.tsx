@@ -14,6 +14,7 @@ import {
 } from "../../lib/mcp";
 import { useMetered, readCache, writeCache } from "../../lib/graphCache";
 import { IssueJump } from "./dossier";
+import { useT } from "../../i18n";
 import {
   Page,
   MeteredBar,
@@ -31,6 +32,7 @@ import {
 const RECENTS_KEY = "concordance:recents";
 
 export default function Concordance() {
+  const t = useT();
   const [input, setInput] = useState("");
   const [keyword, setKeyword] = useState("");
   const [params] = useSearchParams();
@@ -55,9 +57,9 @@ export default function Concordance() {
 
   return (
     <Page
-      eyebrow="Apparatus"
-      title="Concordance"
-      lede="Look up a term. The intention graph tells you which services own it and hands back the full context pack — rationale, owners, symbols, invariants, and precedent issues — for each matching capability."
+      eyebrow={t("notebook.apparatus")}
+      title={t("notebook.contents.concordance.title")}
+      lede={t("notebook.conc.lede")}
     >
       <form
         onSubmit={(e) => {
@@ -71,7 +73,7 @@ export default function Concordance() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="e.g. vault, pricing, proof, courier…"
+            placeholder={t("notebook.conc.placeholder")}
             className="w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-9 pr-3 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950"
           />
         </div>
@@ -80,18 +82,18 @@ export default function Concordance() {
           disabled={!input.trim()}
           className="rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-amber-500 disabled:opacity-40"
         >
-          Look up
+          {t("notebook.conc.lookUp")}
         </button>
       </form>
 
       <div className="mb-6">
-        <div className={`mb-1.5 text-[11px] uppercase tracking-widest ${faint}`}>Or open a known issue</div>
+        <div className={`mb-1.5 text-[11px] uppercase tracking-widest ${faint}`}>{t("notebook.conc.orOpen")}</div>
         <IssueJump compact />
       </div>
 
       {recents.length > 0 && !keyword && (
         <div className="mb-6">
-          <div className={`mb-1.5 text-[11px] uppercase tracking-widest ${faint}`}>Recent lookups</div>
+          <div className={`mb-1.5 text-[11px] uppercase tracking-widest ${faint}`}>{t("notebook.conc.recents")}</div>
           <div className="flex flex-wrap gap-1.5">
             {recents.map((r) => (
               <button
@@ -107,7 +109,7 @@ export default function Concordance() {
       )}
 
       {!keyword ? (
-        <Empty>Enter a keyword to search the graph.</Empty>
+        <Empty>{t("notebook.conc.enter")}</Empty>
       ) : (
         <ConcordanceResult key={keyword} keyword={keyword} />
       )}
@@ -121,6 +123,7 @@ interface Result {
 }
 
 function ConcordanceResult({ keyword }: { keyword: string }) {
+  const t = useT();
   const m = useMetered<Result>(
     `concordance:${keyword}`,
     async () => {
@@ -144,12 +147,12 @@ function ConcordanceResult({ keyword }: { keyword: string }) {
         note={`“${keyword}”`}
       />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.cold && m.loading && <Empty>Searching the graph for “{keyword}”…</Empty>}
+      {!m.error && m.cold && m.loading && <Empty>{t("notebook.conc.searching", { keyword })}</Empty>}
 
       {r && (
         <div className="space-y-7">
           <section>
-            <SectionLabel>Handled by</SectionLabel>
+            <SectionLabel>{t("notebook.conc.handledBy")}</SectionLabel>
             {r.services.length > 0 ? (
               <div className={`${card} divide-y divide-stone-100 dark:divide-zinc-800`}>
                 {r.services.map((s, i) => (
@@ -162,12 +165,12 @@ function ConcordanceResult({ keyword }: { keyword: string }) {
                 ))}
               </div>
             ) : (
-              <Empty>No service resolves “{keyword}”.</Empty>
+              <Empty>{t("notebook.conc.noService", { keyword })}</Empty>
             )}
           </section>
 
           <section>
-            <SectionLabel>Context packs</SectionLabel>
+            <SectionLabel>{t("notebook.conc.packs")}</SectionLabel>
             {r.packs.length > 0 ? (
               <div className="space-y-4">
                 {r.packs.map((p, i) => (
@@ -175,7 +178,7 @@ function ConcordanceResult({ keyword }: { keyword: string }) {
                 ))}
               </div>
             ) : (
-              <Empty>No context pack matched “{keyword}”.</Empty>
+              <Empty>{t("notebook.conc.noPack", { keyword })}</Empty>
             )}
           </section>
         </div>
@@ -185,6 +188,7 @@ function ConcordanceResult({ keyword }: { keyword: string }) {
 }
 
 function PackCard({ p }: { p: ContextPackEntry }) {
+  const t = useT();
   const rationale = p.why ?? p.inferred_why;
   return (
     <div className={`${card} p-4`}>
@@ -217,7 +221,7 @@ function PackCard({ p }: { p: ContextPackEntry }) {
       <div className="grid gap-4 sm:grid-cols-2">
         {(p.symbols ?? []).length > 0 && (
           <div>
-            <div className={`mb-1 text-[11px] uppercase tracking-widest ${faint}`}>Symbols</div>
+            <div className={`mb-1 text-[11px] uppercase tracking-widest ${faint}`}>{t("notebook.conc.symbols")}</div>
             <ul className="space-y-1">
               {p.symbols!.slice(0, 8).map((s, i) => (
                 <li key={i} className="flex items-start gap-1.5 text-[12px]">
@@ -238,7 +242,7 @@ function PackCard({ p }: { p: ContextPackEntry }) {
 
         {(p.invariants ?? []).length > 0 && (
           <div>
-            <div className={`mb-1 text-[11px] uppercase tracking-widest ${faint}`}>Invariants</div>
+            <div className={`mb-1 text-[11px] uppercase tracking-widest ${faint}`}>{t("notebook.nav.invariants")}</div>
             <ul className="space-y-1">
               {p.invariants!.map((inv, i) => (
                 <li key={i} className="flex items-start gap-1.5 text-[12px] text-stone-700 dark:text-zinc-200">
@@ -253,7 +257,7 @@ function PackCard({ p }: { p: ContextPackEntry }) {
 
       {(p.precedents ?? []).length > 0 && (
         <div className="mt-3 border-t border-stone-100 pt-3 dark:border-zinc-800">
-          <div className={`mb-1 text-[11px] uppercase tracking-widest ${faint}`}>Precedent issues</div>
+          <div className={`mb-1 text-[11px] uppercase tracking-widest ${faint}`}>{t("notebook.conc.precedents")}</div>
           <ul className="space-y-1">
             {p.precedents!.map((pr, i) => (
               <li key={i} className="flex items-start gap-1.5 text-[12px]">

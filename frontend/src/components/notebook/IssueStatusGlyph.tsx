@@ -11,6 +11,7 @@
 import { useLiveIssueStatus, type LiveIssueStatus } from "../../lib/githubStatus";
 import { Tip } from "./dossier";
 import { Icon, type IconName } from "./icons";
+import { useT, type Translate } from "../../i18n";
 
 export type LifecycleKind = "in-progress" | "done" | "delegated" | "declined";
 
@@ -23,26 +24,28 @@ export interface Lifecycle {
   label: string;
 }
 
-const IN_PROGRESS: Lifecycle = {
-  kind: "in-progress", icon: "worker", label: "In progress",
+type LifecycleLook = Omit<Lifecycle, "label">;
+
+const IN_PROGRESS: LifecycleLook = {
+  kind: "in-progress", icon: "worker",
   badge: "bg-emerald-500 text-white",
   pill: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   stamp: "text-emerald-700 border-emerald-600/60 dark:text-emerald-400",
 };
-const DONE: Lifecycle = {
-  kind: "done", icon: "delivered", label: "Done",
+const DONE: LifecycleLook = {
+  kind: "done", icon: "delivered",
   badge: "bg-violet-500 text-white",
   pill: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   stamp: "text-violet-700 border-violet-600/60 dark:text-violet-400",
 };
-const DELEGATED: Lifecycle = {
-  kind: "delegated", icon: "handshake", label: "Delegated",
+const DELEGATED: LifecycleLook = {
+  kind: "delegated", icon: "handshake",
   badge: "bg-orange-500 text-white",
   pill: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
   stamp: "text-orange-700 border-orange-600/60 dark:text-orange-400",
 };
-const DECLINED: Lifecycle = {
-  kind: "declined", icon: "close", label: "Closed — not planned",
+const DECLINED: LifecycleLook = {
+  kind: "declined", icon: "close",
   badge: "bg-stone-400 text-white dark:bg-zinc-500",
   pill: "bg-stone-500/10 text-stone-600 dark:text-zinc-400",
   stamp: "text-stone-600 border-stone-500/60 dark:text-zinc-400",
@@ -56,7 +59,12 @@ const DECLINED_RE = /reject|declin|wont|not.?planned|duplicate|invalid/i;
 /// Fuse live GitHub state with the graph disposition into one lifecycle status.
 /// GitHub-closed wins (a closed issue is Done/Declined, never still delegated);
 /// among open issues the disposition decides delegated vs resolved vs in-progress.
-export function issueLifecycle(live: LiveIssueStatus | null, disposition?: string): Lifecycle {
+export function issueLifecycle(live: LiveIssueStatus | null, disposition: string | undefined, t: Translate): Lifecycle {
+  const look = lifecycleLook(live, disposition);
+  return { ...look, label: t(`notebook.life.${look.kind}`) };
+}
+
+function lifecycleLook(live: LiveIssueStatus | null, disposition?: string): LifecycleLook {
   const disp = disposition ?? "";
   if (live?.state === "closed") return live.reason === "not_planned" ? DECLINED : DONE;
   // GitHub state unknown/open — lean on the disposition.
@@ -69,11 +77,11 @@ export function issueLifecycle(live: LiveIssueStatus | null, disposition?: strin
 /// Display label for a raw graph disposition — the peer-handoff states read as
 /// "Delegated" (the peer isn't always strictly "upstream"); an arbitration standoff
 /// reads as "Arbitration". Everything else passes through unchanged.
-export function dispositionLabel(disposition?: string): string {
+export function dispositionLabel(disposition: string | undefined, t: Translate): string {
   const disp = (disposition ?? "").trim();
   if (!disp) return disp;
-  if (/arbitrat/i.test(disp)) return "Arbitration";
-  if (DELEGATED_RE.test(disp)) return "Delegated";
+  if (/arbitrat/i.test(disp)) return t("notebook.life.arbitration");
+  if (DELEGATED_RE.test(disp)) return t("notebook.life.delegated");
   return disp;
 }
 
@@ -81,8 +89,9 @@ export function dispositionLabel(disposition?: string): string {
 /// "Done", "In progress"), for a card's metadata row where a corner badge is too terse.
 export function IssueStatusPill({ url, disposition }: { url?: string; disposition?: string }) {
   const live = useLiveIssueStatus(url);
+  const t = useT();
   if (!live && !disposition) return null;
-  const life = issueLifecycle(live, disposition);
+  const life = issueLifecycle(live, disposition, t);
   return (
     <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[10.5px] ${life.pill}`}>
       <Icon name={life.icon} size={11} /> {life.label}
@@ -102,16 +111,17 @@ export function IssueStatusGlyph({
   size?: number;
 }) {
   const live = useLiveIssueStatus(url);
+  const t = useT();
   // Nothing to derive from — no live state and no disposition — so show nothing.
   if (!live && !disposition) return null;
-  const life = issueLifecycle(live, disposition);
+  const life = issueLifecycle(live, disposition, t);
   const glyph = Math.max(9, Math.round(size * 0.6));
   return (
     <span className={`absolute ${className}`}>
-      <Tip text={`Status: ${life.label}`}>
+      <Tip text={t("notebook.life.status", { label: life.label })}>
         <span
           tabIndex={0}
-          aria-label={`Status: ${life.label}`}
+          aria-label={t("notebook.life.status", { label: life.label })}
           style={{ width: size, height: size }}
           className={`grid cursor-help place-items-center rounded-full ring-2 ring-white dark:ring-zinc-900 ${life.badge}`}
         >

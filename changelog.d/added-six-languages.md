@@ -1,0 +1,3 @@
+- The Lab Notebook and the public factory pages speak English, French, Spanish, Japanese, Chinese and Hindi.
+- The first language is the reader's choice, else their country's, else English; a row in the footer and a Language section on Profile change it.
+- Dates, counts and relative times follow the language. Tool names, query keys, node labels, role names and graph values stay as the graph stores them.

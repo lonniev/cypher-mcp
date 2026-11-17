@@ -4,10 +4,13 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Notebook, Factory, Brain, DoorOpen, ArrowRight } from "lucide-react";
+import { Tx } from "@tollbooth-dpyc/web/react";
 import LiveStats from "./LiveStats";
-import { FACTORY_DOCS, MODEL, THREE_RULES, PROVENANCE_THESIS } from "../../lib/factoryModel";
+import { FACTORY_DOCS, MODEL, threeRules } from "../../lib/factoryModel";
+import { useT, WORDS } from "../../i18n";
 
 export default function HomePage() {
+  const t = useT();
   return (
     <div className="relative overflow-hidden">
       <div
@@ -30,34 +33,29 @@ export default function HomePage() {
                 Cypher <span className="font-normal text-stone-400 dark:text-zinc-500">MCP</span>
               </div>
               <div className="text-xs uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                Memory plane of the DPYC Agentic Software Factory
+                {t("public.home.kicker")}
               </div>
             </div>
           </div>
 
           <h1 className="font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-            An unattended crew that builds software — and a graph that remembers why.
+            {t("public.home.title")}
           </h1>
           <p className="mt-4 text-base leading-relaxed text-stone-600 dark:text-zinc-400">
-            The DPYC Agentic Software Factory is {MODEL.repos} repositories and a roster of
-            judgement and policy roles. Behavior evolves by PR; the workflow skeleton that
-            grants powers is human-only; containment is funding, not policy. cypher-mcp is
-            the only component a curious stranger can reach without a GitHub account, an
-            nsec, or an invitation — so it speaks for the architecture.
+            {t("public.home.lede", { repos: MODEL.repos })}
           </p>
         </section>
 
         <section>
-          <h2 className="mb-3 font-serif text-lg font-semibold">Live from the intention graph</h2>
+          <h2 className="mb-3 font-serif text-lg font-semibold">{t("public.home.live.title")}</h2>
           <p className="mb-4 text-sm text-stone-500 dark:text-zinc-400">
-            Aggregate counts only — no issue titles, no symbol paths, no npubs. The
-            resolved_via mix is the argument that the graph pays for itself.
+            {t("public.home.live.body")}
           </p>
           <LiveStats />
         </section>
 
         <section className="grid gap-3 sm:grid-cols-3">
-          {THREE_RULES.map((r) => (
+          {threeRules(t).map((r) => (
             <div
               key={r.title}
               className="rounded-xl border border-stone-200 bg-white/60 p-4 dark:border-zinc-800 dark:bg-zinc-900/60"
@@ -72,17 +70,17 @@ export default function HomePage() {
 
         <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
           <div className="text-[11px] uppercase tracking-widest text-amber-600 dark:text-amber-400">
-            Agents may propose. Only humans authorize.
+            {t("model.provenance.motto")}
           </div>
           <p className="mt-2 font-serif text-lg leading-snug text-stone-800 dark:text-zinc-100">
-            {PROVENANCE_THESIS}
+            {t("model.provenance.thesis")}
           </p>
           <p className="mt-2 text-xs text-stone-500 dark:text-zinc-400">
-            A confident guess recorded as fact is worse than no record — so inferred advice
-            and human doctrine are never conflated.{" "}
-            <Link to="/memory" className="text-amber-600 hover:underline dark:text-amber-400">
-              Why the graph keeps them apart →
-            </Link>
+            <Tx
+              ns={WORDS}
+              k="public.home.provenance.note"
+              components={{ why: <Link to="/memory" className="text-amber-600 hover:underline dark:text-amber-400" /> }}
+            />
           </p>
         </section>
 
@@ -90,49 +88,38 @@ export default function HomePage() {
           <Door
             to="/factory"
             icon={<Factory className="h-5 w-5" />}
-            title="Factory"
-            body="Crew roster, four planes, issue and PR lifecycles, the two funding rails."
+            title={t("ui.nav.factory")}
+            body={t("public.home.door.factory")}
           />
           <Door
             to="/memory"
             icon={<Brain className="h-5 w-5" />}
-            title="Memory"
-            body="What this operator stores and why — capabilities, symbols, invariants, decisions."
+            title={t("ui.nav.memory")}
+            body={t("public.home.door.memory")}
           />
           <Door
             to="/join"
             icon={<DoorOpen className="h-5 w-5" />}
-            title="Join"
-            body="Bring your own Nostr identity. Prove the key, then use the operator."
+            title={t("ui.nav.join")}
+            body={t("public.home.door.join")}
           />
           <Door
             to="/notebook"
             icon={<Notebook className="h-5 w-5" />}
-            title="Lab Notebook"
-            body="Sign in to read the full intention graph — registers, concordance, metrics."
+            title={t("ui.nav.notebook")}
+            body={t("public.home.door.notebook")}
           />
         </section>
 
         <p className="text-xs text-stone-400 dark:text-zinc-500">
-          Model source:{" "}
-          <a
-            href={FACTORY_DOCS}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-600/90 hover:underline dark:text-amber-400/90"
-          >
-            factory-model.html
-          </a>{" "}
-          (machine-checked in dpyc-community). Powered by{" "}
-          <a
-            href="https://tollbooth-dpyc.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-600/90 hover:underline dark:text-amber-400/90"
-          >
-            Tollbooth DPYC™
-          </a>
-          .
+          <Tx
+            ns={WORDS}
+            k="public.home.source"
+            components={{
+              doc: <a href={FACTORY_DOCS} target="_blank" rel="noopener noreferrer" className="text-amber-600/90 hover:underline dark:text-amber-400/90" />,
+              dpyc: <a href="https://tollbooth-dpyc.com" target="_blank" rel="noopener noreferrer" className="text-amber-600/90 hover:underline dark:text-amber-400/90" />,
+            }}
+          />
         </p>
       </div>
     </div>

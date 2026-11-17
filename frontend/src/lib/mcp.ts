@@ -599,48 +599,35 @@ export type AuditQuestion =
   | "what_contradicts"
   | "what_changed_since";
 
+/// The six questions; each one's words are `notebook.audit.q.<id>.*` in src/i18n.
 export const AUDIT_QUESTIONS: {
   id: AuditQuestion;
   key: string;
-  label: string;
-  blurb: string;
   needsSince?: boolean;
 }[] = [
   {
     id: "why_exists",
     key: "audit_why_exists",
-    label: "Why does it exist?",
-    blurb: "Authorized and suggested whys, with honest gaps when doctrine is missing.",
   },
   {
     id: "who_authorized",
     key: "audit_who_authorized",
-    label: "Who authorized it?",
-    blurb: "Only authorized assertions — the human-authored Authority trail.",
   },
   {
     id: "what_derived_from",
     key: "audit_what_derived_from",
-    label: "What was it derived from?",
-    blurb: "Issues, decisions, and patent elements that sourced this capability.",
   },
   {
     id: "what_guards",
     key: "audit_what_guards",
-    label: "What guards it?",
-    blurb: "Invariants on the realizing symbols, with severity bands.",
   },
   {
     id: "what_contradicts",
     key: "audit_what_contradicts",
-    label: "What contradicts it?",
-    blurb: "Assertion and invariant CONTRADICTS pairs — both sides kept, never buried.",
   },
   {
     id: "what_changed_since",
     key: "audit_what_changed_since",
-    label: "What changed since…?",
-    blurb: "New assertions, SUPERSEDES chains, and invariant edits after a point in time.",
     needsSince: true,
   },
 ];

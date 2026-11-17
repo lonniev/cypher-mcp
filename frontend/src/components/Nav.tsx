@@ -1,7 +1,9 @@
 import { NavLink } from "react-router-dom";
 import { PrimaryNav } from "./public/PublicShell";
+import { useT } from "../i18n";
 
 export default function Nav() {
+  const t = useT();
   const tab = (to: string, label: string, end = false) => (
     <NavLink
       to={to}
@@ -24,21 +26,21 @@ export default function Nav() {
       <PrimaryNav />
       {/* Secondary notebook registers — subordinate row, does not replace primary. */}
       <nav
-        aria-label="Lab Notebook registers"
+        aria-label={t("notebook.nav.label")}
         className="border-b border-stone-200 dark:border-zinc-800 px-4 py-1.5 flex items-center gap-1 flex-wrap bg-stone-50/80 dark:bg-zinc-950/80"
       >
-        {tab("/notebook", "Contents", true)}
-        {tab("/notebook/recent", "Recent")}
-        {tab("/notebook/capabilities", "Capabilities")}
-        {tab("/notebook/issues", "Issues")}
-        {tab("/notebook/pulls", "Pull Requests")}
-        {tab("/notebook/invariants", "Invariants")}
-        {tab("/notebook/patents", "Patents")}
-        {tab("/notebook/concordance", "Concordance")}
-        {tab("/notebook/metrics", "Metrics")}
-        {tab("/notebook/catalog", "Catalog")}
-        {tab("/notebook/audit", "Audit")}
-        {tab("/notebook/wallet", "Wallet")}
+        {tab("/notebook", t("notebook.nav.contents"), true)}
+        {tab("/notebook/recent", t("notebook.nav.recent"))}
+        {tab("/notebook/capabilities", t("notebook.nav.capabilities"))}
+        {tab("/notebook/issues", t("notebook.nav.issues"))}
+        {tab("/notebook/pulls", t("notebook.nav.pulls"))}
+        {tab("/notebook/invariants", t("notebook.nav.invariants"))}
+        {tab("/notebook/patents", t("notebook.nav.patents"))}
+        {tab("/notebook/concordance", t("notebook.nav.concordance"))}
+        {tab("/notebook/metrics", t("notebook.nav.metrics"))}
+        {tab("/notebook/catalog", t("notebook.nav.catalog"))}
+        {tab("/notebook/audit", t("notebook.nav.audit"))}
+        {tab("/notebook/wallet", t("ui.nav.wallet"))}
       </nav>
     </>
   );

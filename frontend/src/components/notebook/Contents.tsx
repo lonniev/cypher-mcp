@@ -22,6 +22,8 @@ import FrontMatter from "./FrontMatter";
 import { Page, SectionLabel, card, muted, faint } from "./ui";
 import { readCache } from "../../lib/graphCache";
 import type { CapabilitySummary } from "../../lib/mcp";
+import { Tx } from "@tollbooth-dpyc/web/react";
+import { useT, WORDS, type MessageKey } from "../../i18n";
 
 interface Entry {
   to: string;
@@ -36,98 +38,39 @@ export default function Contents() {
   // if the architect has already visited that register this device.
   const caps = readCache<CapabilitySummary[]>("capabilities:list:since=0")?.data;
 
+  const t = useT();
+  const entry = (to: string, id: string, icon: ReactNode, count?: string): Entry => ({
+    to,
+    title: t(`notebook.contents.${id}.title` as MessageKey),
+    blurb: t(`notebook.contents.${id}.blurb` as MessageKey),
+    icon,
+    count,
+  });
   const registers: Entry[] = [
-    {
-      to: "/notebook/recent",
-      title: "Recently Changed",
-      blurb:
-        "What the knowledge base learned lately — every capability, issue, symbol, invariant, patent element, and service created or modified in a date window, newest first. Pick Today, Yesterday, Last 7 days, or Last 30 days, then open any entry.",
-      icon: <CalendarClock className="h-5 w-5" />,
-    },
-    {
-      to: "/notebook/capabilities",
-      title: "Capabilities",
-      blurb:
-        "The abilities the fleet owns — each with its human-authored ‘why’ (doctrine) or an agent's inferred rationale, its owning and consuming services, and the symbols that realize it.",
-      icon: <Boxes className="h-5 w-5" />,
-      count: caps ? `${caps.length} entries` : undefined,
-    },
-    {
-      to: "/notebook/issues",
-      title: "Issues",
-      blurb:
-        "Every issue the Service Desk has triaged — classification, disposition, root cause, and the capability it touched. A peer entry into the graph; open one to see its full case file.",
-      icon: <History className="h-5 w-5" />,
-    },
-    {
-      to: "/notebook/pulls",
-      title: "Pull Requests",
-      blurb:
-        "Every change in flight and the intention it enforces — open, draft, or merged. The enactment that closes the loop: each PR fixes an issue and, through it, enforces a capability. Watch upcoming changes here.",
-      icon: <GitPullRequestArrow className="h-5 w-5" />,
-    },
-    {
-      to: "/notebook/invariants",
-      title: "Invariants",
-      blurb:
-        "The fleet's enforceable business logic — human-authored rules a change must not violate. Each guards a bounded set of symbols; open one to see the rule, what it guards, and the patent topics it grounds.",
-      icon: <ShieldCheck className="h-5 w-5" />,
-    },
-    {
-      to: "/notebook/patents",
-      title: "Patent Topics",
-      blurb:
-        "The filed provisional's reference numerals (US Prov. 64/045,999) — the patentable topics. Each grounds the capabilities and invariants traced to it; open one to see what it describes.",
-      icon: <Award className="h-5 w-5" />,
-    },
-    {
-      to: "/notebook/concordance",
-      title: "Concordance",
-      blurb:
-        "Look up any keyword and see which services handle it and the full context pack — the one query that resolves twelve repos to one answer.",
-      icon: <SearchCode className="h-5 w-5" />,
-    },
-    {
-      to: "/notebook/metrics",
-      title: "Factory Metrics",
-      blurb:
-        "How the Service Desk locates code — graph, scoped-grep, or wide-grep. Watch wide-grep trend to zero as the graph learns. The token-savings ledger.",
-      icon: <Gauge className="h-5 w-5" />,
-    },
-    {
-      to: "/notebook/catalog",
-      title: "Query Catalog",
-      blurb:
-        "The published tool set — the apparatus of the graph service, read straight from the operator's pricing model.",
-      icon: <ScrollText className="h-5 w-5" />,
-    },
-    {
-      to: "/notebook/audit",
-      title: "Audit",
-      blurb:
-        "Six audit questions over one capability — why it exists, who authorized it, what it derived from, what guards it, what contradicts it, and what changed since a date. PROV badges, contradictions banner, and honest gaps.",
-      icon: <Scale className="h-5 w-5" />,
-    },
+    entry("/notebook/recent", "recent", <CalendarClock className="h-5 w-5" />),
+    entry("/notebook/capabilities", "capabilities", <Boxes className="h-5 w-5" />, caps ? t("notebook.contents.entries", { count: caps.length }) : undefined),
+    entry("/notebook/issues", "issues", <History className="h-5 w-5" />),
+    entry("/notebook/pulls", "pulls", <GitPullRequestArrow className="h-5 w-5" />),
+    entry("/notebook/invariants", "invariants", <ShieldCheck className="h-5 w-5" />),
+    entry("/notebook/patents", "patents", <Award className="h-5 w-5" />),
+    entry("/notebook/concordance", "concordance", <SearchCode className="h-5 w-5" />),
+    entry("/notebook/metrics", "metrics", <Gauge className="h-5 w-5" />),
+    entry("/notebook/catalog", "catalog", <ScrollText className="h-5 w-5" />),
+    entry("/notebook/audit", "audit", <Scale className="h-5 w-5" />),
   ];
 
   return (
     <Page
-      eyebrow="DPYC Agentic Service Desk"
-      title="Cypher Lab Notebook"
-      lede={
-        <>
-          A read-only architect's notebook over the intention graph that grounds the DPYC Software
-          Factory — capabilities, code symbols, invariants, patent tracing, and the issues the
-          Service Desk has triaged.
-        </>
-      }
+      eyebrow={t("notebook.contents.eyebrow")}
+      title={t("notebook.contents.title")}
+      lede={t("notebook.contents.lede")}
     >
       <div className="mb-8">
-        <SectionLabel>Colophon</SectionLabel>
+        <SectionLabel>{t("notebook.contents.colophon")}</SectionLabel>
         <FrontMatter />
       </div>
 
-      <SectionLabel>Table of contents</SectionLabel>
+      <SectionLabel>{t("notebook.contents.toc")}</SectionLabel>
       <div className="grid gap-3 sm:grid-cols-2">
         {registers.map((e) => (
           <Link
@@ -153,11 +96,14 @@ export default function Contents() {
       <div className={`mt-8 ${card} flex items-start gap-3 p-4`}>
         <Landmark className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
         <p className={`text-sm leading-relaxed ${muted}`}>
-          Provenance is honest throughout: a{" "}
-          <span className="font-medium text-emerald-700 dark:text-emerald-300">human-authored</span>{" "}
-          rationale is doctrine — an agent cannot forge it — while an{" "}
-          <span className="font-medium text-amber-700 dark:text-amber-300">agent-inferred</span> one
-          is advice awaiting review. The notebook shows which is which on every entry.
+          <Tx
+            ns={WORDS}
+            k="notebook.contents.provenance"
+            components={{
+              human: <span className="font-medium text-emerald-700 dark:text-emerald-300" />,
+              agent: <span className="font-medium text-amber-700 dark:text-amber-300" />,
+            }}
+          />
         </p>
       </div>
     </Page>

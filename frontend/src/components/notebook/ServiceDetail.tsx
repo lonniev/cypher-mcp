@@ -9,7 +9,7 @@ import { useMetered } from "../../lib/graphCache";
 import { MeteredBar, MeteredError, muted, faint } from "./ui";
 import { Icon, langIcon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import {
   DossierWrap,
@@ -22,12 +22,15 @@ import {
   Eyebrow,
   initialsOf,
 } from "./dossier";
+import { Tx } from "@tollbooth-dpyc/web/react";
+import { useT, WORDS } from "../../i18n";
 
 function resolved(disposition?: string): boolean {
   return /resolv|merg|fixed|closed|done|shipped/i.test(disposition ?? "");
 }
 
 export default function ServiceDetail() {
+  const t = useT();
   const { repo = "" } = useParams();
   const decoded = decodeURIComponent(repo);
   const nav = useNavigate();
@@ -52,37 +55,37 @@ export default function ServiceDetail() {
     <DossierWrap>
       <div className="mb-3 flex items-center justify-between gap-3">
         <button onClick={() => nav(-1)} className={`inline-flex items-center gap-1 text-sm ${muted} hover:text-amber-700 dark:hover:text-amber-300`}>
-          <Icon name="back" size={15} /> Back
+          <Icon name="back" size={15} /> {t("notebook.back")}
         </button>
       </div>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
-      {!m.error && m.loading && !d && <QuoteScroller quotes={QUOTES} spinner heading="Reading the service…" classNames={quoteStyles} />}
+      {!m.error && m.loading && !d && <QuoteScroller quotes={quotes()} spinner heading={t("notebook.svc.reading")} classNames={quoteStyles} />}
 
       {!m.error && !m.loading && d && !found && (
         <div className="mt-4 rounded-xl border border-stone-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
           <Icon name="close" size={22} className="mx-auto mb-2 text-stone-300 dark:text-zinc-600" />
-          <div className="font-serif text-lg font-semibold">No such service in the graph</div>
+          <div className="font-serif text-lg font-semibold">{t("notebook.svc.notFound")}</div>
           <p className={`mx-auto mt-1.5 max-w-md text-sm ${muted}`}>
-            <span className="font-mono text-stone-600 dark:text-zinc-300">{decoded}</span> hasn't been registered in the intention graph.
+            <Tx ns={WORDS} k="notebook.svc.notRegistered" vars={{ ref: decoded }} components={{ ref: <span className="font-mono text-stone-600 dark:text-zinc-300" /> }} />
           </p>
         </div>
       )}
 
       {found && (
-        <Dossier accent="blue" tab="Service" tabNo="Case file">
-          <DossierHead crest={initialsOf(decoded)} role="Service · repository" roleIcon="github" title={decoded} />
+        <Dossier accent="blue" tab={t("notebook.sort.service")} tabNo={t("notebook.dossier.caseFile")}>
+          <DossierHead crest={initialsOf(decoded)} role={t("notebook.svc.role")} roleIcon="github" title={decoded} />
 
           <BoxScore>
-            <Stat icon="verified" num={owns.length} label="Owns" accent drill="svc-owns" tip="Capabilities this service owns and provides." />
-            <Stat icon="groups" num={consumes.length} label="Consumes" drill="svc-consumes" tip="Capabilities this service depends on." />
-            <Stat icon="symbol" num={symbols.length} label="Symbols" drill="svc-symbols" tip="Code symbols indexed to this service." />
-            <Stat icon="history" num={issues.length} label="Issues" drill="svc-issues" tip="Issues filed against this service." />
+            <Stat icon="verified" num={owns.length} label={t("notebook.svc.owns")} accent drill="svc-owns" tip={t("notebook.svc.ownsTip")} />
+            <Stat icon="groups" num={consumes.length} label={t("notebook.svc.consumes")} drill="svc-consumes" tip={t("notebook.svc.consumesTip")} />
+            <Stat icon="symbol" num={symbols.length} label={t("notebook.conc.symbols")} drill="svc-symbols" tip={t("notebook.svc.symbolsTip")} />
+            <Stat icon="history" num={issues.length} label={t("notebook.nav.issues")} drill="svc-issues" tip={t("notebook.svc.issuesTip")} />
           </BoxScore>
 
           <Cells>
             <Cell id="svc-owns">
-              <Eyebrow icon="verified" count={owns.length} info="Capabilities this service owns — the reverse of a capability's Owners cell.">Owns</Eyebrow>
+              <Eyebrow icon="verified" count={owns.length} info={t("notebook.svc.ownsInfo")}>{t("notebook.svc.owns")}</Eyebrow>
               {owns.length ? (
                 <div className="flex flex-wrap gap-2">
                   {owns.map((c) => (
@@ -92,12 +95,12 @@ export default function ServiceDetail() {
                   ))}
                 </div>
               ) : (
-                <p className={`text-sm ${muted}`}>Owns no capability yet.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.svc.noOwns")}</p>
               )}
             </Cell>
 
             <Cell id="svc-consumes">
-              <Eyebrow icon="groups" count={consumes.length} info="Capabilities this service consumes.">Consumes</Eyebrow>
+              <Eyebrow icon="groups" count={consumes.length} info={t("notebook.svc.consumesInfo")}>{t("notebook.svc.consumes")}</Eyebrow>
               {consumes.length ? (
                 <div className="flex flex-wrap gap-2">
                   {consumes.map((c) => (
@@ -107,12 +110,12 @@ export default function ServiceDetail() {
                   ))}
                 </div>
               ) : (
-                <p className={`text-sm ${muted}`}>Consumes no tracked capability.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.svc.noConsumes")}</p>
               )}
             </Cell>
 
             <Cell id="svc-issues" span>
-              <Eyebrow icon="history" count={issues.length} info="Issues filed against this service.">Issues</Eyebrow>
+              <Eyebrow icon="history" count={issues.length} info={t("notebook.svc.issuesTip")}>{t("notebook.nav.issues")}</Eyebrow>
               {issues.length ? (
                 <ul className="flex flex-col gap-2">
                   {issues.map((i, k) => (
@@ -133,19 +136,19 @@ export default function ServiceDetail() {
                   ))}
                 </ul>
               ) : (
-                <p className={`text-sm ${muted}`}>No issue filed against this service.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.svc.noIssues")}</p>
               )}
             </Cell>
 
             <Cell id="svc-symbols" span>
-              <Eyebrow icon="symbol" count={symbols.length} info="Indexed code symbols. Each opens its own dossier.">Symbols</Eyebrow>
+              <Eyebrow icon="symbol" count={symbols.length} info={t("notebook.svc.symbolsInfo")}>{t("notebook.conc.symbols")}</Eyebrow>
               {symbols.length ? (
                 <>
                   {symbols.length > 8 && (
                     <input
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
-                      placeholder="Filter symbols…"
+                      placeholder={t("notebook.svc.filter")}
                       className="mb-2.5 w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950"
                     />
                   )}
@@ -163,7 +166,7 @@ export default function ServiceDetail() {
                   </div>
                 </>
               ) : (
-                <p className={`text-sm ${muted}`}>No symbol indexed to this service yet.</p>
+                <p className={`text-sm ${muted}`}>{t("notebook.svc.noSymbols")}</p>
               )}
             </Cell>
           </Cells>

@@ -15,6 +15,7 @@
 // This keeps the metered surface honest: nothing polls, nothing auto-refreshes
 // on a timer, and the cost of every live read is shown before it is paid.
 
+import { tr } from "../i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // A browser RELOAD (F5 / ⌘R) is a deliberate "give me fresh" gesture, so the
@@ -75,18 +76,6 @@ export function writeCache<T>(key: string, data: T): number {
   return at;
 }
 
-/// A human age like "just now" / "4m ago" / "2h ago" / "3d ago".
-export function ageLabel(at: number | null): string {
-  if (!at) return "never";
-  const s = Math.max(0, Math.floor((Date.now() - at) / 1000));
-  if (s < 45) return "just now";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
 export interface MeteredState<T> {
   data: T | null;
   cachedAt: number | null;
@@ -137,7 +126,7 @@ export function useMetered<T>(
       // the view doesn't expect to the renderer (which could then crash).
       const soft = result as { success?: boolean; error?: string } | null;
       if (soft && typeof soft === "object" && !Array.isArray(soft) && soft.success === false) {
-        throw new Error(soft.error || "The graph read failed.");
+        throw new Error(soft.error || tr("notebook.readFailed"));
       }
       setData(result);
       setCachedAt(writeCache(cacheKey, result));

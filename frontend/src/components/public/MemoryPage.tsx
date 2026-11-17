@@ -3,93 +3,66 @@
 // mechanism. See issue #78.
 
 import { Link } from "react-router-dom";
-import {
-  MEMORY_STORES,
-  PROVENANCE_HAZARD,
-  PROVENANCE_MECHANISM,
-  PROVENANCE_THESIS,
-  RESOLVED_VIA,
-} from "../../lib/factoryModel";
+import { Tx } from "@tollbooth-dpyc/web/react";
+import { memoryStores, resolvedVia } from "../../lib/factoryModel";
+import { useT, WORDS } from "../../i18n";
 import LiveStats from "./LiveStats";
 
 export default function MemoryPage() {
+  const t = useT();
   return (
     <div className="page-frame px-6 py-12 space-y-14">
       <header className="border-b border-stone-200 pb-6 dark:border-zinc-800">
         <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400">
-          Cypher-MCP — where the factory remembers
+          {t("public.memory.kicker")}
         </div>
         <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight">
-          The intention graph
+          {t("public.memory.title")}
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-zinc-400">
-          The Tollbooth DPYC ecosystem is built and maintained by agentic workers.
-          They triage issues, locate code, propose fixes, and revise the MCP services
-          that make up the network.
+          {t("public.memory.lede1")}
         </p>
         <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          Agents do not remember. Every session begins blind. Without somewhere to put
-          what it learned, each agent re-derives the same understanding — re-reading the
-          same repository, re-discovering the same structure, re-asking the same question
-          about why a piece of code exists at all.
+          {t("public.memory.lede2")}
         </p>
         <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          Cypher-MCP is where that understanding is kept and shared. It is the interface
-          between the factory&apos;s agents and the factory&apos;s knowledge graph —
-          priced, signed answers over Neo4j AuraDB, never raw graph access.
+          {t("public.memory.lede3")}
         </p>
       </header>
 
       <section>
-        <h2 className="mb-3 font-serif text-xl font-semibold">Why &ldquo;intention&rdquo;</h2>
+        <h2 className="mb-3 font-serif text-xl font-semibold">{t("public.memory.why.title")}</h2>
         <p className="mb-3 text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          Most of what a codebase knows about itself is already recorded somewhere. The
-          source says <em>what</em> exists. Git says <em>when</em> it changed and{" "}
-          <em>who</em> changed it. Tests say what must remain true.
+          <Tx ns={WORDS} k="public.memory.why1" components={{ em: <em /> }} />
         </p>
         <p className="mb-3 text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          None of them say <em>why</em>.
+          <Tx ns={WORDS} k="public.memory.why2" components={{ em: <em /> }} />
         </p>
         <p className="mb-3 text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          Why this service owns this capability. Why the retry is three attempts rather
-          than five. Why an earlier approach was abandoned. That reasoning normally lives
-          in a person&apos;s memory, a closed pull-request thread, or a conversation nobody
-          wrote down — and it decays fastest of anything in the project, because it was
-          never written where anyone would look.
+          {t("public.memory.why3")}
         </p>
         <p className="text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          The cost of losing it is paid later, by whoever changes the code next. They
-          either re-derive the reasoning at full expense, or they change something whose
-          purpose they never understood and break it. An intention graph records the why
-          alongside the what. That is the whole idea. Everything else on this page is
-          machinery in service of it.
+          {t("public.memory.why4")}
         </p>
       </section>
 
       <section>
         <h2 className="mb-3 font-serif text-xl font-semibold">
-          What it buys as the network grows
+          {t("public.memory.grows.title")}
         </h2>
         <p className="mb-4 text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          Adoption produces change requests. Each one begins with the same questions:
-          which service handles this, what code implements it, what constraints guard it,
-          and what was decided here before. An agent with access to the graph answers
-          those from the graph. An agent without it opens the repository and searches.
-          That difference is measurable, and it is what the resolution statistics below
-          record.
+          {t("public.memory.grows.body")}
         </p>
         <LiveStats />
       </section>
 
       <section>
-        <h2 className="mb-3 font-serif text-xl font-semibold">How the code was found</h2>
+        <h2 className="mb-3 font-serif text-xl font-semibold">{t("public.memory.found.title")}</h2>
         <p className="mb-4 text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          When an agent is given a task, its first job is locating the code that matters.
-          That search is the expensive part — not the fix. Every resolution in the factory
-          is recorded by how it was reached:
+          {t("public.memory.found.body")}
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
-          {RESOLVED_VIA.map((v) => (
+          {resolvedVia(t).map((v) => (
             <div
               key={v.key}
               className="rounded-xl border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
@@ -102,20 +75,17 @@ export default function MemoryPage() {
           ))}
         </div>
         <p className="mt-4 text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          The proportion between them is how the graph proves it is worth what it costs to
-          maintain. It is not a vanity metric. If wide-grep is not falling, the graph is
-          not earning its keep.
+          {t("public.memory.found.note")}
         </p>
       </section>
 
       <section>
-        <h2 className="mb-1 font-serif text-xl font-semibold">What is stored</h2>
+        <h2 className="mb-1 font-serif text-xl font-semibold">{t("public.memory.stored.title")}</h2>
         <p className="mb-4 text-sm text-stone-500 dark:text-zinc-400">
-          Six first-class node families — the durable record agents write into and read
-          from. Each lists the tools a caller would use.
+          {t("public.memory.stored.body")}
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
-          {MEMORY_STORES.map((s) => (
+          {memoryStores(t).map((s) => (
             <div
               key={s.name}
               className="rounded-xl border border-stone-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
@@ -125,12 +95,12 @@ export default function MemoryPage() {
                 {s.body}
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {s.tools.map((t) => (
+                {s.tools.map((tool) => (
                   <span
-                    key={t}
+                    key={tool}
                     className="rounded-md bg-stone-100 px-1.5 py-0.5 font-mono text-[10px] text-stone-600 dark:bg-zinc-800 dark:text-zinc-300"
                   >
-                    cypher_{t}
+                    cypher_{tool}
                   </span>
                 ))}
               </div>
@@ -141,23 +111,23 @@ export default function MemoryPage() {
 
       <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
         <div className="text-[11px] uppercase tracking-widest text-amber-600 dark:text-amber-400">
-          Agents may propose. Only humans authorize.
+          {t("model.provenance.motto")}
         </div>
         <p className="mt-2 text-sm leading-relaxed text-stone-700 dark:text-zinc-200">
-          {PROVENANCE_HAZARD}
+          {t("model.provenance.hazard")}
         </p>
         <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-zinc-400">
-          {PROVENANCE_MECHANISM}
+          {t("model.provenance.mechanism")}
         </p>
         <p className="mt-4 font-serif text-lg leading-snug text-stone-800 dark:text-zinc-100">
-          {PROVENANCE_THESIS}
+          {t("model.provenance.thesis")}
         </p>
         <p className="mt-3 text-xs leading-relaxed text-stone-500 dark:text-zinc-400">
-          Sign in to the{" "}
-          <Link to="/notebook" className="text-amber-600 hover:underline dark:text-amber-400">
-            Lab Notebook
-          </Link>{" "}
-          to read the registers with provenance seals intact.
+          <Tx
+            ns={WORDS}
+            k="public.memory.signIn"
+            components={{ notebook: <Link to="/notebook" className="text-amber-600 hover:underline dark:text-amber-400" /> }}
+          />
         </p>
       </section>
     </div>

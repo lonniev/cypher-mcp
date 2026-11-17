@@ -2,6 +2,7 @@ import { lazy, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { consumeReloadRefresh } from "./lib/graphCache";
 import { AppShell, Wallet, type AppShellContext } from "@tollbooth-dpyc/web/react";
+import { useT } from "./i18n";
 import Nav from "./components/Nav";
 import Opening from "./components/Opening";
 import { PublicLayout, PrimaryNav, PublicFooter } from "./components/public/PublicShell";
@@ -31,18 +32,16 @@ const FactoryPage = lazy(() => import("./components/public/FactoryPage"));
 const MemoryPage = lazy(() => import("./components/public/MemoryPage"));
 const JoinPage = lazy(() => import("./components/public/JoinPage"));
 
-/** The site's own words above the sign-in card. */
-const WELCOME = "The Lab Notebook: the intention graph behind the DPYC™ Agentic Software Factory — capabilities, issues, invariants and the reasons they exist.";
-
 // The package's AppShell holds the session, the sign-in gate, service_status,
 // the theme and the debug log. The site keeps its routes: the public pages
 // need no sign-in, and the Lab Notebook shows the gate until one is made.
 export default function App() {
+  const t = useT();
   const site = (shell: AppShellContext) => <Site shell={shell} />;
   return (
     <AppShell
       signedOut={site}
-      gateOptions={{ welcome: WELCOME, linksCredit: false }}
+      gateOptions={{ welcome: t("ui.app.welcome"), linksCredit: false }}
       footer={<PublicFooter />}
       classNames={{ root: "bg-stone-50 dark:bg-zinc-950 text-stone-900 dark:text-zinc-100 transition-colors" }}
     >
@@ -94,16 +93,15 @@ function Site({ shell }: { shell: AppShellContext }) {
 }
 
 function NotebookGate({ gate }: { gate: ReactNode }) {
+  const t = useT();
   return (
     <>
       <PrimaryNav />
       <main className="flex-1">
         <div className="page-frame px-6 py-12">
-          <h1 className="font-serif text-2xl font-semibold tracking-tight">Lab Notebook</h1>
+          <h1 className="font-serif text-2xl font-semibold tracking-tight">{t("ui.gate.title")}</h1>
           <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-zinc-400">
-            Sign in with a Nostr key to read the intention graph — capabilities, issues,
-            invariants, concordance, and the token-savings ledger. The public factory
-            pages need no sign-in.
+            {t("ui.gate.body")}
           </p>
         </div>
         <div className="pb-16">{gate}</div>

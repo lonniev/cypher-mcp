@@ -12,19 +12,21 @@ import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import { parseIssueRef } from "./dossier";
+import { useT, type Translate } from "../../i18n";
 
 type Col = "ref" | "family" | "grounds" | "recent";
-const SORTS: { col: Col; label: string }[] = [
-  { col: "ref", label: "Numeral" },
-  { col: "recent", label: "Recent" },
-  { col: "family", label: "Family" },
-  { col: "grounds", label: "Grounds" },
+const sorts = (t: Translate): { col: Col; label: string }[] => [
+  { col: "ref", label: t("notebook.sort.numeral") },
+  { col: "recent", label: t("notebook.sort.recent") },
+  { col: "family", label: t("notebook.sort.family") },
+  { col: "grounds", label: t("notebook.sort.grounds") },
 ];
 
 export default function PatentElements() {
+  const t = useT();
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("ref");
@@ -64,7 +66,7 @@ export default function PatentElements() {
   const jumpRef = parseIssueRef(q);
 
   return (
-    <Page eyebrow="Register" title="Patent Topics" lede="The filed provisional's reference numerals (US Prov. 64/045,999) — the patentable topics. Each grounds the capabilities and invariants traced to it; open one to see what it describes.">
+    <Page eyebrow={t("notebook.register")} title={t("notebook.contents.patents.title")} lede={t("notebook.contents.patents.blurb")}>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
 
@@ -82,28 +84,28 @@ export default function PatentElements() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Filter by numeral, element name, or claim family — or paste a GitHub URL / repo#123 to open it"
+                placeholder={t("notebook.patents.filter")}
                 spellCheck={false}
                 className={`w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-9 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 ${jumpRef ? "pr-40" : "pr-3"}`}
               />
               {jumpRef && (
                 <button type="submit" className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md bg-amber-100 px-2 py-1 font-mono text-[11px] font-medium text-amber-800 transition-colors hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25">
-                  Open {jumpRef.repo}#{jumpRef.number} <Icon name="open" size={12} />
+                  {t("notebook.openRef", { ref: `${jumpRef.repo}#${jumpRef.number}` })} <Icon name="open" size={12} />
                 </button>
               )}
             </form>
             <Link to="/notebook/concordance" className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300">
-              <Icon name="swap" size={16} /> Elastic search
+              <Icon name="swap" size={16} /> {t("notebook.caps.elastic")}
             </Link>
           </div>
 
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className={`text-xs ${faint}`}>{m.data ? `${filtered.length} of ${rows.length} elements` : "not loaded"}</span>
+              <span className={`text-xs ${faint}`}>{m.data ? t("notebook.patents.shown", { shown: filtered.length, count: rows.length }) : t("notebook.notLoaded")}</span>
               <SinceFilter value={since} onChange={setSince} />
             </div>
             <div className="flex items-center gap-1">
-              {SORTS.map((s) => (
+              {sorts(t).map((s) => (
                 <button
                   key={s.col}
                   onClick={() => (sortCol === s.col ? setDir((d) => (d === "asc" ? "desc" : "asc")) : (setSortCol(s.col), setDir(s.col === "ref" || s.col === "family" ? "asc" : "desc")))}
@@ -117,11 +119,11 @@ export default function PatentElements() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the patent schedule…" classNames={quoteStyles} />
+            <QuoteScroller quotes={quotes()} spinner heading={t("notebook.patents.reading")} classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
-            <Empty>No patent elements match this filter.</Empty>
+            <Empty>{t("notebook.patents.none")}</Empty>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {filtered.map((p) => (
@@ -136,7 +138,7 @@ export default function PatentElements() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug text-stone-900 group-hover:text-amber-700 dark:text-zinc-50 dark:group-hover:text-amber-300">{p.name || `Element ${p.ref}`}</h3>
+                        <h3 className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug text-stone-900 group-hover:text-amber-700 dark:text-zinc-50 dark:group-hover:text-amber-300">{p.name || t("notebook.patents.element", { ref: p.ref })}</h3>
                         <Icon name="open" size={15} className="mt-0.5 shrink-0 text-stone-300 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-500 dark:text-zinc-600" />
                       </div>
                       {p.claim_family && <div className={`mt-1 text-[11px] ${muted}`}>{p.claim_family}</div>}
@@ -145,19 +147,19 @@ export default function PatentElements() {
                   <div className="flex flex-wrap items-center gap-1.5">
                     {p.figures && (
                       <span className="inline-flex items-center gap-1 rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10.5px] text-stone-500 dark:bg-zinc-800 dark:text-zinc-400">
-                        <Icon name="bookmark" size={11} /> fig {p.figures}
+                        <Icon name="bookmark" size={11} /> {t("notebook.patents.fig", { figures: p.figures })}
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10.5px] text-amber-700 dark:text-amber-300">
-                      <Icon name="verified" size={11} /> {p.capability_count ?? 0} cap
+                      <Icon name="verified" size={11} /> {t("notebook.patents.caps", { count: p.capability_count ?? 0 })}
                     </span>
                     <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[10.5px] text-emerald-700 dark:text-emerald-300">
-                      <Icon name="verified" size={11} /> {p.invariant_count ?? 0} inv
+                      <Icon name="verified" size={11} /> {t("notebook.patents.invs", { count: p.invariant_count ?? 0 })}
                     </span>
                   </div>
                   {toMillis(p.updated_at) != null && (
                     <div className={`mt-auto flex items-center gap-1 pt-0.5 text-[10.5px] ${faint}`}>
-                      <Icon name="history" size={11} /> updated {relTime(toMillis(p.updated_at))}
+                      <Icon name="history" size={11} /> {t("notebook.updated", { when: relTime(toMillis(p.updated_at)) })}
                     </div>
                   )}
                 </Link>

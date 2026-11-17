@@ -15,28 +15,30 @@ import {
   type SessionStatusResult,
 } from "@tollbooth-dpyc/web";
 import { card, faint, muted } from "./ui";
+import { useLanguageLocale } from "@tollbooth-dpyc/web/react";
+import { useT, type Translate } from "../../i18n";
 
 interface Light {
   tone: "ok" | "warm" | "bad" | "idle";
   label: string;
 }
 
-function lifecycleLight(lifecycle?: string): Light {
+function lifecycleLight(t: Translate, lifecycle?: string): Light {
   switch (lifecycle) {
     case "ready":
-      return { tone: "ok", label: "Ready" };
+      return { tone: "ok", label: t("notebook.front.ready") };
     case "warming_up":
-      return { tone: "warm", label: "Warming up" };
+      return { tone: "warm", label: t("notebook.front.warming") };
     case "quota_exceeded":
-      return { tone: "bad", label: "Quota exceeded" };
+      return { tone: "bad", label: t("notebook.front.quota") };
     case "misconfigured":
-      return { tone: "bad", label: "Misconfigured" };
+      return { tone: "bad", label: t("notebook.front.misconfigured") };
     case "not_registered":
-      return { tone: "bad", label: "Not registered" };
+      return { tone: "bad", label: t("notebook.front.notRegistered") };
     case "no_identity":
-      return { tone: "idle", label: "No identity" };
+      return { tone: "idle", label: t("notebook.front.noIdentity") };
     default:
-      return { tone: "idle", label: lifecycle ?? "Unknown" };
+      return { tone: "idle", label: lifecycle ?? t("notebook.front.unknown") };
   }
 }
 
@@ -70,6 +72,7 @@ export default function FrontMatter() {
   const [sess, setSess] = useState<SessionStatusResult | null>(null);
   const [pricing, setPricing] = useState<PricingModelResult | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     let live = true;
@@ -85,9 +88,9 @@ export default function FrontMatter() {
     };
   }, []);
 
-  const light = lifecycleLight(sess?.lifecycle ?? svc?.lifecycle);
+  const light = lifecycleLight(t, sess?.lifecycle ?? svc?.lifecycle);
   const tools = pricing?.tools ?? [];
-  const pricedCount = tools.filter((t) => t.priced || (t.price_sats ?? 0) > 0).length;
+  const pricedCount = tools.filter((tool) => tool.priced || (tool.price_sats ?? 0) > 0).length;
   const version = svc?.version;
   const sdk = svc?.tollbooth_dpyc_version;
   // Only a server that runs background jobs reports them; absent reads as "—".
@@ -99,24 +102,24 @@ export default function FrontMatter() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-400">
-            Graph service
+            {t("notebook.front.service")}
           </div>
           <div className="mt-0.5 flex items-center gap-3">
             <Traffic light={light} />
-            {!loaded && <span className={faint}>reading status…</span>}
+            {!loaded && <span className={faint}>{t("notebook.front.reading")}</span>}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <Health ok={svc?.vault_configured} label="Vault" />
+          <Health ok={svc?.vault_configured} label={t("notebook.front.vault")} />
           <Health ok={svc?.courier_has_vault} label="Secure Courier" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat icon={<Database className="h-4 w-4" />} label="Priced tools" value={loaded ? pricedCount : undefined} sub={`${tools.length} total`} />
-        <Stat icon={<GitBranch className="h-4 w-4" />} label="MCP version" value={version ?? "—"} sub={sdk ? `SDK ${sdk}` : ""} isText />
-        <Stat icon={<Radio className="h-4 w-4" />} label="Durable jobs" value={durable == null ? "—" : durable ? "on" : "off"} sub={svc?.async_jobs?.backend ?? ""} isText />
-        <Stat icon={<ShieldCheck className="h-4 w-4" />} label="Patron auth" value={patronAuth} isText />
+        <Stat icon={<Database className="h-4 w-4" />} label={t("notebook.front.priced")} value={loaded ? pricedCount : undefined} sub={t("notebook.front.total", { count: tools.length })} />
+        <Stat icon={<GitBranch className="h-4 w-4" />} label={t("notebook.front.version")} value={version ?? "—"} sub={sdk ? `SDK ${sdk}` : ""} isText />
+        <Stat icon={<Radio className="h-4 w-4" />} label={t("notebook.front.durable")} value={durable == null ? "—" : durable ? t("notebook.front.on") : t("notebook.front.off")} sub={svc?.async_jobs?.backend ?? ""} isText />
+        <Stat icon={<ShieldCheck className="h-4 w-4" />} label={t("notebook.front.patronAuth")} value={patronAuth} isText />
       </div>
     </div>
   );
@@ -138,11 +141,12 @@ function Stat({
   sub?: string;
   isText?: boolean;
 }) {
+  const locale = useLanguageLocale();
   const display =
     value === undefined || value === null
       ? "…"
       : typeof value === "number"
-        ? value.toLocaleString()
+        ? value.toLocaleString(locale)
         : typeof value === "string"
           ? value
           : JSON.stringify(value);

@@ -12,20 +12,22 @@ import { toMillis, relTime } from "../../lib/time";
 import { Page, MeteredBar, Empty, MeteredError, SinceFilter, LoadPanel, faint, muted } from "./ui";
 import { Icon } from "./icons";
 import { QuoteScroller } from "@tollbooth-dpyc/web/react";
-import { QUOTES } from "../../lib/quotes";
+import { quotes } from "../../lib/quotes";
 import { quoteStyles } from "../../lib/quoteStyles";
 import { parseIssueRef, initialsOf } from "./dossier";
+import { useT, type Translate } from "../../i18n";
 
 type Col = "name" | "owners" | "keywords" | "recent";
 
-const SORTS: { col: Col; label: string }[] = [
-  { col: "recent", label: "Recent" },
-  { col: "name", label: "A–Z" },
-  { col: "owners", label: "Owners" },
-  { col: "keywords", label: "Keywords" },
+const sorts = (t: Translate): { col: Col; label: string }[] => [
+  { col: "recent", label: t("notebook.sort.recent") },
+  { col: "name", label: t("notebook.sort.az") },
+  { col: "owners", label: t("notebook.sort.owners") },
+  { col: "keywords", label: t("notebook.sort.keywords") },
 ];
 
 export default function Capabilities() {
+  const t = useT();
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [sortCol, setSortCol] = useState<Col>("name");
@@ -82,7 +84,7 @@ export default function Capabilities() {
   const jumpRef = parseIssueRef(q);
 
   return (
-    <Page eyebrow="Register" title="Capabilities" lede="The fleet's abilities. Filter here, run full elastic search in the Concordance, or open a known issue directly.">
+    <Page eyebrow={t("notebook.register")} title={t("notebook.contents.capabilities.title")} lede={t("notebook.caps.lede")}>
       <MeteredBar cachedAt={m.cachedAt} loading={m.loading} onRefresh={m.refresh} />
       {m.error && <MeteredError error={m.error} />}
 
@@ -101,13 +103,13 @@ export default function Capabilities() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Filter by name, keyword, or service — or paste a GitHub URL / repo#123 to open it"
+                placeholder={t("notebook.caps.filter")}
                 spellCheck={false}
                 className={`w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-9 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950 ${jumpRef ? "pr-40" : "pr-3"}`}
               />
               {jumpRef && (
                 <button type="submit" className="absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md bg-amber-100 px-2 py-1 font-mono text-[11px] font-medium text-amber-800 transition-colors hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25">
-                  Open {jumpRef.repo}#{jumpRef.number} <Icon name="open" size={12} />
+                  {t("notebook.openRef", { ref: `${jumpRef.repo}#${jumpRef.number}` })} <Icon name="open" size={12} />
                 </button>
               )}
             </form>
@@ -115,15 +117,15 @@ export default function Capabilities() {
               to="/notebook/concordance"
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3.5 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:text-amber-300"
             >
-              <Icon name="swap" className="text-[15px]" /> Elastic search
+              <Icon name="swap" className="text-[15px]" /> {t("notebook.caps.elastic")}
             </Link>
           </div>
 
           {keywordIndex.length > 0 && (
             <div className="mb-5">
               <div className={`mb-1.5 flex items-center gap-2 text-[11px] uppercase tracking-widest ${faint}`}>
-                <span>Keyword index</span>
-                <span className="normal-case tracking-normal">· {keywordIndex.length} terms</span>
+                <span>{t("notebook.caps.index")}</span>
+                <span className="normal-case tracking-normal">· {t("notebook.caps.terms", { count: keywordIndex.length })}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {(showAllKw ? keywordIndex : keywordIndex.slice(0, 14)).map(([k, n]) => (
@@ -144,22 +146,22 @@ export default function Capabilities() {
                     onClick={() => setShowAllKw((s) => !s)}
                     className="rounded-full px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:underline dark:text-amber-300"
                   >
-                    {showAllKw ? "Show fewer" : `+${keywordIndex.length - 14} more`}
+                    {showAllKw ? t("notebook.showFewer") : t("notebook.more", { count: keywordIndex.length - 14 })}
                   </button>
                 )}
               </div>
-              <p className={`mt-1.5 text-[11px] ${faint}`}>The index is a starting set — for the full term space, run the Concordance's elastic search.</p>
+              <p className={`mt-1.5 text-[11px] ${faint}`}>{t("notebook.caps.indexNote")}</p>
             </div>
           )}
 
           {/* Count · time filter · sort */}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className={`text-xs ${faint}`}>{m.data ? `${filtered.length} of ${rows.length} capabilities` : "not loaded"}</span>
+              <span className={`text-xs ${faint}`}>{m.data ? t("notebook.caps.shown", { shown: filtered.length, count: rows.length }) : t("notebook.notLoaded")}</span>
               <SinceFilter value={since} onChange={setSince} />
             </div>
             <div className="flex items-center gap-1">
-              {SORTS.map((s) => (
+              {sorts(t).map((s) => (
                 <button
                   key={s.col}
                   onClick={() => (sortCol === s.col ? setDir((d) => (d === "asc" ? "desc" : "asc")) : (setSortCol(s.col), setDir(s.col === "name" ? "asc" : "desc")))}
@@ -173,11 +175,11 @@ export default function Capabilities() {
           </div>
 
           {m.loading ? (
-            <QuoteScroller quotes={QUOTES} spinner heading="Reading the capability catalog…" classNames={quoteStyles} />
+            <QuoteScroller quotes={quotes()} spinner heading={t("notebook.caps.reading")} classNames={quoteStyles} />
           ) : !m.data ? (
             <LoadPanel onLoad={m.refresh} />
           ) : filtered.length === 0 ? (
-            <Empty>No entries match this filter.</Empty>
+            <Empty>{t("notebook.noMatch")}</Empty>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {filtered.map((c) => (
@@ -212,7 +214,7 @@ export default function Capabilities() {
                   )}
                   {toMillis(c.updated_at) != null && (
                     <div className={`mt-auto flex items-center gap-1 pt-0.5 text-[10.5px] ${faint}`}>
-                      <Icon name="history" size={11} /> updated {relTime(toMillis(c.updated_at))}
+                      <Icon name="history" size={11} /> {t("notebook.updated", { when: relTime(toMillis(c.updated_at)) })}
                     </div>
                   )}
                 </Link>

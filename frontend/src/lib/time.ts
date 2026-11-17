@@ -1,6 +1,9 @@
 // Graph timestamps are Neo4j `timestamp()` values — integer milliseconds since
 // the epoch. Helpers to display and filter by them.
 
+import { languageLocale } from "@tollbooth-dpyc/web";
+import type { Translate } from "../i18n";
+
 /// Coerce a graph timestamp (ms number, numeric string, or ISO) to unix ms, or
 /// null if absent/unparseable.
 export function toMillis(v: unknown): number | null {
@@ -15,20 +18,21 @@ export function toMillis(v: unknown): number | null {
   return null;
 }
 
-/// "just now" / "3h ago" / "5d ago" / "2mo ago" / "1y ago".
+/// "now" / "3 hr. ago" / "5 days ago" / "2 mo. ago" / "1 yr. ago", in the reader's language.
 export function relTime(ms: number | null): string {
   if (!ms) return "";
+  const rtf = new Intl.RelativeTimeFormat(languageLocale(), { numeric: "auto", style: "short" });
   const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
-  if (s < 45) return "just now";
+  if (s < 45) return rtf.format(0, "second");
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return rtf.format(-m, "minute");
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return rtf.format(-h, "hour");
   const d = Math.floor(h / 24);
-  if (d < 30) return `${d}d ago`;
+  if (d < 30) return rtf.format(-d, "day");
   const mo = Math.floor(d / 30);
-  if (mo < 12) return `${mo}mo ago`;
-  return `${Math.floor(d / 365)}y ago`;
+  if (mo < 12) return rtf.format(-mo, "month");
+  return rtf.format(-Math.floor(d / 365), "year");
 }
 
 /// True when the timestamp falls within the last `days` (or when days is 0/None
@@ -42,15 +46,15 @@ export function withinDays(ms: number | null, days: number): boolean {
 /// Preset rolling windows for every time filter — the ONE vocabulary shared by
 /// the registers' SinceFilter and the Recently Changed page. Shortest window
 /// first (leftmost), "Any time" always last (far right). days=0 means no bound.
-export const SINCE_PRESETS: { days: number; label: string }[] = [
-  { days: 1, label: "Day" },
-  { days: 7, label: "Week" },
-  { days: 30, label: "Month" },
-  { days: 90, label: "Quarter" },
-  { days: 0, label: "Any time" },
+export const sincePresets = (t: Translate): { days: number; label: string }[] => [
+  { days: 1, label: t("notebook.since.day") },
+  { days: 7, label: t("notebook.since.week") },
+  { days: 30, label: t("notebook.since.month") },
+  { days: 90, label: t("notebook.since.quarter") },
+  { days: 0, label: t("notebook.since.any") },
 ];
 
 /// The label for a since-days value (0 = Any time) — for count/summary text.
-export function sinceLabel(days: number): string {
-  return SINCE_PRESETS.find((p) => p.days === days)?.label ?? `${days}d`;
+export function sinceLabel(t: Translate, days: number): string {
+  return sincePresets(t).find((p) => p.days === days)?.label ?? t("notebook.since.days", { count: days });
 }

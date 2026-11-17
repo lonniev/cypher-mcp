@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Theme } from "@tollbooth-dpyc/web";
-import { AccountPage, PatronFundingStatus, useAppShell } from "@tollbooth-dpyc/web/react";
+import { AccountPage, LanguageChooser, PatronFundingStatus, useAppShell } from "@tollbooth-dpyc/web/react";
+import { useT, type Translate } from "../i18n";
 import {
   accountPageClassNames,
   buildInfoClassNames,
@@ -10,34 +11,39 @@ import {
   usageClassNames,
 } from "../lib/accountStyles";
 
-const THEME_LABELS: Record<Theme, { label: string; hint: string }> = {
-  dark: { label: "Dark", hint: "Default" },
-  light: { label: "Light", hint: "" },
-  system: { label: "System", hint: "Match OS" },
-};
+/** Each theme's name and hint, in the reader's language. */
+const themeWords = (t: Translate): Record<Theme, { label: string; hint: string }> => ({
+  dark: { label: t("views.profile.theme.dark"), hint: t("views.profile.theme.darkHint") },
+  light: { label: t("views.profile.theme.light"), hint: "" },
+  system: { label: t("views.profile.theme.system"), hint: t("views.profile.theme.systemHint") },
+});
 
-const themeLabels: Record<Theme, ReactNode> = {
-  dark: <ThemeChoice theme="dark" />,
-  light: <ThemeChoice theme="light" />,
-  system: <ThemeChoice theme="system" />,
+const themeLabels = (t: Translate): Record<Theme, ReactNode> => {
+  const words = themeWords(t);
+  return {
+    dark: <ThemeChoice theme="dark" {...words.dark} />,
+    light: <ThemeChoice theme="light" {...words.light} />,
+    system: <ThemeChoice theme="system" {...words.system} />,
+  };
 };
 
 export default function ProfilePage() {
   const { session, status } = useAppShell();
+  const t = useT();
 
   return (
     <AccountPage
       npub={session.npub}
       usage={{ classNames: usageClassNames }}
       timezone={{
-        heading: "Time zone",
-        intro: "Dates show in your browser's time zone unless you pick another. Saved on this device.",
+        heading: t("views.profile.timezone.heading"),
+        intro: t("views.profile.timezone.intro"),
         classNames: timezoneClassNames,
       }}
       theme={{
-        heading: "Appearance",
-        intro: "The notebook defaults to dark. Your choice is saved on this device.",
-        labels: themeLabels,
+        heading: t("views.profile.theme.heading"),
+        intro: t("views.profile.theme.intro"),
+        labels: themeLabels(t),
         classNames: themeToggleClassNames,
       }}
       build={{
@@ -53,6 +59,13 @@ export default function ProfilePage() {
       between={{
         // Sign-in proof and credit balance, read fresh, beside the usage.
         usage: <PatronFundingStatus classNames={fundingClassNames} />,
+        // The reader's language, beside the theme.
+        theme: (
+          <section className={accountPageClassNames.section}>
+            <h2 className={accountPageClassNames.sectionHeading}>{t("views.profile.language.heading")}</h2>
+            <LanguageChooser classNames={{ root: themeToggleClassNames.root, chip: themeToggleClassNames.chip, active: "border-amber-400! bg-amber-50! dark:border-amber-500/50! dark:bg-amber-500/10!" }} />
+          </section>
+        ),
       }}
       onSignOut={session.signOut}
       classNames={accountPageClassNames}
@@ -60,8 +73,7 @@ export default function ProfilePage() {
   );
 }
 
-function ThemeChoice({ theme }: { theme: Theme }) {
-  const { label, hint } = THEME_LABELS[theme];
+function ThemeChoice({ theme, label, hint }: { theme: Theme; label: string; hint: string }) {
   return (
     <>
       <span className="flex items-center gap-2">

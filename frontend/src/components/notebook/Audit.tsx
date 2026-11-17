@@ -29,6 +29,7 @@ import {
 import { useMetered, readCache } from "../../lib/graphCache";
 import { relTime, toMillis } from "../../lib/time";
 import { Page, SectionLabel, Empty, ErrorNote, faint, muted, card, refreshClass } from "./ui";
+import { useT, type Translate } from "../../i18n";
 
 function ProvBadge({ term }: { term?: string }) {
   if (!term) return null;
@@ -44,6 +45,7 @@ function ProvBadge({ term }: { term?: string }) {
 }
 
 function StatusBand({ assertion }: { assertion: AuditAssertion }) {
+  const t = useT();
   const band = confidenceBand(assertion.confidence, assertion.status);
   const tone =
     band === "Authorized"
@@ -55,33 +57,35 @@ function StatusBand({ assertion }: { assertion: AuditAssertion }) {
   return (
     <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${tone}`}>
       <Icon className="h-3 w-3" />
-      {band}
+      {t(`notebook.audit.band.${band}`)}
     </span>
   );
 }
 
-function effectivityLine(a: AuditAssertion): string {
+function effectivityLine(t: Translate, a: AuditAssertion): string {
   const from = toMillis(a.valid_from);
   const to = toMillis(a.valid_to);
   if (a.status === "superseded" || to != null) {
-    return `Superseded ${to ? relTime(to) : ""}`.trim();
+    return to ? t("notebook.audit.supersededWhen", { when: relTime(to) }) : t("notebook.audit.superseded");
   }
-  if (from != null) return `In effect since ${relTime(from)}`;
+  if (from != null) return t("notebook.audit.inEffect", { when: relTime(from) });
   const gen = toMillis(a.generated_at);
-  if (gen != null) return `Recorded ${relTime(gen)}`;
+  if (gen != null) return t("notebook.audit.recorded", { when: relTime(gen) });
   return "";
 }
 
-function plainEnglish(a: AuditAssertion, zone: string): string {
-  const role = a.agent?.role || a.agent?.label || "Unknown";
+/// Who said it and when, as a sentence. The `_on` forms carry the date.
+function plainSentence(t: Translate, a: AuditAssertion, zone: string): string {
+  const role = a.agent?.role || a.agent?.label || t("notebook.front.unknown");
   const when = toMillis(a.generated_at);
-  const whenBit = when
-    ? ` on ${formatDate(new Date(when).toISOString(), zone, { day: "numeric", month: "short", year: "numeric" })}`
+  const date = when
+    ? formatDate(new Date(when).toISOString(), zone, { day: "numeric", month: "short", year: "numeric" })
     : "";
-  if (a.status === "authorized") return `Authorized by ${role} in role ${role}${whenBit}`;
-  if (a.status === "suggested") return `Suggested by ${role}${whenBit}`;
-  if (a.status === "superseded") return `Superseded claim formerly by ${role}${whenBit}`;
-  return `Asserted by ${role}${whenBit}`;
+  const status =
+    a.status === "authorized" || a.status === "suggested" || a.status === "superseded" ? a.status : "asserted";
+  return date
+    ? t(`notebook.audit.by.${status}_on`, { role, date })
+    : t(`notebook.audit.by.${status}`, { role });
 }
 
 function sideLabel(side: AuditContradiction["left"]): string {
@@ -91,25 +95,26 @@ function sideLabel(side: AuditContradiction["left"]): string {
 }
 
 function ContradictionBanner({ items }: { items: AuditContradiction[] }) {
+  const t = useT();
   if (!items.length) return null;
   return (
     <div className="mb-4 rounded-xl border border-rose-300 bg-rose-50 p-4 dark:border-rose-500/40 dark:bg-rose-500/10">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-rose-800 dark:text-rose-300">
         <AlertTriangle className="h-4 w-4" />
-        Contradictions
+        {t("notebook.audit.contradictions")}
       </div>
       <ul className="space-y-2">
         {items.map((c, i) => (
           <li key={i} className="grid gap-1 text-sm text-rose-900 dark:text-rose-100 sm:grid-cols-2">
             <div className={`${card} border-rose-200 p-2 dark:border-rose-500/30`}>
               <div className={`text-[10px] uppercase tracking-widest ${faint}`}>
-                {c.kind || "Claim"} · left
+                {t("notebook.audit.left", { kind: c.kind || t("notebook.audit.claim") })}
               </div>
               <div>{sideLabel(c.left)}</div>
             </div>
             <div className={`${card} border-rose-200 p-2 dark:border-rose-500/30`}>
               <div className={`text-[10px] uppercase tracking-widest ${faint}`}>
-                {c.kind || "Claim"} · right
+                {t("notebook.audit.right", { kind: c.kind || t("notebook.audit.claim") })}
               </div>
               <div>{sideLabel(c.right)}</div>
             </div>
@@ -121,12 +126,13 @@ function ContradictionBanner({ items }: { items: AuditContradiction[] }) {
 }
 
 function GapsList({ gaps }: { gaps: string[] }) {
+  const t = useT();
   if (!gaps.length) return null;
   return (
     <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-300">
         <HelpCircle className="h-4 w-4" />
-        Gaps — what is not asserted
+        {t("notebook.audit.gaps")}
       </div>
       <ul className="list-disc space-y-1 pl-5 text-sm text-amber-950 dark:text-amber-100">
         {gaps.map((g, i) => (
@@ -139,14 +145,15 @@ function GapsList({ gaps }: { gaps: string[] }) {
 
 function AssertionCard({ a }: { a: AuditAssertion }) {
   const [, zone] = useTimezone();
-  const effect = effectivityLine(a);
+  const t = useT();
+  const effect = effectivityLine(t, a);
   return (
     <article className={`${card} p-4`}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <ProvBadge term={a.prov} />
         <StatusBand assertion={a} />
         {a.severity ? (
-          <span className={`font-mono text-[11px] ${muted}`}>severity: {a.severity}</span>
+          <span className={`font-mono text-[11px] ${muted}`}>{t("notebook.audit.severity", { severity: a.severity })}</span>
         ) : null}
         {a.name ? (
           <Link
@@ -157,9 +164,9 @@ function AssertionCard({ a }: { a: AuditAssertion }) {
           </Link>
         ) : null}
       </div>
-      <p className={`mb-1 text-xs ${muted}`}>{plainEnglish(a, zone)}</p>
+      <p className={`mb-1 text-xs ${muted}`}>{plainSentence(t, a, zone)}</p>
       <p className="text-sm leading-relaxed text-stone-800 dark:text-zinc-100">
-        {a.statement || <span className={faint}>(no statement)</span>}
+        {a.statement || <span className={faint}>{t("notebook.audit.noStatement")}</span>}
       </p>
       {effect ? <p className={`mt-2 text-[11px] ${faint}`}>{effect}</p> : null}
     </article>
@@ -167,6 +174,7 @@ function AssertionCard({ a }: { a: AuditAssertion }) {
 }
 
 export default function Audit() {
+  const t = useT();
   const capsCached = readCache<CapabilitySummary[]>("capabilities:list:since=0")?.data ?? [];
   const [name, setName] = useState(capsCached[0]?.name ?? "");
   const [question, setQuestion] = useState<AuditQuestion>("why_exists");
@@ -198,7 +206,7 @@ export default function Audit() {
   const m = useMetered<AuditEnvelope>(
     cacheKey,
     async () => {
-      if (!name.trim()) return { gaps: ["pick a capability to audit"] };
+      if (!name.trim()) return { gaps: [t("notebook.audit.pick")] };
       return auditQuery(question, name.trim(), {
         asAtMs,
         sinceMs: meta.needsSince ? sinceMs : undefined,
@@ -214,14 +222,14 @@ export default function Audit() {
 
   return (
     <Page
-      eyebrow="Apparatus · Metered"
-      title="Audit"
-      lede="Six audit questions over the intention graph — one shared envelope. PROV terms ride as badges; contradictions surface as a banner; gaps name what is not asserted."
+      eyebrow={t("notebook.audit.eyebrow")}
+      title={t("notebook.contents.audit.title")}
+      lede={t("notebook.audit.lede")}
       actions={
         <RefreshButton
           onRefresh={() => name.trim() && m.refresh()}
           busy={m.loading}
-          label="Re-run the audit"
+          label={t("notebook.audit.rerun")}
           iconSize={14}
           classNames={{ root: refreshClass }}
         />
@@ -232,13 +240,13 @@ export default function Audit() {
       <div className={`${card} mb-6 grid gap-4 p-4 sm:grid-cols-2`}>
         <label className="block text-sm">
           <span className={`mb-1 block text-[11px] font-mono uppercase tracking-widest ${faint}`}>
-            Capability
+            {t("notebook.audit.capability")}
           </span>
           <input
             list="audit-caps"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Monetized Named-Query Catalog"
+            placeholder={t("notebook.audit.capabilityExample")}
             className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950"
           />
           <datalist id="audit-caps">
@@ -250,7 +258,7 @@ export default function Audit() {
 
         <label className="block text-sm">
           <span className={`mb-1 block text-[11px] font-mono uppercase tracking-widest ${faint}`}>
-            As-of date (valid time)
+            {t("notebook.audit.asOf")}
           </span>
           <input
             type="date"
@@ -260,14 +268,14 @@ export default function Audit() {
             className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-950"
           />
           <span className={`mt-1 block text-[11px] ${faint}`}>
-            Empty = now. Filters assertion valid_from / valid_to.
+            {t("notebook.audit.asOfNote")}
           </span>
         </label>
 
         {meta.needsSince && (
           <label className="block text-sm sm:col-span-2">
             <span className={`mb-1 block text-[11px] font-mono uppercase tracking-widest ${faint}`}>
-              Changed since (days)
+              {t("notebook.audit.since")}
             </span>
             <input
               type="number"
@@ -281,7 +289,7 @@ export default function Audit() {
         )}
       </div>
 
-      <SectionLabel>Question</SectionLabel>
+      <SectionLabel>{t("notebook.audit.question")}</SectionLabel>
       <div className="mb-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {AUDIT_QUESTIONS.map((q) => {
           const active = q.id === question;
@@ -295,8 +303,8 @@ export default function Audit() {
                   : "border-stone-200 bg-white hover:border-amber-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-amber-500/40"
               }`}
             >
-              <div className="text-sm font-semibold">{q.label}</div>
-              <div className={`mt-1 text-[11px] ${muted}`}>{q.blurb}</div>
+              <div className="text-sm font-semibold">{t(`notebook.audit.q.${q.id}.label`)}</div>
+              <div className={`mt-1 text-[11px] ${muted}`}>{t(`notebook.audit.q.${q.id}.blurb`)}</div>
               <div className={`mt-2 font-mono text-[10px] ${faint}`}>{q.key}</div>
             </button>
           );
@@ -304,15 +312,15 @@ export default function Audit() {
       </div>
 
       {!name.trim() ? (
-        <Empty>Pick a capability to run the audit question.</Empty>
+        <Empty>{t("notebook.audit.pickToRun")}</Empty>
       ) : m.loading && !envelope ? (
-        <Empty>Running {meta.key}…</Empty>
+        <Empty>{t("notebook.audit.running", { key: meta.key })}</Empty>
       ) : (
         <>
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <div>
               <div className={`text-[11px] font-mono uppercase tracking-widest ${faint}`}>
-                Subject
+                {t("notebook.audit.subject")}
               </div>
               <div className="font-serif text-xl">
                 {envelope?.subject?.label || name}{" "}
@@ -326,7 +334,7 @@ export default function Audit() {
                 to={`/capabilities/${encodeURIComponent(name.trim())}`}
                 className="text-xs text-amber-700 hover:underline dark:text-amber-400"
               >
-                Open capability dossier →
+                {t("notebook.audit.openDossier")}
               </Link>
             ) : null}
           </div>
@@ -334,9 +342,9 @@ export default function Audit() {
           <ContradictionBanner items={contradictions} />
           <GapsList gaps={gaps} />
 
-          <SectionLabel>Assertions</SectionLabel>
+          <SectionLabel>{t("notebook.audit.assertions")}</SectionLabel>
           {assertions.length === 0 ? (
-            <Empty>No assertions in this window — see gaps above.</Empty>
+            <Empty>{t("notebook.audit.noAssertions")}</Empty>
           ) : (
             <div className="grid gap-3">
               {assertions.map((a, i) => (
@@ -347,7 +355,7 @@ export default function Audit() {
 
           {envelope?.derived_from && envelope.derived_from.length > 0 ? (
             <>
-              <SectionLabel>Derived from</SectionLabel>
+              <SectionLabel>{t("notebook.audit.derived")}</SectionLabel>
               <ul className="mb-4 space-y-1 text-sm">
                 {envelope.derived_from.map((d, i) => (
                   <li key={i} className="flex flex-wrap items-center gap-2">
@@ -361,7 +369,7 @@ export default function Audit() {
                         rel="noreferrer"
                         className="text-xs text-amber-700 hover:underline dark:text-amber-400"
                       >
-                        open
+                        {t("notebook.audit.open")}
                       </a>
                     ) : null}
                   </li>

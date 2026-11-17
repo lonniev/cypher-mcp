@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { configureDebugLog, configureTollbooth } from "@tollbooth-dpyc/web";
 import { ErrorBoundary } from "@tollbooth-dpyc/web/react";
+import { registerCypher, tr } from "./i18n";
 import "./index.css";
 
 // The MCP client, sign-in gate and account pieces read who this site is from
@@ -20,6 +21,10 @@ configureTollbooth({
 // One activity log for the page — this site's calls and the package's alike —
 // kept across reloads so an error that flips the view can still be copied.
 configureDebugLog({ persist: true });
+
+// Cypher's words, before the first render. The package's AppShell then starts
+// the reader's language: their choice, else their country's, else English.
+void registerCypher();
 
 // A render crash is shown with its stack and saved to the debug log, in the
 // notebook's own stone/zinc/amber; Reload is the one amber action.
@@ -40,7 +45,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary
       classNames={crash}
-      message="The page hit an unexpected error. It's captured below and saved to the debug log — copy it into a bug report. Reloading usually clears the view."
+      message={tr("ui.app.crash")}
     >
       <App />
     </ErrorBoundary>
