@@ -66,7 +66,7 @@ export default function ServiceDetail() {
         <div className="mt-4 rounded-xl border border-stone-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
           <Icon name="close" size={22} className="mx-auto mb-2 text-stone-300 dark:text-zinc-600" />
           <div className="font-serif text-lg font-semibold">{t("notebook.svc.notFound")}</div>
-          <p className={`mx-auto mt-1.5 max-w-md text-sm ${muted}`}>
+          <p className={`mt-1.5 text-sm ${muted}`}>
             <Tx ns={WORDS} k="notebook.svc.notRegistered" vars={{ ref: decoded }} components={{ ref: <span className="font-mono text-stone-600 dark:text-zinc-300" /> }} />
           </p>
         </div>

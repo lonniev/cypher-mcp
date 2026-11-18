@@ -197,7 +197,7 @@ export function LoadPanel({ onLoad, loading }: { onLoad: () => void; loading?: b
   const t = useT();
   return (
     <div className={`${card} flex flex-col items-center gap-3 px-6 py-10 text-center`}>
-      <p className={`max-w-sm text-sm ${muted}`}>{t("notebook.load.prompt")}</p>
+      <p className={`text-sm ${muted}`}>{t("notebook.load.prompt")}</p>
       <button
         onClick={onLoad}
         disabled={loading}
