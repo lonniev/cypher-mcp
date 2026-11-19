@@ -158,7 +158,7 @@ const words: Translation = {
   "public.join.step3.title": "オペレーターを使う",
   "public.join.step3.body": "有料ツールが必要なら、purchase_credits で少しの sats をチャージしてください。ラボノートからグラフを読むか、証明済みのご自身の npub で report_issue を使ってフィールドレポートを送れます。",
   "public.join.scout.title": "Scout とは？",
-  "public.join.scout.body": "Scout は、エージェントがファクトリーのリポジトリにイシューを登録するときに使う別の ID です — フィールドレポートのアクターであり、サインインに使うアカウントでも、参加の方法でもありません。あなたのアクセスは、ご自身の npub と、それを管理している署名付きの証明です。",
+  "public.join.scout.body": "Scout は、エージェントがファクトリーのリポジトリにイシューを登録するときに使う別の ID です — フィールドレポートのアクターであり、サインインに使うアカウントでも、参加の方法でもありません。アクセスは、ご自身の npub と、それを管理している署名付きの証明です。",
   "public.join.example.title": "実例",
   "public.join.example.body": "フィールドレポートは今も、<code>report_issue</code> を通じて証明済みの npub で届きます。イシュー <issue>lonniev/cypher-mcp#72</issue> には <code>agent/fix</code> のラベルが付き、Journeyman の役割が実装しました — 正式な作成者は報告者自身の npub で、共有の参加用アカウントではありません。",
   "public.join.readGraph.title": "グラフを読む",
