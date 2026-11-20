@@ -1,0 +1,1 @@
+- The MCP Registry listing carries a title (Cypher) and a link to https://cypher.tollbooth-dpyc.com.
