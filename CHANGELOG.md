@@ -5,6 +5,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Changes not yet released live in `changelog.d/`, one file per change — see the README there for why, and `scripts/changelog.py` for what folds them in at release time.
 
+## [0.9.1] — 2026-11-19
+
+### Added
+
+- The site serves `/llms.txt`, a guide for AI agents built by the shared `@tollbooth-dpyc/web/agent-guide` plugin, and links it from every page.
+
+- The Lab Notebook and the public factory pages speak English, French, Spanish, Japanese, Chinese and Hindi.
+- The first language is the reader's choice, else their country's, else English; a row in the footer and a Language section on Profile change it.
+- Dates, counts and relative times follow the language. Tool names, query keys, node labels, role names and graph values stay as the graph stores them.
+
+### Changed
+
+- Runs on @tollbooth-dpyc/web 2.6.0, so Pay opens your own Lightning wallet and an open invoice says the page is watching for it.
+
+- Hindi addresses the reader informally (तुम), like Spanish, Chinese and French; quotations keep their own words.
+
+- Each page loads the first time it opens, so the first visit downloads about a fifth less.
+
+- The MCP Registry listing carries a title (Cypher) and a link to https://cypher.tollbooth-dpyc.com.
+
+- The wallet is now the shared one from tollbooth-web 3.0.0, with a QR code on an open invoice, amounts of 100 to 25,000 plus Custom, and coupons and the statement always shown.
+
+### Fixed
+
+- Text in the Lab Notebook's not-found and load panels now uses the width of its card instead of stopping partway across.
+
 ## [0.9.0] — 2026-10-21
 
 ### Added
