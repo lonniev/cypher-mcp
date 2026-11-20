@@ -56,16 +56,16 @@ export default function ProfilePage() {
         },
         classNames: buildInfoClassNames,
       }}
-      between={{
-        // Sign-in proof and credit balance, read fresh, beside the usage.
-        usage: <PatronFundingStatus classNames={fundingClassNames} />,
-        // The reader's language, beside the theme.
-        theme: (
+      panels={{
+        // The reader's language, with the theme and time zone.
+        you: (
           <section className={accountPageClassNames.section}>
             <h2 className={accountPageClassNames.sectionHeading}>{t("views.profile.language.heading")}</h2>
             <LanguageChooser classNames={{ root: themeToggleClassNames.root, chip: themeToggleClassNames.chip, active: "border-amber-400! bg-amber-50! dark:border-amber-500/50! dark:bg-amber-500/10!" }} />
           </section>
         ),
+        // Sign-in proof and credit balance, read fresh, beside the usage.
+        money: <PatronFundingStatus classNames={fundingClassNames} />,
       }}
       onSignOut={session.signOut}
       classNames={accountPageClassNames}
