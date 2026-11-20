@@ -94,6 +94,8 @@ export const buildInfoClassNames: BuildInfoPanelClassNames = {
 export const accountPageClassNames: AccountPageClassNames = {
   root: "page-frame px-4 py-6 space-y-5",
   heading: "text-lg font-semibold",
+  groupSummary: "text-base font-semibold cursor-pointer mb-3",
+  groupBody: "grid grid-cols-[repeat(auto-fit,minmax(min(100%,26rem),1fr))] items-start gap-4",
   section: `${card} p-5`,
   sectionHeading: "text-sm font-medium mb-1",
   sectionIntro: "text-xs text-stone-500 dark:text-zinc-400 mb-3",
