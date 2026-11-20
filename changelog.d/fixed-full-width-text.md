@@ -1,1 +1,0 @@
-- Text in the Lab Notebook's not-found and load panels now uses the width of its card instead of stopping partway across.
