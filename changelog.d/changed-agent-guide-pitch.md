@@ -1,1 +1,0 @@
-- llms.txt opens with what to tell a person about Cypher, and describes its tools in a paragraph in place of a list.
