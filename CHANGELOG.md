@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Changes not yet released live in `changelog.d/`, one file per change — see the README there for why, and `scripts/changelog.py` for what folds them in at release time.
 
+## [0.9.3] — 2026-11-21
+
+### Changed
+
+- llms.txt opens with what to tell a person about Cypher, and describes its tools in a paragraph in place of a list.
+
 ## [0.9.2] — 2026-11-20
 
 ### Changed
