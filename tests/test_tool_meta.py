@@ -54,6 +54,11 @@ EXPECTED_WRITES = {
     "upsert_patent_element": REPLACES_REMOTE,
     "link_capability_to_patent": WRITES_REMOTE,
     "link_invariant_to_patent": WRITES_REMOTE,
+    # Each replaces an edge set it owns (CONSUMED_BY / SUPERSEDED_BY), so each DELETEs an
+    # edge, and a client should hear that — the same judgment as retire_funding_block.
+    "observe_symbol_usage": DELETES_REMOTE,
+    "retire_symbol": DELETES_REMOTE,
+    "reinstate_symbol": DELETES_REMOTE,
 }
 
 
