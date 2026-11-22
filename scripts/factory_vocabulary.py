@@ -1269,13 +1269,16 @@ READ_VOCABULARY: list[Template] = [
         key="symbols_in_service",
         cypher=(
             "MATCH (sym:Symbol)-[:IN_SERVICE]->(s:Service {repo_name: $repo_name}) "
-            "RETURN sym.fqn AS symbol, sym.lang AS lang, sym.file_path AS file "
+            "OPTIONAL MATCH (sym)-[:CONSUMED_BY]->(c:Service) "
+            "WITH sym, collect(DISTINCT c.repo_name) AS consumers "
+            "RETURN sym.fqn AS symbol, sym.lang AS lang, sym.file_path AS file, "
+            "sym.usage AS usage, sym.internal_refs AS internal_refs, consumers "
             "ORDER BY symbol"
         ),
         param_schema={
             "repo_name": {"type": "string", "required": True, "description": "Repository name."},
         },
-        description="List the indexed code Symbols (fqn + file_path anchor) belonging to a Service.",
+        description="List the indexed code Symbols (fqn, file_path anchor, observed usage and consumers) belonging to a Service.",
         intent="List a service's indexed symbols.",
         allow_roles=(),
         access_mode="read",

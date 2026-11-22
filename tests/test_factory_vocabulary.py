@@ -168,6 +168,13 @@ class TestVocabulary:
         assert t.cypher.index("DELETE old") < t.cypher.index("FOREACH (repo IN $consumer_repos")
         assert t.param_schema["consumer_repos"]["type"] == "list"
 
+    def test_symbol_listing_carries_the_last_observation(self):
+        # The usage sweep reads this once per repo and writes only the symbols whose usage
+        # changed; without these columns every sweep would rewrite every symbol.
+        t = next(t for t in READ_VOCABULARY if t.key == "symbols_in_service")
+        for column in ("AS usage", "AS internal_refs", "consumers"):
+            assert column in t.cypher, column
+
     def test_no_journeyman_reachable_template_writes_human_authored(self):
         # Structural confabulation defense: nothing an agent can call stamps 'human-authored'.
         for t in VOCABULARY:
