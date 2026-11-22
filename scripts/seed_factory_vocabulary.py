@@ -19,13 +19,14 @@ each request (NIP-98) and is never logged or persisted.
 
 Usage:
     # preview everything without calling the server or needing an nsec:
-    python scripts/seed_factory_vocabulary.py --dry-run \
+    uv run python scripts/seed_factory_vocabulary.py --dry-run \
         --porter-npub npub1ymg... --journeyman-npub npub1m5q...
 
     # apply against the live operator (reads OPERATOR_NSEC from env, or prompts hidden):
-    python scripts/seed_factory_vocabulary.py \
+    # --operator-npub is cypher-mcp's own operator npub (its registry entry), never the Authority's.
+    uv run python scripts/seed_factory_vocabulary.py \
         --url https://cypher-mcp.fastmcp.app/mcp \
-        --operator-npub npub1fuhq0... \
+        --operator-npub npub1xdv5j2... \
         --porter-npub npub1ymg... --journeyman-npub npub1m5q...
 """
 
