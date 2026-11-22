@@ -135,7 +135,38 @@ class TestVocabulary:
         # another way to reach the graph.
         reachable = {t.key for t in VOCABULARY if CODE_OWNER in t.allow_roles}
         assert reachable == {"authorize_capability_why", "assert_invariant",
-                             "guard_invariant_symbol", "mark_invariant_contradiction"}
+                             "guard_invariant_symbol", "mark_invariant_contradiction",
+                             "retire_symbol", "reinstate_symbol"}
+
+    def test_observed_unused_and_decided_obsolete_stay_separate(self):
+        # The machine observes `usage`; only a human decides `status='obsolete'`. Unused code
+        # may be new and obsolete code may still have callers, so neither implies the other.
+        by = {t.key: t for t in VOCABULARY}
+        observe, retire, reinstate = (by["observe_symbol_usage"], by["retire_symbol"],
+                                      by["reinstate_symbol"])
+        assert observe.allow_roles == (JOURNEYMAN,)
+        assert "status" not in observe.cypher and "human-authored" not in observe.cypher
+        assert "'unused'" in observe.cypher and "usage" not in observe.param_schema
+        assert set(retire.allow_roles) == set(reinstate.allow_roles) == {OPERATOR, CODE_OWNER}
+        assert "usage" not in retire.cypher
+        assert "retired_provenance = 'human-authored'" in retire.cypher
+
+    def test_symbol_marks_never_mint_or_delete_symbols(self):
+        # A typo must not mint a junk Symbol, and retiring keeps the node: only the edges
+        # these templates own (CONSUMED_BY, SUPERSEDED_BY) are ever deleted.
+        import re
+        for key in ("observe_symbol_usage", "retire_symbol", "reinstate_symbol"):
+            t = next(t for t in VOCABULARY if t.key == key)
+            assert "MERGE (sym:Symbol" not in t.cypher, key
+            assert "MATCH (sym:Symbol {fqn: $symbol_fqn})" in t.cypher, key
+            deleted = set(re.findall(r"DELETE (\w+)", t.cypher))
+            assert deleted <= {"old", "prev", "r"}, (key, deleted)
+            assert "sym.updated_at = timestamp()" in t.cypher, key
+
+    def test_observe_replaces_the_consumer_set(self):
+        t = next(t for t in VOCABULARY if t.key == "observe_symbol_usage")
+        assert t.cypher.index("DELETE old") < t.cypher.index("FOREACH (repo IN $consumer_repos")
+        assert t.param_schema["consumer_repos"]["type"] == "list"
 
     def test_no_journeyman_reachable_template_writes_human_authored(self):
         # Structural confabulation defense: nothing an agent can call stamps 'human-authored'.

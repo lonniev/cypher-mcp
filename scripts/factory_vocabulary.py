@@ -66,6 +66,10 @@ Node model
     (:Capability)-[:DESCRIBED_IN]->(:PatentElement)    grounds the why in the filed patent
     (:Invariant)-[:DESCRIBED_IN]->(:PatentElement)
     (:Symbol)-[:IN_SERVICE]->(:Service)
+    (:Symbol)-[:CONSUMED_BY]->(:Service)               OBSERVED: the repos that import it (observe_symbol_usage
+                                                       replaces the set each sweep; sym.usage = used | unused)
+    (:Symbol)-[:SUPERSEDED_BY]->(:Symbol)              DECIDED: a human retired it (status='obsolete') in
+                                                       favour of this replacement (retire_symbol)
     (:FundingBlock)-[:BLOCKS]->(:Service)              the deferred work-item's repo — "what is awaiting funds, where"
     (:Issue)-[:ABOUT_CAPABILITY]->(:Capability)        precedent: a future fuzzy issue on the same
                                                        theme matches this issue's actionable_text
@@ -882,6 +886,106 @@ VOCABULARY: list[Template] = [
         intent="Ground an invariant in a patent reference numeral.",
         allow_roles=(JOURNEYMAN,),
     ),
+    Template(
+        # A machine-observed FACT about a symbol, re-observed on every sweep: which repos import
+        # it, and how many references it has inside its own repo. The CONSUMED_BY set is
+        # REPLACED, not added to, so a repo that stops importing drops off by itself. `usage`
+        # is computed here from the facts — 'unused' only when nothing anywhere refers to it —
+        # and is never a parameter. Like :PullRequest, an observation carries no provenance.
+        # MATCH, never MERGE, on the symbol: observing a name nobody indexed must not mint it.
+        key="observe_symbol_usage",
+        cypher=(
+            "MATCH (sym:Symbol {fqn: $symbol_fqn}) "
+            "OPTIONAL MATCH (sym)-[old:CONSUMED_BY]->(:Service) "
+            "DELETE old "
+            "WITH DISTINCT sym "
+            "FOREACH (repo IN $consumer_repos | "
+            "    MERGE (s:Service {repo_name: repo}) "
+            "    MERGE (sym)-[:CONSUMED_BY]->(s)) "
+            "SET sym.usage = CASE WHEN size($consumer_repos) = 0 AND $internal_refs = 0 "
+            "                     THEN 'unused' ELSE 'used' END, "
+            "    sym.internal_refs = $internal_refs, "
+            "    sym.usage_observed_at_sha = $observed_at_sha, "
+            "    sym.usage_observed_at = timestamp(), sym.updated_at = timestamp() "
+            "RETURN sym.fqn AS symbol, sym.usage AS usage"
+        ),
+        param_schema={
+            "symbol_fqn": {"type": "string", "required": True,
+                           "description": "The observed symbol's fully-qualified name."},
+            "consumer_repos": {"type": "list", "required": True,
+                               "description": "Repo slugs that import the symbol ([] for none). "
+                                              "Replaces the previous set."},
+            "internal_refs": {"type": "int", "required": True,
+                              "description": "References to it inside its own repo, outside "
+                                             "its definition and tests."},
+            "observed_at_sha": {"type": "string", "required": True,
+                                "description": "The defining repo's commit the scan read."},
+        },
+        description="Record which repos import a symbol (CONSUMED_BY, replaced each time) and "
+                    "whether anything refers to it at all (usage 'used' | 'unused'). A machine "
+                    "observation: no provenance, re-checked every sweep.",
+        intent="Record who uses a code symbol, and mark it unused when nothing does.",
+        allow_roles=(JOURNEYMAN,),
+    ),
+    Template(
+        # A HUMAN decision, not an observation: "do not use this; use that instead". Distinct
+        # from usage='unused' on purpose — unused code may be brand new, and obsolete code may
+        # still have callers to migrate, so the machine may observe the one and never decide
+        # the other. Keep-not-delete: the node, its anchors, whys and GUARDS all stay; the
+        # symbol gains status='obsolete', an end to its valid time, and an optional
+        # SUPERSEDED_BY edge to the replacement, which must already be in the graph.
+        key="retire_symbol",
+        cypher=(
+            "MATCH (sym:Symbol {fqn: $symbol_fqn}) "
+            "OPTIONAL MATCH (sym)-[prev:SUPERSEDED_BY]->(:Symbol) "
+            "DELETE prev "
+            "WITH DISTINCT sym "
+            "OPTIONAL MATCH (nxt:Symbol {fqn: $superseded_by}) "
+            "FOREACH (_ IN CASE WHEN nxt IS NULL THEN [] ELSE [1] END | "
+            "    MERGE (sym)-[:SUPERSEDED_BY]->(nxt)) "
+            "SET sym.status = 'obsolete', sym.retired_reason = $reason, "
+            "    sym.retired_provenance = 'human-authored', sym.retired_at = timestamp(), "
+            "    sym.valid_to = timestamp(), sym.updated_at = timestamp() "
+            "RETURN sym.fqn AS symbol, sym.status AS status, nxt.fqn AS superseded_by"
+        ),
+        param_schema={
+            "symbol_fqn": {"type": "string", "required": True,
+                           "description": "The symbol (or module) being retired."},
+            "reason": {"type": "string", "required": True,
+                       "description": "Why it is obsolete, stated plainly."},
+            "superseded_by": {"type": "string", "required": False, "default": None,
+                              "description": "The fqn of its replacement, if any. Must already "
+                                             "be a Symbol; an unknown fqn links nothing."},
+        },
+        description="Mark a symbol obsolete — a human decision (provenance 'human-authored'), "
+                    "with a reason and an optional SUPERSEDED_BY link to its replacement. "
+                    "Keeps the node and everything attached to it.",
+        intent="Retire an obsolete code symbol and point to its replacement.",
+        allow_roles=(OPERATOR, CODE_OWNER),
+    ),
+    Template(
+        # Undo retire_symbol. The retirement's reason and time stay on the node as history.
+        key="reinstate_symbol",
+        cypher=(
+            "MATCH (sym:Symbol {fqn: $symbol_fqn}) "
+            "OPTIONAL MATCH (sym)-[r:SUPERSEDED_BY]->(:Symbol) "
+            "DELETE r "
+            "WITH DISTINCT sym "
+            "SET sym.status = null, sym.valid_to = null, sym.reinstated_reason = $reason, "
+            "    sym.reinstated_at = timestamp(), sym.updated_at = timestamp() "
+            "RETURN sym.fqn AS symbol"
+        ),
+        param_schema={
+            "symbol_fqn": {"type": "string", "required": True,
+                           "description": "The retired symbol to reinstate."},
+            "reason": {"type": "string", "required": True,
+                       "description": "Why it is back in use."},
+        },
+        description="Reverse a retirement: clear status='obsolete' and its SUPERSEDED_BY link, "
+                    "keeping the retirement's reason as history.",
+        intent="Reinstate a symbol that was retired by mistake.",
+        allow_roles=(OPERATOR, CODE_OWNER),
+    ),
 ]
 
 
@@ -1187,8 +1291,13 @@ READ_VOCABULARY: list[Template] = [
             "OPTIONAL MATCH (i:Issue)-[:ROOT_CAUSE]->(sym) "
             "OPTIONAL MATCH (d:Decision)-[:ABOUT]->(sym) "
             "OPTIONAL MATCH (inv:Invariant)-[:GUARDS]->(sym) "
+            "OPTIONAL MATCH (sym)-[:CONSUMED_BY]->(cons:Service) "
+            "OPTIONAL MATCH (sym)-[:SUPERSEDED_BY]->(nxt:Symbol) "
             "RETURN sym.fqn AS fqn, sym.file_path AS file, sym.lang AS lang, "
             "       sym.verified_at_sha AS verified_at_sha, "
+            "       sym.usage AS usage, sym.status AS status, "
+            "       sym.retired_reason AS retired_reason, nxt.fqn AS superseded_by, "
+            "       collect(DISTINCT cons.repo_name) AS consumers, "
             "       collect(DISTINCT svc.repo_name) AS services, "
             "       collect(DISTINCT cap.name) AS capabilities, "
             "       [x IN collect(DISTINCT i) WHERE x IS NOT NULL | "
@@ -1814,6 +1923,29 @@ READ_VOCABULARY: list[Template] = [
         description="Audit envelope: what changed on this capability since a valid/transaction "
                     "time? New assertions, SUPERSEDES chains, and invariant edits.",
         intent="Answer what changed on a capability since a given time.",
+        allow_roles=(),
+        access_mode="read",
+    ),
+    Template(
+        key="unused_or_obsolete_symbols",
+        cypher=(
+            "MATCH (sym:Symbol)-[:IN_SERVICE]->(s:Service {repo_name: $repo_name}) "
+            "WHERE sym.status = 'obsolete' OR sym.usage = 'unused' "
+            "OPTIONAL MATCH (sym)-[:SUPERSEDED_BY]->(nxt:Symbol) "
+            "OPTIONAL MATCH (sym)-[:CONSUMED_BY]->(c:Service) "
+            "WITH sym, nxt, collect(DISTINCT c.repo_name) AS consumers "
+            "RETURN sym.fqn AS symbol, sym.file_path AS file, sym.usage AS usage, "
+            "       sym.status AS status, sym.retired_reason AS reason, "
+            "       nxt.fqn AS superseded_by, consumers, "
+            "       sym.usage_observed_at_sha AS observed_at_sha "
+            "ORDER BY symbol"
+        ),
+        param_schema={
+            "repo_name": {"type": "string", "required": True, "description": "Repository name."},
+        },
+        description="A service's symbols that nothing uses (observed) or that a human retired "
+                    "as obsolete, with any replacement and remaining consumers.",
+        intent="List a service's unused and obsolete code symbols.",
         allow_roles=(),
         access_mode="read",
     ),
