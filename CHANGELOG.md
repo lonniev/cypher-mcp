@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Changes not yet released live in `changelog.d/`, one file per change — see the README there for why, and `scripts/changelog.py` for what folds them in at release time.
 
+## [0.9.4] — 2026-11-22
+
+### Added
+
+- Three graph templates mark code that is no longer used. `observe_symbol_usage` (Journeyman) records which repos import a symbol and marks it `unused` when nothing refers to it; it re-checks every sweep. `retire_symbol` (Operator or Code Owner) marks it `obsolete` with a reason and an optional `SUPERSEDED_BY` replacement. `reinstate_symbol` undoes a retirement. No template deletes a Symbol.
+- `unused_or_obsolete_symbols(repo_name)` lists a service's unused and obsolete symbols, and `symbol_provenance` now returns a symbol's usage, status, replacement and consumers.
+- `symbols_in_service` also returns each symbol's last observed usage, internal reference count and consumers, so a usage sweep writes only what changed.
+
+### Changed
+
+- Runs on tollbooth-dpyc 0.129.0, which lets an operator ask its own human by Nostr DM to fund an outside account that ran dry.
+
 ## [0.9.3] — 2026-11-21
 
 ### Changed
