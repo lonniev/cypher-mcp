@@ -1,3 +1,0 @@
-- Three graph templates mark code that is no longer used. `observe_symbol_usage` (Journeyman) records which repos import a symbol and marks it `unused` when nothing refers to it; it re-checks every sweep. `retire_symbol` (Operator or Code Owner) marks it `obsolete` with a reason and an optional `SUPERSEDED_BY` replacement. `reinstate_symbol` undoes a retirement. No template deletes a Symbol.
-- `unused_or_obsolete_symbols(repo_name)` lists a service's unused and obsolete symbols, and `symbol_provenance` now returns a symbol's usage, status, replacement and consumers.
-- `symbols_in_service` also returns each symbol's last observed usage, internal reference count and consumers, so a usage sweep writes only what changed.
