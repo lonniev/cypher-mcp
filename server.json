@@ -4,7 +4,7 @@
   "title": "Cypher",
   "description": "Monetized graph answers via named Cypher queries — Tollbooth DPYC operator",
   "websiteUrl": "https://cypher.tollbooth-dpyc.com",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "repository": {
     "url": "https://github.com/lonniev/cypher-mcp",
     "source": "github"
